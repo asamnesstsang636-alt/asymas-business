@@ -241,11 +241,9 @@ with st.sidebar:
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
     st.info("ASYMAS BUSINESS v1.0")
 
-    # === GESTION ACCÈS - PDG SEULEMENT ===
     if st.session_state.user_role == "PDG":
         with st.expander("🔐 GESTION ACCÈS", expanded=False):
             st.markdown("### Modifier les mots de passe")
-
             c1, c2 = st.columns(2)
             new_pwd_pdg = c1.text_input("PDG", value=st.session_state.passwords["PDG"], type="password", key="pwd_pdg")
             new_pwd_gerante = c2.text_input("Gérante", value=st.session_state.passwords["GERANTE"], type="password", key="pwd_gerante")
@@ -265,7 +263,6 @@ with st.sidebar:
         st.session_state.user_name = None
         st.rerun()
 
-# === DÉFINITION DES ONGLETS SELON RÔLE ===
 if st.session_state.user_role == "UTILISATEUR":
     tab2, = st.tabs(["🛍️ Commerce"])
     tab1 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = None
@@ -274,7 +271,6 @@ else:
         "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures"
     ])
 
-# === DASHBOARD - PDG ET GERANTE SEULEMENT ===
 if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab1:
         col1, col2, col3, col4 = st.columns(4)
@@ -290,7 +286,6 @@ if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
         else:
             col4.metric("💰 Revenus", "0 FC")
 
-# === COMMERCE - TOUS ===
 with tab2:
     st.markdown("## 🛍️ Commerce - Point de Vente")
 
@@ -403,11 +398,9 @@ with tab2:
                     else:
                         st.warning("Nom client + panier requis")
 
-# === GESTION STOCK - PDG ET GERANTE SEULEMENT ===
 if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab3:
         st.markdown("## 📦 Gestion Stock - Articles")
-
         with st.expander("➕ Ajouter Nouvel Article"):
             with st.form("form_article", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
@@ -432,7 +425,6 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
         st.divider()
         st.subheader("📋 Liste des Articles - Modifier/Supprimer")
-
         if df_articles.empty:
             st.info("Aucun article")
         else:
@@ -474,14 +466,11 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     else:
                         c2.info("🔒 Suppression réservée au PDG")
 
-# === IMMOBILIER - PDG ET GERANTE SEULEMENT ===
 if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
         st.markdown("## 🏠 Immobilier - Générer Facture")
-
         nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
         tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
-
         col1, col2, col3 = st.columns(3)
         with col1:
             type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
@@ -503,12 +492,9 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "prix": electricite},
                     {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "prix": eau}
                 ]
-
                 details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Durée Contrat: {duree_contrat} | Loyer: {prix} $ | Electricité: {electricite} $ | Eau: {eau} $"
                 periode = date.today().strftime("%B %Y")
-
                 num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode)
-
                 st.success(f"✅ Facture générée : {num_fact}")
                 st.download_button(
                     label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
@@ -642,479 +628,24 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.divider()
                     st.markdown(f"### Total : **{total:,.0f} $**")
 
+                    # === BLOC CORRIGÉ - FINALISER VENTE ===
                     if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
-                        if nom_client and st.session_state.panier_voiture:
-                            with st.spinner("Génération PDF..."):
-                                details_list = []
-                                for i in st.session_state.panier_voiture:
-                                    nom_complet = f"{i['marque']} {i['modele']} | Année: {i.get('annee','')} | Plaque: {i.get('plaque','')} | Couleur: {i.get('couleur','')} | KM: {i.get('kilometrage','')} | Carburant: {i.get('carburant','')} | Boîte: {i.get('boite','')}"
-                                    details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
-                        else:
-                            st.warning("Nom client + panier requis")
-
-# === GESTION PARC - PDG ET GERANTE SEULEMENT ===
-if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
-    with tab6:
-        st.markdown("## 🚘 Gestion Parc - Voitures")
-
-        with st.expander("➕ Ajouter Nouvelle Voiture"):
-            with st.form("form_voiture", clear_on_submit=True):
-                c1, c2, c3 = st.columns(3)
-                marque = c1.text_input("Marque")
-                modele = c2.text_input("Modèle")
-                annee = c3.number_input("Année", min_value=1990, max_value=2026, value=2020)
-                plaque = c1.text_input("Plaque")
-                couleur = c2.text_input("Couleur")
-                km = c3.number_input("Kilométrage", min_value=0)
-                carburant = c1.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"])
-                boite = c2.selectbox("Boîte", ["Manuelle", "Automatique"])
-                statut = c3.selectbox("Statut", ["Disponible", "Vendue", "Réservée"])
-                prix = c1.number_input("Prix USD", min_value=0.0)
-
-                if st.form_submit_button("💾 Ajouter Voiture"):
-                    try:
-                        supabase.table("voitures").insert({
-                            "marque": str(marque), "modele": str(modele), "annee": int(annee), "plaque": str(plaque),
-                            "couleur": str(couleur), "kilometrage": int(km), "carburant": str(carburant),
-                            "boite": str(boite), "statut": str(statut), "prix": float(prix)
-                        }).execute()
-                        st.success("Voiture ajoutée")
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur ajout")
-                        st.code(repr(e))
-
-        st.divider()
-        st.subheader("📋 Liste des Voitures - Modifier/Supprimer")
-
-        if df_voitures.empty:
-            st.info("Aucune voiture")
-        else:
-            for _, row in df_voitures.iterrows():
-                with st.expander(f"{row['marque']} {row['modele']} - {row.get('annee','')} - {row.get('prix',0):,.0f} $"):
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        new_marque = st.text_input("Marque", value=row['marque'], key=f"marque_{row['id']}")
-                        new_modele = st.text_input("Modèle", value=row['modele'], key=f"modele_{row['id']}")
-                        new_annee = st.number_input("Année", value=int(row.get('annee',2020)), key=f"annee_{row['id']}")
-                        new_plaque = st.text_input("Plaque", value=row.get('plaque',''), key=f"plaque_{row['id']}")
-                    with c2:
-                        new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_{row['id']}")
-                        new_km = st.number_input("KM", value=int(row.get('kilometrage',0)), key=f"km_{row['id']}")
-                        new_carburant = st.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"],
-                                                    index=["Essence", "Diesel", "Hybride", "Électrique"].index(row.get('carburant','Essence')) if row.get('carburant') in ["Essence", "Diesel", "Hybride", "Électrique"] else 0,
-                                                    key=f"carb_{row['id']}")
-                    with c3:
-                        new_boite = st.selectbox("Boîte", ["Manuelle", "Automatique"],
-                                               index=["Manuelle", "Automatique"].index(row.get('boite','Manuelle')) if row.get('boite') in ["Manuelle", "Automatique"] else 0,
-                                               key=f"boite_{row['id']}")
-                        new_statut = st.selectbox("Statut", ["Disponible", "Vendue", "Réservée"],
-                                                index=["Disponible", "Vendue", "Réservée"].index(row.get('statut','Disponible')) if row.get('statut') in ["Disponible", "Vendue", "Réservée"] else 0,
-                                                key=f"statut_{row['id']}")
-                        new_prix = st.number_input("Prix", value=float(row.get('prix',0)), key=f"prix_{row['id']}")
-
-                    c1, c2 = st.columns(2)
-                    if c1.button("✏️ Modifier", key=f"mod_voit_{row['id']}", use_container_width=True):
                         try:
-                            supabase.table("voitures").update({
-                                "marque": str(new_marque), "modele": str(new_modele), "annee": int(new_annee), "plaque": str(new_plaque),
-                                "couleur": str(new_couleur), "kilometrage": int(new_km), "carburant": str(new_carburant),
-                                "boite": str(new_boite), "statut": str(new_statut), "prix": float(new_prix)
-                            }).eq("id", int(row['id'])).execute()
-                            st.success("Modifié")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur modif")
-                            st.code(repr(e))
+                            if not nom_client or not st.session_state.panier_voiture:
+                                st.warning("Nom client + panier requis")
+                                st.stop()
 
-                    if st.session_state.user_role == "PDG":
-                        if c2.button("🗑️ Supprimer", key=f"del_voit_{row['id']}", use_container_width=True):
-                            try:
-                                supabase.table("voitures").delete().eq("id", int(row['id'])).execute()
-                                st.success("Supprimé")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
-                    else:
-                        c2.info("🔒 Suppression réservée au PDG")
+                            with st.spinner("Enregistrement vente..."):
+                                # 1. INSÉRER LA VENTE PRINCIPALE
+                                total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
 
-# === COMPTABILITÉ - PDG ET GERANTE SEULEMENT ===
-if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
-    with tab7:
-        st.markdown("## 💰 Comptabilité - Générer Facture + Relevé")
+                                # Récupérer l'ID utilisateur depuis Supabase
+                                user_data = supabase.table("users").select("id").eq("nom", st.session_state.user_name).execute()
+                                id_utilisateur = user_data.data[0]['id'] if user_data.data else 1
 
-        with st.expander("📄 Générer Facture Comptable", expanded=False):
-            col1, col2, col3 = st.columns(3)
-            type_op = col1.selectbox("Type", ["Revenu", "Dépense"], key="type_compta")
-            montant = col2.number_input("Montant", min_value=0.0, key="montant_compta")
-            devise = col3.selectbox("Devise", ["FC", "$", "€"], key="devise_compta")
-            categorie = col1.selectbox("Catégorie", ["Vente Commerce", "Vente Auto", "Loyer", "Salaire", "Carburant", "Autre"], key="cat_compta")
-
-            description = st.text_input("Description", key="desc_compta")
-            nom_client = st.text_input("Nom Client/Bénéficiaire", key="nom_compta")
-            tel_client = st.text_input("Téléphone", value="+243...", key="tel_compta")
-
-            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", use_container_width=True, key="btn_facture_compta"):
-                if description and nom_client:
-                    details_list = [{"nom": f"{categorie} - {description}", "qte": 1, "prix": montant}]
-                    num_fact, pdf_bytes = creer_facture_auto("Compta", nom_client, f"{categorie} - {description}", montant, devise, details_list, tel_client)
-
-                    st.success(f"✅ Facture générée : {num_fact}")
-                    st.download_button(
-                        label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
-                        data=pdf_bytes,
-                        file_name=f"{num_fact}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True,
-                        key="dl_facture_compta"
-                    )
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("Description + Nom client obligatoires")
-
-        st.divider()
-        
-        st.subheader("📊 Relevé Comptable - Classé par Catégorie")
-        
-        if df_compta.empty:
-            st.warning("Aucune écriture comptable.")
-        else:
-            col_f1, col_f2 = st.columns(2)
-            filtre_type = col_f1.selectbox("Filtrer Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta")
-            filtre_cat = col_f2.selectbox("Filtrer Catégorie", ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique()), key="filtre_cat_compta")
-            
-            df_filtre = df_compta.copy()
-            if filtre_type != "Tous":
-                df_filtre = df_filtre[df_filtre['type'] == filtre_type]
-            if filtre_cat != "Toutes":
-                df_filtre = df_filtre[df_filtre.get('categorie', '') == filtre_cat]
-            
-            df_filtre = df_filtre.sort_values('date', ascending=False)
-            
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            total_revenu = df_filtre[df_filtre['type']=='Revenu']['montant'].sum()
-            total_depense = df_filtre[df_filtre['type']=='Dépense']['montant'].sum()
-            solde = total_revenu - total_depense
-            col_t1.metric("💰 Total Revenus", f"{total_revenu:,.0f}")
-            col_t2.metric("💸 Total Dépenses", f"{total_depense:,.0f}")
-            col_t3.metric("💎 Solde", f"{solde:,.0f}")
-            col_t4.metric("📋 Écritures", len(df_filtre))
-            
-            st.divider()
-            
-            if 'categorie' in df_filtre.columns:
-                categories = df_filtre['categorie'].dropna().unique()
-                for cat in sorted(categories):
-                    df_cat = df_filtre[df_filtre['categorie'] == cat]
-                    total_cat = df_cat['montant'].sum()
-                    
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=True):
-                        st.dataframe(
-                            df_cat[['date', 'type', 'description', 'montant', 'devise']],
-                            use_container_width=True,
-                            hide_index=True
-                        )
-            else:
-                st.dataframe(
-                    df_filtre[['date', 'type', 'description', 'montant']],
-                    use_container_width=True,
-                    hide_index=True
-                )
-            
-            st.divider()
-            
-            col_dl1, col_dl2 = st.columns(2)
-            
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_filtre.to_excel(writer, sheet_name='Releve_Comptable', index=False)
-                if 'categorie' in df_filtre.columns:
-                    for cat in df_filtre['categorie'].dropna().unique():
-                        df_cat = df_filtre[df_filtre['categorie'] == cat]
-                        df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-            
-            col_dl1.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ EXCEL",
-                data=output.getvalue(),
-                file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-                key="dl_releve_excel"
-            )
-            
-            pdf_releve = FPDF()
-            pdf_releve.add_page()
-            pdf_releve.set_auto_page_break(auto=True, margin=15)
-
-            pdf_releve.set_fill_color(20, 50, 40)
-            pdf_releve.rect(0, 0, 210, 35, 'F')
-            pdf_releve.set_text_color(255, 255, 255)
-            pdf_releve.set_font("Arial", "B", 20)
-            pdf_releve.set_xy(10, 8)
-            pdf_releve.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-            pdf_releve.set_font("Arial", "", 9)
-            pdf_releve.set_xy(10, 16)
-            pdf_releve.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-            pdf_releve.set_xy(10, 21)
-            pdf_releve.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
-            pdf_releve.set_font("Arial", "B", 10)
-            pdf_releve.set_xy(150, 8)
-            pdf_releve.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-
-            pdf_releve.ln(15)
-
-            pdf_releve.set_text_color(0, 0, 0)
-            pdf_releve.set_fill_color(255, 204, 0)
-            pdf_releve.set_font("Arial", "B", 14)
-            pdf_releve.cell(0, 10, "RELEVE COMPTABLE", ln=True, fill=True)
-            pdf_releve.ln(5)
-            
-            pdf_releve.set_font("Arial", "B", 11)
-            pdf_releve.cell(0, 8, f"Total Revenus: {total_revenu:,.0f} | Total Depenses: {total_depense:,.0f} | Solde: {solde:,.0f}", ln=True)
-            pdf_releve.ln(3)
-            
-            pdf_releve.set_font("Arial", "B", 9)
-            pdf_releve.cell(25, 7, "Date", 1)
-            pdf_releve.cell(25, 7, "Type", 1)
-            pdf_releve.cell(90, 7, "Description", 1)
-            pdf_releve.cell(30, 7, "Montant", 1)
-            pdf_releve.cell(20, 7, "Devise", 1, ln=True)
-            
-            pdf_releve.set_font("Arial", "", 8)
-            for _, row in df_filtre.iterrows():
-                pdf_releve.cell(25, 6, str(row.get('date','')), 1)
-                pdf_releve.cell(25, 6, str(row.get('type','')), 1)
-                desc = str(row.get('description',''))[:45]
-                pdf_releve.cell(90, 6, desc, 1)
-                pdf_releve.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                pdf_releve.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-            
-            pdf_bytes_releve = pdf_releve.output(dest='S').encode('latin-1')
-            
-            col_dl2.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ PDF",
-                data=pdf_bytes_releve,
-                file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="dl_releve_pdf"
-            )
-
-# === FACTURES - PDG ET GERANTE SEULEMENT ===
-if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
-    with tab8:
-        st.markdown("## 📄 Factures - Relevé Général depuis Comptabilité")
-
-        st.caption(f"Debug: {len(df_compta)} écritures comptables trouvées")
-
-        if df_compta.empty:
-            st.warning("Aucune écriture comptable.")
-            st.info("👉 Fais une vente dans Commerce, Immobilier ou Automobile pour voir le relevé ici")
-        else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
-
-            c1, c2, c3, c4 = st.columns(4)
-            total_fc = df_compta_sorted[df_compta_sorted.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_compta_sorted[df_compta_sorted.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_compta_sorted[df_compta_sorted.get('devise','FC')=='€']['montant'].sum()
-            c1.metric("📄 Total Écritures", len(df_compta_sorted))
-            c2.metric("💰 Total FC", f"{total_fc:,.0f} FC")
-            c3.metric("💵 Total USD", f"{total_usd:,.0f} $")
-            c4.metric("💶 Total EUR", f"{total_eur:,.0f} €")
-
-            st.divider()
-
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series()).dropna().unique())
-            filtre_cat_fact = st.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
-
-            df_filtre_fact = df_compta_sorted.copy()
-            if filtre_cat_fact != "Toutes":
-                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
-
-            st.divider()
-
-            categories = df_filtre_fact.get('categorie', pd.Series()).dropna().unique()
-            
-            for cat in sorted(categories):
-                df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                
-                with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                    
-                    st.dataframe(
-                        df_cat[['date', 'type', 'description', 'montant', 'devise']],
-                        use_container_width=True,
-                        hide_index=True
-                    )
-                    
-                    col_dl1, col_dl2 = st.columns(2)
-                    
-                    output_cat = io.BytesIO()
-                    with pd.ExcelWriter(output_cat, engine='openpyxl') as writer:
-                        df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-                    
-                    col_dl1.download_button(
-                        label=f"📥 Télécharger {cat} - EXCEL",
-                        data=output_cat.getvalue(),
-                        file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
-                        key=f"dl_excel_cat_{cat}"
-                    )
-                    
-                    pdf_cat = FPDF()
-                    pdf_cat.add_page()
-                    
-                    pdf_cat.set_fill_color(20, 50, 40)
-                    pdf_cat.rect(0, 0, 210, 35, 'F')
-                    pdf_cat.set_text_color(255, 255)
-                    pdf_cat.set_font("Arial", "B", 20)
-                    pdf_cat.set_xy(10, 8)
-                    pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                    pdf_cat.set_font("Arial", "", 9)
-                    pdf_cat.set_xy(10, 16)
-                    pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                    pdf_cat.set_xy(10, 21)
-                    pdf_cat.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
-                    pdf_cat.set_font("Arial", "B", 10)
-                    pdf_cat.set_xy(150, 8)
-                    pdf_cat.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-
-                    pdf_cat.ln(15)
-
-                    pdf_cat.set_text_color(0, 0, 0)
-                    pdf_cat.set_fill_color(255, 204, 0)
-                    pdf_cat.set_font("Arial", "B", 14)
-                    pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
-                    pdf_cat.ln(5)
-                    
-                    pdf_cat.set_font("Arial", "B", 11)
-                    pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
-                    pdf_cat.ln(3)
-                    
-                    pdf_cat.set_font("Arial", "B", 9)
-                    pdf_cat.cell(25, 7, "Date", 1)
-                    pdf_cat.cell(25, 7, "Type", 1)
-                    pdf_cat.cell(90, 7, "Description", 1)
-                    pdf_cat.cell(30, 7, "Montant", 1)
-                    pdf_cat.cell(20, 7, "Devise", 1, ln=True)
-                    
-                    pdf_cat.set_font("Arial", "", 8)
-                    for _, row in df_cat.iterrows():
-                        pdf_cat.cell(25, 6, str(row.get('date','')), 1)
-                        pdf_cat.cell(25, 6, str(row.get('type','')), 1)
-                        desc = str(row.get('description',''))[:45]
-                        pdf_cat.cell(90, 6, desc, 1)
-                        pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                        pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-                    
-                    pdf_bytes_cat = pdf_cat.output(dest='S').encode('latin-1')
-                    
-                    col_dl2.download_button(
-                        label=f"📥 Télécharger {cat} - PDF",
-                        data=pdf_bytes_cat,
-                        file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True,
-                        key=f"dl_pdf_cat_{cat}"
-                    )
-
-            st.divider()
-            
-            st.subheader("📥 Télécharger Relevé Complet Toutes Catégories")
-            col_dl_g1, col_dl_g2 = st.columns(2)
-            
-            output_global = io.BytesIO()
-            with pd.ExcelWriter(output_global, engine='openpyxl') as writer:
-                df_compta_sorted.to_excel(writer, sheet_name='Toutes_Operations', index=False)
-                for cat in categories:
-                    df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
-                    df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-            
-            col_dl_g1.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - EXCEL",
-                data=output_global.getvalue(),
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-                key="dl_excel_global"
-            )
-            
-            pdf_global = FPDF()
-            pdf_global.add_page()
-            
-            pdf_global.set_fill_color(20, 50, 40)
-            pdf_global.rect(0, 0, 210, 35, 'F')
-            pdf_global.set_text_color(255, 255)
-            pdf_global.set_font("Arial", "B", 20)
-            pdf_global.set_xy(10, 8)
-            pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-            pdf_global.set_font("Arial", "", 9)
-            pdf_global.set_xy(10, 16)
-            pdf_global.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-            pdf_global.set_xy(10, 21)
-            pdf_global.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
-            pdf_global.set_font("Arial", "B", 10)
-            pdf_global.set_xy(150, 8)
-            pdf_global.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-
-            pdf_global.ln(15)
-
-            pdf_global.set_text_color(0, 0, 0)
-            pdf_global.set_fill_color(255, 204, 0)
-            pdf_global.set_font("Arial", "B", 14)
-            pdf_global.cell(0, 10, "RELEVE GENERAL COMPLET", ln=True, fill=True)
-            pdf_global.ln(5)
-            
-            pdf_global.set_font("Arial", "B", 11)
-            pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
-            pdf_global.ln(3)
-            
-            for cat in sorted(categories):
-                df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
-                total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                
-                pdf_global.set_font("Arial", "B", 12)
-                pdf_global.cell(0, 8, f"CATEGORIE: {cat} - {len(df_cat)} operations", ln=True)
-                pdf_global.set_font("Arial", "B", 10)
-                pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
-                pdf_global.ln(2)
-                
-                pdf_global.set_font("Arial", "B", 9)
-                pdf_global.cell(25, 7, "Date", 1)
-                pdf_global.cell(25, 7, "Type", 1)
-                pdf_global.cell(90, 7, "Description", 1)
-                pdf_global.cell(30, 7, "Montant", 1)
-                pdf_global.cell(20, 7, "Devise", 1, ln=True)
-                
-                pdf_global.set_font("Arial", "", 8)
-                for _, row in df_cat.iterrows():
-                    pdf_global.cell(25, 6, str(row.get('date','')), 1)
-                    pdf_global.cell(25, 6, str(row.get('type','')), 1)
-                    desc = str(row.get('description',''))[:45]
-                    pdf_global.cell(90, 6, desc, 1)
-                    pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                    pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-                pdf_global.ln(5)
-            
-            pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
-            
-            col_dl_g2.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - PDF",
-                data=pdf_bytes_global,
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="dl_pdf_global"
-            )
+                                vente_result = supabase.table("ventes").insert({
+                                    "total": total,
+                                    "id_utilisateur": id_utilisateur,
+                                    "nom_client": nom_client,
+                                    "telephone_client": tel_client
+                                }).execute
