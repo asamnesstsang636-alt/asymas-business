@@ -674,6 +674,6 @@ if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, k
             st.cache_data.clear()
             st.rerun()
 
-    except Exception as e:
+      except Exception as e:
         st.error(f"ERREUR SUPABASE : {e}")
         st.code(str(e))
