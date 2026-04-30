@@ -630,22 +630,50 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     # === BLOC CORRIGÉ - FINALISER VENTE ===
                     if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
-                        try:
-                            if not nom_client or not st.session_state.panier_voiture:
-                                st.warning("Nom client + panier requis")
-                                st.stop()
+    try:
+        if not nom_client or not st.session_state.panier_voiture:
+            st.warning("Nom client + panier requis")
+            st.stop()
 
-                            with st.spinner("Enregistrement vente..."):
-                                # 1. INSÉRER LA VENTE PRINCIPALE
-                                total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
+        with st.spinner("Enregistrement vente..."):
+            total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
 
-                                # Récupérer l'ID utilisateur depuis Supabase
-                                user_data = supabase.table("users").select("id").eq("nom", st.session_state.user_name).execute()
-                                id_utilisateur = user_data.data[0]['id'] if user_data.data else 1
+            user_data = supabase.table("users").select("id").eq("nom", st.session_state.user_name).execute()
+            id_utilisateur = user_data.data[0]['id'] if user_data.data else 1
 
-                                vente_result = supabase.table("ventes").insert({
-                                    "total": total,
-                                    "id_utilisateur": id_utilisateur,
-                                    "nom_client": nom_client,
-                                    "telephone_client": tel_client
-                                  }).execute
+            vente_result = supabase.table("ventes").insert({
+                "total": total,
+                "id_utilisateur": id_utilisateur,
+                "nom_client": nom_client,
+                "telephone_client": tel_client
+            }).execute()
+
+            id_vente = vente_result.data[0]['id']
+
+            for i in st.session_state.panier_voiture:
+                supabase.table("ventes_details").insert({
+                    "id_vente": id_vente,
+                    "id_voiture": i['id'],
+                    "quantite": i['qte'],
+                    "prix_unitaire": i['prix'],
+                    "sous_total": float(i['prix']) * int(i['qte'])
+                }).execute()
+
+            details_list = []
+            for i in st.session_state.panier_voiture:
+                nom_complet = f"{i['marque']} {i['modele']} | Année: {i.get('annee','')} | Plaque: {i.get('plaque','')} | Couleur: {i.get('couleur','')}"
+                details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
+
+            num_fact, pdf_bytes = creer_facture_auto("Vente Auto", nom_client, f"Vente {len(st.session_state.panier_voiture)} véhicule(s)", total, "$", details_list, tel_client)
+
+            st.session_state.vente_auto_finie = True
+            st.session_state.pdf_auto = pdf_bytes
+            st.session_state.num_fact_auto = num_fact
+            st.session_state.total_auto = total
+            st.session_state.panier_voiture = []
+            st.cache_data.clear()
+            st.rerun()
+
+    except Exception as e:
+        st.error(f"ERREUR SUPABASE : {e}")
+        st.code(str(e))
