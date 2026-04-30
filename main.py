@@ -649,7 +649,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
                                 st.session_state.panier_voiture.pop(i)
-                                                            st.rerun()
+                                st.rerun()
                             total += sous_total
 
                     st.divider()
