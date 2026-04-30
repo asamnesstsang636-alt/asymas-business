@@ -629,8 +629,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.markdown(f"### Total : **{total:,.0f} $**")
 
                     # === BLOC CORRIGÉ - FINALISER VENTE ===
-                    if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
-    try:
+if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
+     try:
         if not nom_client or not st.session_state.panier_voiture:
             st.warning("Nom client + panier requis")
             st.stop()
