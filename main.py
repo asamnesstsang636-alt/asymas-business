@@ -14,23 +14,31 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
 # === CACHE TOUT STREAMLIT SAUF POUR LE PDG ===
-if st.session_state.get("user_role")!= "PDG":
-    st.markdown("""
-        <style>
-        /* Cache menu top : Fork, GitHub, 3 points */
-        #MainMenu {visibility: hidden!important;}
-        header {visibility: hidden!important;}
-      .stAppToolbar {display: none!important;}
-        [data-testid="stToolbar"] {display: none!important;}
-        [data-testid="stDecoration"] {display: none!important;}
+st.markdown("""
+    <style>
+    /* Cache menu top : Fork, GitHub, 3 points */
+    #MainMenu {visibility: hidden!important;}
+    header {visibility: hidden!important;}
+  .stAppToolbar {display: none!important;}
+    [data-testid="stToolbar"] {display: none!important;}
+    [data-testid="stDecoration"] {display: none!important;}
+    [data-testid="stHeader"] {display: none!important;}
 
-        /* Cache footer + couronne rouge Streamlit */
-        footer {visibility: hidden!important;}
-      .stDeployButton {display:none!important;}
-        [data-testid="stStatusWidget"] {display: none!important;}
-        [data-testid="manage-app-button"] {display: none!important;}
-        </style>
-    """, unsafe_allow_html=True)
+    /* Cache footer + couronne rouge + Manage app */
+    footer {visibility: hidden!important;}
+  .stDeployButton {display:none!important;}
+    [data-testid="stStatusWidget"] {display: none!important;}
+    [data-testid="manage-app-button"] {display: none!important;}
+    iframe[src*="streamlit.io"] {display: none!important;}
+
+    /* Spécial pour "Manage app" en bas droite */
+    button[kind="header"] {display: none!important;}
+    div[data-testid="stBottomBlockContainer"] {display: none!important;}
+   .st-emotion-cache-1wbqy5l {display: none!important;}
+    button[title="Manage app"] {display: none!important;}
+    a[href*="share.streamlit.io"] {display: none!important;}
+    </style>
+""", unsafe_allow_html=True)
 
 # === SYSTÈME DE MOTS DE PASSE PERSISTANT DANS SUPABASE ===
 @st.cache_data(ttl=10)
@@ -669,7 +677,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         st.session_state.num_fact_auto = None
                         st.rerun()
                 elif not st.session_state.panier_voiture:
-                                        st.info("Panier vide")
+                    st.info("Panier vide")
                 else:
                     for i, item in enumerate(st.session_state.panier_voiture):
                         with st.container(border=True):
@@ -720,7 +728,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         "prix_unitaire": i['prix'],
                                         "sous_total": float(i['prix']) * int(i['qte'])
                                     }).execute()
-                                    # Marque la voiture comme vendue - ne plante plus si colonne manque
                                     try:
                                         supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
                                     except:
@@ -749,7 +756,6 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab6:
         st.markdown("## 🚘 Gestion Parc - Voitures")
 
-        # === AJOUT VOITURE : GÈRE COLONNES MANQUANTES ===
         colonnes_voitures = get_table_columns("voitures")
 
         with st.expander("➕ Ajouter Nouvelle Voiture"):
@@ -767,7 +773,6 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     "plaque": str(plaque)
                 }
 
-                # Ajoute champs optionnels seulement si la colonne existe
                 if "couleur" in colonnes_voitures:
                     couleur = c2.text_input("Couleur")
                     data_insert["couleur"] = str(couleur)
