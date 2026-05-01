@@ -13,8 +13,9 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
-# === CACHE LE MENU STREAMLIT SAUF POUR PDG ===
-if st.session_state.get("user_role") and st.session_state.get("user_role")!= "PDG":
+# === CACHE LE MENU STREAMLIT POUR TOUT LE MONDE SAUF PDG ===
+# Cache sur page login + pour GERANTE/BASAM
+if st.session_state.get("user_role")!= "PDG":
     st.markdown("""
         <style>
         #MainMenu {visibility: hidden;}
@@ -395,7 +396,6 @@ with tab2:
                             st.stop()
 
                         with st.spinner("Enregistrement + Génération PDF..."):
-                            # ID utilisateur sans requête Supabase
                             id_utilisateur = 1
                             if st.session_state.user_name == "ASIYA":
                                 id_utilisateur = 2
@@ -656,7 +656,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.caption(f"KM: {item.get('kilometrage','')} | Carburant: {item.get('carburant','')} | Boîte: {item.get('boite','')}")
                             c1, c2 = st.columns([2,1])
                             st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
-                            sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
                             sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
