@@ -657,7 +657,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             c1, c2 = st.columns([2,1])
                             st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
                             sous_total = float(item['prix']) * int(st.session_state
-                            .get('panier_voiture[i]['qte'])
+                .get('panier_voiture[i]['qte'])
                             sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
