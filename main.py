@@ -16,25 +16,20 @@ st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎"
 # === CACHE TOUT STREAMLIT SAUF POUR LE PDG ===
 st.markdown("""
     <style>
-    /* Cache menu top : Fork, GitHub, 3 points */
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
- .stAppToolbar {display: none!important;}
+   .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
-
-    /* Cache footer + couronne rouge + Manage app */
     footer {visibility: hidden!important;}
- .stDeployButton {display:none!important;}
+   .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
-
-    /* Spécial pour "Manage app" en bas droite */
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-  .st-emotion-cache-1wbqy5l {display: none!important;}
+   .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -343,7 +338,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -605,7 +600,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
