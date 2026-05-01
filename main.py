@@ -678,12 +678,13 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Année:** {voiture_choisie.get('annee','N/A')}")
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
+                        km_val = voiture_choisie.get('kilometrage')
+                        km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
                         c2.markdown(f"**KM:** {km_display}")
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
                         st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
-
                     c1, c2 = st.columns([1,1])
                     qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
 
