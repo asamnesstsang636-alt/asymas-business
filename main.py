@@ -674,7 +674,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         st.session_state.panier_voiture = []
                         st.session_state.vente_auto_finie = False
                         st.session_state.pdf_auto = None
-                                                st.session_state.num_fact_auto = None
+                        st.session_state.num_fact_auto = None
                         st.rerun()
                 elif not st.session_state.panier_voiture:
                     st.info("Panier vide")
