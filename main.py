@@ -20,7 +20,7 @@ if st.session_state.get("user_role")!= "PDG":
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
-     .stDeployButton {display:none;}
+    .stDeployButton {display:none;}
         </style>
     """, unsafe_allow_html=True)
 
@@ -324,10 +324,10 @@ with tab2:
             st.subheader("📦 Rubrique Produit")
             recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom...", key="search_c")
 
-            df_articles_filtre = df_articles
+            df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -340,11 +340,16 @@ with tab2:
                 c2.markdown(f"### Prix: **{produit_choisi.get('prix_vente',0):,.0f} FC**")
 
                 if c3.button("➕ Ajouter au Panier", use_container_width=True, key="add_panier_c"):
+                    stock_dispo = int(produit_choisi.get('stock', 0))
+                    if stock_dispo < qte:
+                        st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
+                        st.stop()
                     st.session_state.panier_commerce.append({
                         "id": int(produit_choisi['id']),
                         "nom": str(produit_choisi['nom_article']),
                         "prix": float(produit_choisi.get('prix_vente',0)),
-                        "qte": int(qte)
+                        "qte": int(qte),
+                        "stock_dispo": stock_dispo
                     })
                     st.session_state.vente_finie = False
                     st.rerun()
@@ -379,7 +384,11 @@ with tab2:
                     with st.container(border=True):
                         st.markdown(f"**{item['nom']}**")
                         c1, c2 = st.columns([2,1])
-                        st.session_state.panier_commerce[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_c_{i}")
+                        new_qte = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_c_{i}")
+                        if new_qte > item.get('stock_dispo', 999):
+                            st.error(f"Stock max: {item.get('stock_dispo', 999)}")
+                            new_qte = item['qte']
+                        st.session_state.panier_commerce[i]['qte'] = new_qte
                         sous_total = float(item['prix']) * int(st.session_state.panier_commerce[i]['qte'])
                         c2.markdown(f"**{sous_total:,.0f} FC**")
                         if st.button("❌ Supprimer", key=f"del_c_{i}"):
@@ -420,6 +429,8 @@ with tab2:
                                     "prix_unitaire": i['prix'],
                                     "sous_total": float(i['prix']) * int(i['qte'])
                                 }).execute()
+                                # Décrémente le stock
+                                supabase.table("articles").update({"stock": i['stock_dispo'] - i['qte']}).eq("id", i['id']).execute()
 
                             details_list = [{"nom": i['nom'], "qte": i['qte'], "prix": i['prix']} for i in st.session_state.panier_commerce]
                             details_text = ", ".join([f"{i['nom']} x{i['qte']}" for i in st.session_state.panier_commerce])
@@ -574,12 +585,12 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 st.subheader("🚗 Rubrique Véhicule")
                 recherche_voiture = st.text_input("🔍 Chercher une voiture", placeholder="Marque, modèle, plaque...", key="search_v")
 
-                df_voitures_filtre = df_voitures
+                df_voitures_filtre = df_voitures.copy()
                 if recherche_voiture:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures[mask]
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -607,6 +618,9 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
 
                     if c2.button("➕ Ajouter au Panier", use_container_width=True, key="add_panier_v"):
+                        if voiture_choisie.get('statut') == 'Vendue':
+                            st.error("Cette voiture est déjà vendue!")
+                            st.stop()
                         st.session_state.panier_voiture.append({
                             "id": int(voiture_choisie['id']),
                             "marque": str(voiture_choisie['marque']),
@@ -656,7 +670,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.caption(f"Année: {item.get('annee','')} | Plaque: {item.get('plaque','')} | Couleur: {item.get('couleur','')}")
                             st.caption(f"KM: {item.get('kilometrage','')} | Carburant: {item.get('carburant','')} | Boîte: {item.get('boite','')}")
                             c1, c2 = st.columns([2,1])
-                            st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
+                                                       st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
                             sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
@@ -666,7 +680,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     st.divider()
                     st.markdown(f"### Total : **{total:,.0f} $**")
-                
 
                     if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
                         try:
@@ -700,6 +713,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         "prix_unitaire": i['prix'],
                                         "sous_total": float(i['prix']) * int(i['qte'])
                                     }).execute()
+                                    # Marque la voiture comme vendue
+                                    supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
 
                                 details_list = []
                                 for i in st.session_state.panier_voiture:
