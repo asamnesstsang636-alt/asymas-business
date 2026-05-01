@@ -20,13 +20,13 @@ if st.session_state.get("user_role")!= "PDG":
         /* Cache menu top : Fork, GitHub, 3 points */
         #MainMenu {visibility: hidden!important;}
         header {visibility: hidden!important;}
-       .stAppToolbar {display: none!important;}
+      .stAppToolbar {display: none!important;}
         [data-testid="stToolbar"] {display: none!important;}
         [data-testid="stDecoration"] {display: none!important;}
 
         /* Cache footer + couronne rouge Streamlit */
         footer {visibility: hidden!important;}
-       .stDeployButton {display:none!important;}
+      .stDeployButton {display:none!important;}
         [data-testid="stStatusWidget"] {display: none!important;}
         [data-testid="manage-app-button"] {display: none!important;}
         </style>
@@ -653,8 +653,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                 if st.session_state.vente_auto_finie and st.session_state.pdf_auto:
                     st.success(f"✅ Vente validée - {st.session_state.total_auto:,.0f} $")
-                    st.info(f"📄 Facture PDF générée: {
-                                        st.session_state.num_fact_auto}")
+                    st.info(f"📄 Facture PDF générée: {st.session_state.num_fact_auto}")
                     st.download_button(
                         label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
                         data=st.session_state.pdf_auto,
@@ -670,7 +669,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         st.session_state.num_fact_auto = None
                         st.rerun()
                 elif not st.session_state.panier_voiture:
-                    st.info("Panier vide")
+                                        st.info("Panier vide")
                 else:
                     for i, item in enumerate(st.session_state.panier_voiture):
                         with st.container(border=True):
@@ -721,7 +720,11 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         "prix_unitaire": i['prix'],
                                         "sous_total": float(i['prix']) * int(i['qte'])
                                     }).execute()
-                                    supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
+                                    # Marque la voiture comme vendue - ne plante plus si colonne manque
+                                    try:
+                                        supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
+                                    except:
+                                        pass
 
                                 details_list = []
                                 for i in st.session_state.panier_voiture:
@@ -746,6 +749,9 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab6:
         st.markdown("## 🚘 Gestion Parc - Voitures")
 
+        # === AJOUT VOITURE : GÈRE COLONNES MANQUANTES ===
+        colonnes_voitures = get_table_columns("voitures")
+
         with st.expander("➕ Ajouter Nouvelle Voiture"):
             with st.form("form_voiture", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
@@ -753,20 +759,37 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 modele = c2.text_input("Modèle")
                 annee = c3.number_input("Année", min_value=1990, max_value=2026, value=2020)
                 plaque = c1.text_input("Plaque")
-                couleur = c2.text_input("Couleur")
-                km = c3.number_input("Kilométrage", min_value=0)
-                carburant = c1.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"])
-                boite = c2.selectbox("Boîte", ["Manuelle", "Automatique"])
+
+                data_insert = {
+                    "marque": str(marque),
+                    "modele": str(modele),
+                    "annee": int(annee),
+                    "plaque": str(plaque)
+                }
+
+                # Ajoute champs optionnels seulement si la colonne existe
+                if "couleur" in colonnes_voitures:
+                    couleur = c2.text_input("Couleur")
+                    data_insert["couleur"] = str(couleur)
+                if "kilometrage" in colonnes_voitures:
+                    km = c3.number_input("Kilométrage", min_value=0)
+                    data_insert["kilometrage"] = int(km)
+                if "carburant" in colonnes_voitures:
+                    carburant = c1.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"])
+                    data_insert["carburant"] = str(carburant)
+                if "boite" in colonnes_voitures:
+                    boite = c2.selectbox("Boîte", ["Manuelle", "Automatique"])
+                    data_insert["boite"] = str(boite)
+
                 statut = c3.selectbox("Statut", ["Disponible", "Vendue", "Réservée"])
                 prix = c1.number_input("Prix USD", min_value=0.0)
 
+                data_insert["statut"] = str(statut)
+                data_insert["prix"] = float(prix)
+
                 if st.form_submit_button("💾 Ajouter Voiture"):
                     try:
-                        supabase.table("voitures").insert({
-                            "marque": str(marque), "modele": str(modele), "annee": int(annee), "plaque": str(plaque),
-                            "couleur": str(couleur), "kilometrage": int(km), "carburant": str(carburant),
-                            "boite": str(boite), "statut": str(statut), "prix": float(prix)
-                        }).execute()
+                        supabase.table("voitures").insert(data_insert).execute()
                         st.success("Voiture ajoutée")
                         st.cache_data.clear()
                         st.rerun()
@@ -788,29 +811,44 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         new_modele = st.text_input("Modèle", value=row['modele'], key=f"modele_{row['id']}")
                         new_annee = st.number_input("Année", value=int(row.get('annee',2020)), key=f"annee_{row['id']}")
                         new_plaque = st.text_input("Plaque", value=row.get('plaque',''), key=f"plaque_{row['id']}")
+
+                    data_update = {
+                        "marque": str(new_marque),
+                        "modele": str(new_modele),
+                        "annee": int(new_annee),
+                        "plaque": str(new_plaque)
+                    }
+
                     with c2:
-                        new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_{row['id']}")
-                        new_km = st.number_input("KM", value=int(row.get('kilometrage',0)), key=f"km_{row['id']}")
-                        new_carburant = st.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"],
-                                                    index=["Essence", "Diesel", "Hybride", "Électrique"].index(row.get('carburant','Essence')) if row.get('carburant') in ["Essence", "Diesel", "Hybride", "Électrique"] else 0,
-                                                    key=f"carb_{row['id']}")
+                        if "couleur" in colonnes_voitures:
+                            new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_{row['id']}")
+                            data_update["couleur"] = str(new_couleur)
+                        if "kilometrage" in colonnes_voitures:
+                            new_km = st.number_input("KM", value=int(row.get('kilometrage',0)), key=f"km_{row['id']}")
+                            data_update["kilometrage"] = int(new_km)
+                        if "carburant" in colonnes_voitures:
+                            new_carburant = st.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"],
+                                                        index=["Essence", "Diesel", "Hybride", "Électrique"].index(row.get('carburant','Essence')) if row.get('carburant') in ["Essence", "Diesel", "Hybride", "Électrique"] else 0,
+                                                        key=f"carb_{row['id']}")
+                            data_update["carburant"] = str(new_carburant)
+
                     with c3:
-                        new_boite = st.selectbox("Boîte", ["Manuelle", "Automatique"],
-                                               index=["Manuelle", "Automatique"].index(row.get('boite','Manuelle')) if row.get('boite') in ["Manuelle", "Automatique"] else 0,
-                                               key=f"boite_{row['id']}")
+                        if "boite" in colonnes_voitures:
+                            new_boite = st.selectbox("Boîte", ["Manuelle", "Automatique"],
+                                                   index=["Manuelle", "Automatique"].index(row.get('boite','Manuelle')) if row.get('boite') in ["Manuelle", "Automatique"] else 0,
+                                                   key=f"boite_{row['id']}")
+                            data_update["boite"] = str(new_boite)
                         new_statut = st.selectbox("Statut", ["Disponible", "Vendue", "Réservée"],
                                                 index=["Disponible", "Vendue", "Réservée"].index(row.get('statut','Disponible')) if row.get('statut') in ["Disponible", "Vendue", "Réservée"] else 0,
                                                 key=f"statut_{row['id']}")
                         new_prix = st.number_input("Prix", value=float(row.get('prix',0)), key=f"prix_{row['id']}")
+                        data_update["statut"] = str(new_statut)
+                        data_update["prix"] = float(new_prix)
 
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_voit_{row['id']}", use_container_width=True):
                         try:
-                            supabase.table("voitures").update({
-                                "marque": str(new_marque), "modele": str(new_modele), "annee": int(new_annee), "plaque": str(new_plaque),
-                                "couleur": str(new_couleur), "kilometrage": int(new_km), "carburant": str(new_carburant),
-                                "boite": str(new_boite), "statut": str(new_statut), "prix": float(new_prix)
-                            }).eq("id", int(row['id'])).execute()
+                            supabase.table("voitures").update(data_update).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
