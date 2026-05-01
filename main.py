@@ -20,18 +20,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-  .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-  .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-  .st-emotion-cache-1wbqy5l {display: none!important;}
+ .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -366,7 +366,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -660,7 +660,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures[mask]
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -678,8 +678,9 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Année:** {voiture_choisie.get('annee','N/A')}")
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
-                        c2.markdown(f"**KM:** {voiture_choisie.get('kilometrage','N/A')}")
+                        c2.markdown(f"**KM:** {km_display}")
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
+                        c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
                         st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
 
@@ -1071,7 +1072,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             pdf_releve.set_fill_color(20, 50, 40)
             pdf_releve.rect(0, 0, 210, 35, 'F')
-            pdf_releve.set_text_color(255, 255)
+            pdf_releve.set_text_color(255, 255, 255)
             pdf_releve.set_font("Arial", "B", 20)
             pdf_releve.set_xy(10, 8)
             pdf_releve.cell(0, 10, "ASYMAS BUSINESS", ln=True)
@@ -1321,64 +1322,4 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     pdf_global.cell(25, 6, str(row.get('type','')), 1)
                     desc = str(row.get('description',''))[:45]
                     pdf_global.cell(90, 6, desc, 1)
-                    pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                    pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-                pdf_global.ln(5)
-
-            pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
-
-            col_dl_g2.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - PDF",
-                data=pdf_bytes_global,
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                width="stretch",
-                key="dl_pdf_global"
-            )
-
-if tab9 and st.session_state.user_role == "PDG":
-    with tab9:
-        st.markdown("## 👥 Gestion des Utilisateurs")
-        st.warning("⚠️ Zone sensible - Seul le PDG peut modifier les mots de passe")
-
-        st.subheader("🔐 Modifier les Mots de Passe")
-
-        if df_utilisateurs.empty:
-            st.error("Table 'utilisateurs' introuvable. Crée-la dans Supabase avec le SQL fourni.")
-        else:
-            for _, user in df_utilisateurs.iterrows():
-                with st.expander(f"👤 {user['nom']} - Rôle: {user['role']}", expanded=True):
-                    col1, col2 = st.columns([3,1])
-                    with col1:
-                        new_password = st.text_input(f"Nouveau mot de passe pour {user['nom']}", type="password", key=f"pwd_{user['id']}")
-                    with col2:
-                        st.write("")
-                        st.write("")
-                        if st.button("💾 Changer", key=f"change_{user['id']}", width="stretch"):
-                            if new_password:
-                                try:
-                                    supabase.table("utilisateurs").update({"password": new_password}).eq("id", int(user['id'])).execute()
-                                    st.success(f"Mot de passe de {user['nom']} modifié!")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error("Erreur modification")
-                                    st.code(repr(e))
-                            else:
-                                st.warning("Entre un mot de passe")
-
-        st.divider()
-        st.info("**SQL pour créer la table utilisateurs dans Supabase :**")
-        st.code("""
-CREATE TABLE utilisateurs (
-    id SERIAL PRIMARY KEY,
-    nom VARCHAR(50) NOT NULL,
-    role VARCHAR(20) NOT NULL UNIQUE,
-    password VARCHAR(100) NOT NULL
-);
-
-INSERT INTO utilisateurs (nom, role, password) VALUES
-('TSANG', 'PDG', 'tsang2024'),
-('ASIYA', 'GERANTE', 'asiya2024'),
-('BASAM', 'UTILISATEUR', 'basam2024');
-        """, language="sql")
+                    pdf
