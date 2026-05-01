@@ -22,18 +22,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
- .stAppToolbar {display: none!important;}
+.stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
- .stDeployButton {display:none!important;}
+.stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
- .st-emotion-cache-1wbqy5l {display: none!important;}
+.st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -139,7 +139,7 @@ def generer_qrcode(data_text):
     img.save(temp_file.name)
     return temp_file.name
 
-# === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR CODE ===
+# === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR EN BAS + SIGNATURE ===
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
     def clean_text(txt):
         return str(txt).encode('latin-1', 'replace').decode('latin-1')
@@ -159,18 +159,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
     pdf.set_xy(10, 21)
     pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
-    # === QR CODE OBLIGATOIRE EN HAUT DROITE ===
-    qr_data = f"""ASYMAS BUSINESS
-Facture: {numero}
-Type: {type_op}
-Client: {client}
-Montant: {montant:,.0f} {devise}
-Date: {date.today().strftime('%d/%m/%Y')}
-Tel: +243 995 105 623"""
-    qr_path = generer_qrcode(qr_data)
-    pdf.image(qr_path, x=170, y=8, w=30)
-    os.unlink(qr_path)
 
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
@@ -243,6 +231,50 @@ Tel: +243 995 105 623"""
     pdf.set_font("Arial", "B", 11)
     pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
     pdf.cell(40, 10, f"{montant:,.0f} {clean_text(devise)}", 1, 1, 'R', True)
+
+    pdf.ln(10)
+
+    if type_op in ["Loyer", "Vente Auto"]:
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(0, 8, "SIGNATURE CLIENT:", ln=True)
+        pdf.ln(3)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+        pdf.set_font("Arial", "", 8)
+        pdf.set_xy(10, pdf.get_y() + 1)
+        pdf.cell(90, 5, f"Nom: {clean_text(client)}", ln=True)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.cell(90, 5, "Date: ___________________", ln=True)
+        pdf.ln(5)
+
+    pdf.set_font("Arial", "I", 10)
+    pdf.set_text_color(0, 102, 0)
+    pdf.cell(0, 6, "Merci pour votre confiance! ASYMAS BUSINESS - Votre partenaire de croissance", ln=True, align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(5)
+
+    qr_data = f"""ASYMAS BUSINESS
+Facture: {numero}
+Type: {type_op}
+Client: {client}
+Montant: {montant:,.0f} {devise}
+Date: {date.today().strftime('%d/%m/%Y')}
+Tel: +243 995 105 623"""
+    qr_path = generer_qrcode(qr_data)
+
+    y_position = pdf.get_y()
+    if y_position > 250:
+        pdf.add_page()
+        y_position = 30
+
+    pdf.image(qr_path, x=160, y=y_position, w=30)
+    os.unlink(qr_path)
+
+    pdf.set_xy(10, y_position + 5)
+    pdf.set_font("Arial", "", 8)
+    pdf.cell(140, 5, "Scannez ce QR Code pour verifier l'authenticite de la facture", ln=False)
+    pdf.set_xy(10, y_position + 10)
+    pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
 
     return pdf.output(dest='S').encode('latin-1')
 
@@ -369,7 +401,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -654,7 +686,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -1266,7 +1298,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             pdf_global.set_fill_color(20, 50, 40)
             pdf_global.rect(0, 0, 210, 35, 'F')
-            pdf_global.set_text_color(255, 255, 255)
+            pdf_global.set_text_color(255, 255)
             pdf_global.set_font("Arial", "B", 20)
             pdf_global.set_xy(10, 8)
             pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
