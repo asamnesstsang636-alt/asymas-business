@@ -13,14 +13,22 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
-# === CACHE LE MENU STREAMLIT POUR TOUT LE MONDE SAUF PDG ===
+# === CACHE TOUT STREAMLIT SAUF POUR LE PDG ===
 if st.session_state.get("user_role")!= "PDG":
     st.markdown("""
         <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-   .stDeployButton {display:none;}
+        /* Cache menu top : Fork, GitHub, 3 points */
+        #MainMenu {visibility: hidden!important;}
+        header {visibility: hidden!important;}
+       .stAppToolbar {display: none!important;}
+        [data-testid="stToolbar"] {display: none!important;}
+        [data-testid="stDecoration"] {display: none!important;}
+
+        /* Cache footer + couronne rouge Streamlit */
+        footer {visibility: hidden!important;}
+       .stDeployButton {display:none!important;}
+        [data-testid="stStatusWidget"] {display: none!important;}
+        [data-testid="manage-app-button"] {display: none!important;}
         </style>
     """, unsafe_allow_html=True)
 
@@ -327,7 +335,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -429,7 +437,6 @@ with tab2:
                                     "prix_unitaire": i['prix'],
                                     "sous_total": float(i['prix']) * int(i['qte'])
                                 }).execute()
-                                # Décrémente le stock
                                 supabase.table("articles").update({"stock": i['stock_dispo'] - i['qte']}).eq("id", i['id']).execute()
 
                             details_list = [{"nom": i['nom'], "qte": i['qte'], "prix": i['prix']} for i in st.session_state.panier_commerce]
@@ -590,7 +597,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -646,7 +653,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                 if st.session_state.vente_auto_finie and st.session_state.pdf_auto:
                     st.success(f"✅ Vente validée - {st.session_state.total_auto:,.0f} $")
-                    st.info(f"📄 Facture PDF générée: {st.session_state.num_fact_auto}")
+                    st.info(f"📄 Facture PDF générée: {
+                                        st.session_state.num_fact_auto}")
                     st.download_button(
                         label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
                         data=st.session_state.pdf_auto,
