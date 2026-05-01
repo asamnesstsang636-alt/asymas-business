@@ -19,14 +19,14 @@ st.markdown("""
     /* Cache menu top : Fork, GitHub, 3 points */
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-  .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
 
     /* Cache footer + couronne rouge + Manage app */
     footer {visibility: hidden!important;}
-  .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
@@ -34,7 +34,7 @@ st.markdown("""
     /* Spécial pour "Manage app" en bas droite */
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-   .st-emotion-cache-1wbqy5l {display: none!important;}
+  .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -71,7 +71,7 @@ if st.session_state.user_role is None:
         profil = st.selectbox("Utilisateur", ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"])
         password = st.text_input("Mot de passe", type="password", key="pwd")
 
-        if st.button("SE CONNECTER", use_container_width=True, type="primary"):
+        if st.button("SE CONNECTER", width="stretch", type="primary"):
             if profil == "PDG TSANG" and password == passwords_db["PDG"]:
                 st.session_state.user_role = "PDG"
                 st.session_state.user_name = "TSANG"
@@ -282,7 +282,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    if st.button("🚪 DÉCONNEXION", key="logout", use_container_width=True):
+    if st.button("🚪 DÉCONNEXION", key="logout", width="stretch"):
         st.session_state.user_role = None
         st.session_state.user_name = None
         st.rerun()
@@ -343,7 +343,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -355,7 +355,7 @@ with tab2:
                 qte = c1.number_input("QTE", min_value=1, value=1, key="qte_c")
                 c2.markdown(f"### Prix: **{produit_choisi.get('prix_vente',0):,.0f} FC**")
 
-                if c3.button("➕ Ajouter au Panier", use_container_width=True, key="add_panier_c"):
+                if c3.button("➕ Ajouter au Panier", width="stretch", key="add_panier_c"):
                     stock_dispo = int(produit_choisi.get('stock', 0))
                     if stock_dispo < qte:
                         st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
@@ -384,10 +384,10 @@ with tab2:
                     data=st.session_state.pdf_data,
                     file_name=f"{st.session_state.num_fact}.pdf",
                     mime="application/pdf",
-                    use_container_width=True,
+                    width="stretch",
                     key="dl_facture_commerce"
                 )
-                if st.button("Nouvelle Vente", use_container_width=True, key="new_vente_c"):
+                if st.button("Nouvelle Vente", width="stretch", key="new_vente_c"):
                     st.session_state.panier_commerce = []
                     st.session_state.vente_finie = False
                     st.session_state.pdf_data = None
@@ -415,7 +415,7 @@ with tab2:
                 st.divider()
                 st.markdown(f"### Total : **{total:,.0f} FC**")
 
-                if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="final_c"):
+                if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="final_c"):
                     try:
                         if not nom_client or not st.session_state.panier_commerce:
                             st.warning("Nom client + panier requis")
@@ -506,7 +506,7 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
 
                     c1, c2 = st.columns(2)
-                    if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", use_container_width=True):
+                    if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
                             supabase.table("articles").update({
                                 "nom_article": str(new_nom), "categorie": str(new_cat),
@@ -520,7 +520,7 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.code(repr(e))
 
                     if st.session_state.user_role == "PDG":
-                        if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", use_container_width=True):
+                        if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", width="stretch"):
                             try:
                                 supabase.table("articles").delete().eq("id", int(row['id'])).execute()
                                 st.success("Supprimé")
@@ -551,7 +551,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         total_mensuel = float(prix) + float(electricite) + float(eau)
         st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
 
-        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", use_container_width=True, key="btn_facture_immo"):
+        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
                     {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Durée: {duree_contrat}", "qte": 1, "prix": prix},
@@ -567,7 +567,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     data=pdf_bytes,
                     file_name=f"{num_fact}.pdf",
                     mime="application/pdf",
-                    use_container_width=True,
+                    width="stretch",
                     key="dl_facture_immo"
                 )
                 st.cache_data.clear()
@@ -605,7 +605,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures[mask]
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -632,7 +632,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     c1, c2 = st.columns([1,1])
                     qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
 
-                    if c2.button("➕ Ajouter au Panier", use_container_width=True, key="add_panier_v"):
+                    if c2.button("➕ Ajouter au Panier", width="stretch", key="add_panier_v"):
                         if voiture_choisie.get('statut') == 'Vendue':
                             st.error("Cette voiture est déjà vendue!")
                             st.stop()
@@ -667,14 +667,14 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         data=st.session_state.pdf_auto,
                         file_name=f"{st.session_state.num_fact_auto}.pdf",
                         mime="application/pdf",
-                        use_container_width=True,
+                        width="stretch",
                         key="dl_facture_auto"
                     )
-                    if st.button("Nouvelle Vente", use_container_width=True, key="new_vente_auto"):
+                    if st.button("Nouvelle Vente", width="stretch", key="new_vente_auto"):
                         st.session_state.panier_voiture = []
                         st.session_state.vente_auto_finie = False
                         st.session_state.pdf_auto = None
-                        st.session_state.num_fact_auto = None
+                                                st.session_state.num_fact_auto = None
                         st.rerun()
                 elif not st.session_state.panier_voiture:
                     st.info("Panier vide")
@@ -696,7 +696,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.divider()
                     st.markdown(f"### Total : **{total:,.0f} $**")
 
-                    if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
+                    if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture_auto"):
                         try:
                             if not nom_client or not st.session_state.panier_voiture:
                                 st.warning("Nom client + panier requis")
@@ -851,7 +851,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         data_update["prix"] = float(new_prix)
 
                     c1, c2 = st.columns(2)
-                    if c1.button("✏️ Modifier", key=f"mod_voit_{row['id']}", use_container_width=True):
+                    if c1.button("✏️ Modifier", key=f"mod_voit_{row['id']}", width="stretch"):
                         try:
                             supabase.table("voitures").update(data_update).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
@@ -862,7 +862,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.code(repr(e))
 
                     if st.session_state.user_role == "PDG":
-                        if c2.button("🗑️ Supprimer", key=f"del_voit_{row['id']}", use_container_width=True):
+                        if c2.button("🗑️ Supprimer", key=f"del_voit_{row['id']}", width="stretch"):
                             try:
                                 supabase.table("voitures").delete().eq("id", int(row['id'])).execute()
                                 st.success("Supprimé")
@@ -889,7 +889,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             nom_client = st.text_input("Nom Client/Bénéficiaire", key="nom_compta")
             tel_client = st.text_input("Téléphone", value="+243...", key="tel_compta")
 
-            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", use_container_width=True, key="btn_facture_compta"):
+            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_compta"):
                 if description and nom_client:
                     details_list = [{"nom": f"{categorie} - {description}", "qte": 1, "prix": montant}]
                     num_fact, pdf_bytes = creer_facture_auto("Compta", nom_client, f"{categorie} - {description}", montant, devise, details_list, tel_client)
@@ -900,7 +900,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         data=pdf_bytes,
                         file_name=f"{num_fact}.pdf",
                         mime="application/pdf",
-                        use_container_width=True,
+                        width="stretch",
                         key="dl_facture_compta"
                     )
                     st.cache_data.clear()
@@ -974,7 +974,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 data=output.getvalue(),
                 file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 key="dl_releve_excel"
             )
 
@@ -1033,7 +1033,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 data=pdf_bytes_releve,
                 file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
+                width="stretch",
                 key="dl_releve_pdf"
             )
 
@@ -1096,7 +1096,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         data=output_cat.getvalue(),
                         file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
+                        width="stretch",
                         key=f"dl_excel_cat_{cat}"
                     )
 
@@ -1154,7 +1154,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         data=pdf_bytes_cat,
                         file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.pdf",
                         mime="application/pdf",
-                        use_container_width=True,
+                        width="stretch",
                         key=f"dl_pdf_cat_{cat}"
                     )
 
@@ -1175,7 +1175,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 data=output_global.getvalue(),
                 file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 key="dl_excel_global"
             )
 
@@ -1245,7 +1245,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 data=pdf_bytes_global,
                 file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
+                width="stretch",
                 key="dl_pdf_global"
             )
 
@@ -1271,7 +1271,7 @@ if tab9 and st.session_state.user_role == "PDG":
                         key=f"pwd_{user['id']}"
                     )
 
-                    if col2.button("💾 Sauvegarder", key=f"save_{user['id']}", use_container_width=True):
+                    if col2.button("💾 Sauvegarder", key=f"save_{user['id']}", width="stretch"):
                         try:
                             supabase.table("utilisateurs").update({"password": new_password}).eq("id", int(user['id'])).execute()
                             st.success(f"✅ Mot de passe de {user['nom']} mis à jour!")
@@ -1283,3 +1283,21 @@ if tab9 and st.session_state.user_role == "PDG":
 
             st.divider()
             st.info("💡 Les changements sont immédiats et permanents dans Supabase")
+
+# === TUE LE MENU STREAMLIT CLOUD POUR NON-PDG ===
+if st.session_state.get("user_role")!= "PDG":
+    st.components.v1.html("""
+        <script>
+        const killMenu = () => {
+            try {
+                const parent = window.parent.document;
+                parent.querySelectorAll('button[title="Manage app"], a[href*="share.streamlit.io"], [data-testid="manage-app-button"]').forEach(el => {
+                    el.style.display = 'none';
+                    el.remove();
+                });
+            } catch(e) {}
+        };
+        setInterval(killMenu, 300);
+        killMenu();
+        </script>
+    """, height=0)
