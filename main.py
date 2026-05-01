@@ -13,6 +13,17 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
+# === CACHE LE MENU STREAMLIT SAUF POUR PDG ===
+if st.session_state.get("user_role") and st.session_state.get("user_role")!= "PDG":
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+       .stDeployButton {display:none;}
+        </style>
+    """, unsafe_allow_html=True)
+
 # === SYSTÈME DE MOTS DE PASSE MODIFIABLES ===
 if 'passwords' not in st.session_state:
     st.session_state.passwords = {
@@ -645,6 +656,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.caption(f"KM: {item.get('kilometrage','')} | Carburant: {item.get('carburant','')} | Boîte: {item.get('boite','')}")
                             c1, c2 = st.columns([2,1])
                             st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
+                            sous_total = float(item['prix']) * int(st.session_state
+                            .get('panier_voiture[i]['qte'])
                             sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
@@ -831,24 +844,24 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.error("Description + Nom client obligatoires")
 
         st.divider()
-        
+
         st.subheader("📊 Relevé Comptable - Classé par Catégorie")
-        
+
         if df_compta.empty:
             st.warning("Aucune écriture comptable.")
         else:
             col_f1, col_f2 = st.columns(2)
             filtre_type = col_f1.selectbox("Filtrer Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta")
             filtre_cat = col_f2.selectbox("Filtrer Catégorie", ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique()), key="filtre_cat_compta")
-            
+
             df_filtre = df_compta.copy()
-            if filtre_type != "Tous":
+            if filtre_type!= "Tous":
                 df_filtre = df_filtre[df_filtre['type'] == filtre_type]
-            if filtre_cat != "Toutes":
+            if filtre_cat!= "Toutes":
                 df_filtre = df_filtre[df_filtre.get('categorie', '') == filtre_cat]
-            
+
             df_filtre = df_filtre.sort_values('date', ascending=False)
-            
+
             col_t1, col_t2, col_t3, col_t4 = st.columns(4)
             total_revenu = df_filtre[df_filtre['type']=='Revenu']['montant'].sum()
             total_depense = df_filtre[df_filtre['type']=='Dépense']['montant'].sum()
@@ -857,15 +870,15 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             col_t2.metric("💸 Total Dépenses", f"{total_depense:,.0f}")
             col_t3.metric("💎 Solde", f"{solde:,.0f}")
             col_t4.metric("📋 Écritures", len(df_filtre))
-            
+
             st.divider()
-            
+
             if 'categorie' in df_filtre.columns:
                 categories = df_filtre['categorie'].dropna().unique()
                 for cat in sorted(categories):
                     df_cat = df_filtre[df_filtre['categorie'] == cat]
                     total_cat = df_cat['montant'].sum()
-                    
+
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=True):
                         st.dataframe(
                             df_cat[['date', 'type', 'description', 'montant', 'devise']],
@@ -878,11 +891,11 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     use_container_width=True,
                     hide_index=True
                 )
-            
+
             st.divider()
-            
+
             col_dl1, col_dl2 = st.columns(2)
-            
+
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df_filtre.to_excel(writer, sheet_name='Releve_Comptable', index=False)
@@ -890,7 +903,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     for cat in df_filtre['categorie'].dropna().unique():
                         df_cat = df_filtre[df_filtre['categorie'] == cat]
                         df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-            
+
             col_dl1.download_button(
                 label="📥 TÉLÉCHARGER RELEVÉ EXCEL",
                 data=output.getvalue(),
@@ -899,7 +912,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 use_container_width=True,
                 key="dl_releve_excel"
             )
-            
+
             pdf_releve = FPDF()
             pdf_releve.add_page()
             pdf_releve.set_auto_page_break(auto=True, margin=15)
@@ -927,18 +940,18 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             pdf_releve.set_font("Arial", "B", 14)
             pdf_releve.cell(0, 10, "RELEVE COMPTABLE", ln=True, fill=True)
             pdf_releve.ln(5)
-            
+
             pdf_releve.set_font("Arial", "B", 11)
             pdf_releve.cell(0, 8, f"Total Revenus: {total_revenu:,.0f} | Total Depenses: {total_depense:,.0f} | Solde: {solde:,.0f}", ln=True)
             pdf_releve.ln(3)
-            
+
             pdf_releve.set_font("Arial", "B", 9)
             pdf_releve.cell(25, 7, "Date", 1)
             pdf_releve.cell(25, 7, "Type", 1)
             pdf_releve.cell(90, 7, "Description", 1)
             pdf_releve.cell(30, 7, "Montant", 1)
             pdf_releve.cell(20, 7, "Devise", 1, ln=True)
-            
+
             pdf_releve.set_font("Arial", "", 8)
             for _, row in df_filtre.iterrows():
                 pdf_releve.cell(25, 6, str(row.get('date','')), 1)
@@ -947,9 +960,9 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_releve.cell(90, 6, desc, 1)
                 pdf_releve.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                 pdf_releve.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-            
+
             pdf_bytes_releve = pdf_releve.output(dest='S').encode('latin-1')
-            
+
             col_dl2.download_button(
                 label="📥 TÉLÉCHARGER RELEVÉ PDF",
                 data=pdf_bytes_releve,
@@ -986,33 +999,33 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             filtre_cat_fact = st.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
 
             df_filtre_fact = df_compta_sorted.copy()
-            if filtre_cat_fact != "Toutes":
+            if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
 
             st.divider()
 
             categories = df_filtre_fact.get('categorie', pd.Series()).dropna().unique()
-            
+
             for cat in sorted(categories):
                 df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
                 total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
                 total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
                 total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                
+
                 with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                    
+
                     st.dataframe(
                         df_cat[['date', 'type', 'description', 'montant', 'devise']],
                         use_container_width=True,
                         hide_index=True
                     )
-                    
+
                     col_dl1, col_dl2 = st.columns(2)
-                    
+
                     output_cat = io.BytesIO()
                     with pd.ExcelWriter(output_cat, engine='openpyxl') as writer:
                         df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-                    
+
                     col_dl1.download_button(
                         label=f"📥 Télécharger {cat} - EXCEL",
                         data=output_cat.getvalue(),
@@ -1021,10 +1034,10 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         use_container_width=True,
                         key=f"dl_excel_cat_{cat}"
                     )
-                    
+
                     pdf_cat = FPDF()
                     pdf_cat.add_page()
-                    
+
                     pdf_cat.set_fill_color(20, 50, 40)
                     pdf_cat.rect(0, 0, 210, 35, 'F')
                     pdf_cat.set_text_color(255, 255, 255)
@@ -1048,18 +1061,18 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     pdf_cat.set_font("Arial", "B", 14)
                     pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
                     pdf_cat.ln(5)
-                    
+
                     pdf_cat.set_font("Arial", "B", 11)
                     pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
                     pdf_cat.ln(3)
-                    
+
                     pdf_cat.set_font("Arial", "B", 9)
                     pdf_cat.cell(25, 7, "Date", 1)
                     pdf_cat.cell(25, 7, "Type", 1)
                     pdf_cat.cell(90, 7, "Description", 1)
                     pdf_cat.cell(30, 7, "Montant", 1)
                     pdf_cat.cell(20, 7, "Devise", 1, ln=True)
-                    
+
                     pdf_cat.set_font("Arial", "", 8)
                     for _, row in df_cat.iterrows():
                         pdf_cat.cell(25, 6, str(row.get('date','')), 1)
@@ -1068,9 +1081,9 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.cell(90, 6, desc, 1)
                         pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                         pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-                    
+
                     pdf_bytes_cat = pdf_cat.output(dest='S').encode('latin-1')
-                    
+
                     col_dl2.download_button(
                         label=f"📥 Télécharger {cat} - PDF",
                         data=pdf_bytes_cat,
@@ -1081,17 +1094,17 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     )
 
             st.divider()
-            
+
             st.subheader("📥 Télécharger Relevé Complet Toutes Catégories")
             col_dl_g1, col_dl_g2 = st.columns(2)
-            
+
             output_global = io.BytesIO()
             with pd.ExcelWriter(output_global, engine='openpyxl') as writer:
                 df_compta_sorted.to_excel(writer, sheet_name='Toutes_Operations', index=False)
                 for cat in categories:
                     df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
                     df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
-            
+
             col_dl_g1.download_button(
                 label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - EXCEL",
                 data=output_global.getvalue(),
@@ -1100,10 +1113,10 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 use_container_width=True,
                 key="dl_excel_global"
             )
-            
+
             pdf_global = FPDF()
             pdf_global.add_page()
-            
+
             pdf_global.set_fill_color(20, 50, 40)
             pdf_global.rect(0, 0, 210, 35, 'F')
             pdf_global.set_text_color(255, 255, 255)
@@ -1127,29 +1140,29 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             pdf_global.set_font("Arial", "B", 14)
             pdf_global.cell(0, 10, "RELEVE GENERAL COMPLET", ln=True, fill=True)
             pdf_global.ln(5)
-            
+
             pdf_global.set_font("Arial", "B", 11)
             pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
             pdf_global.ln(3)
-            
+
             for cat in sorted(categories):
                 df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
                 total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
                 total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                
+
                 pdf_global.set_font("Arial", "B", 12)
                 pdf_global.cell(0, 8, f"CATEGORIE: {cat} - {len(df_cat)} operations", ln=True)
                 pdf_global.set_font("Arial", "B", 10)
                 pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
                 pdf_global.ln(2)
-                
+
                 pdf_global.set_font("Arial", "B", 9)
                 pdf_global.cell(25, 7, "Date", 1)
                 pdf_global.cell(25, 7, "Type", 1)
                 pdf_global.cell(90, 7, "Description", 1)
                 pdf_global.cell(30, 7, "Montant", 1)
                 pdf_global.cell(20, 7, "Devise", 1, ln=True)
-                
+
                 pdf_global.set_font("Arial", "", 8)
                 for _, row in df_cat.iterrows():
                     pdf_global.cell(25, 6, str(row.get('date','')), 1)
@@ -1159,9 +1172,9 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                     pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
                 pdf_global.ln(5)
-            
+
             pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
-            
+
             col_dl_g2.download_button(
                 label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - PDF",
                 data=pdf_bytes_global,
