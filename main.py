@@ -679,7 +679,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
                         km_val = voiture_choisie.get('kilometrage')
-                                                km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
+                        km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
                         c2.markdown(f"**KM:** {km_display}")
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
