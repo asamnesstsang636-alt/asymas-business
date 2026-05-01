@@ -20,18 +20,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-   .stAppToolbar {display: none!important;}
+  .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-   .stDeployButton {display:none!important;}
+  .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-   .st-emotion-cache-1wbqy5l {display: none!important;}
+  .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -366,7 +366,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -410,7 +410,6 @@ with tab2:
                     width="stretch",
                     key="dl_facture_commerce"
                 )
-                # Bouton Imprimer
                 pdf_b64 = base64.b64encode(st.session_state.pdf_data).decode()
                 st.components.v1.html(f"""
                     <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
@@ -460,18 +459,12 @@ with tab2:
                             st.warning("Nom client + panier requis")
                             st.stop()
 
-                        with st.spinner("Enregistrement + Génération PDF..."):
-                            id_utilisateur = 1
-                            if st.session_state.user_name == "ASIYA":
-                                id_utilisateur = 2
-                            elif st.session_state.user_name == "BASAM":
-                                id_utilisateur = 3
-
+                        with st.spinner("Enregistrement..."):
                             vente_result = supabase.table("ventes").insert({
-                                "total": total,
-                                "id_utilisateur": id_utilisateur,
-                                "nom_client": nom_client,
-                                "telephone_client": tel_client
+                                "total": float(total),
+                                "id_utilisateur": 1 if st.session_state.user_name == "TSANG" else 2 if st.session_state.user_name == "ASIYA" else 3,
+                                "nom_client": str(nom_client),
+                                "telephone_client": str(tel_client)
                             }).execute()
 
                             id_vente = vente_result.data[0]['id']
@@ -479,16 +472,15 @@ with tab2:
                             for i in st.session_state.panier_commerce:
                                 supabase.table("ventes_details").insert({
                                     "id_vente": id_vente,
-                                    "id_article": i['id'],
-                                    "quantite": i['qte'],
-                                    "prix_unitaire": i['prix'],
+                                    "id_article": int(i['id']),
+                                    "quantite": int(i['qte']),
+                                    "prix_unitaire": float(i['prix']),
                                     "sous_total": float(i['prix']) * int(i['qte'])
                                 }).execute()
                                 supabase.table("articles").update({"stock": i['stock_dispo'] - i['qte']}).eq("id", i['id']).execute()
 
                             details_list = [{"nom": i['nom'], "qte": i['qte'], "prix": i['prix']} for i in st.session_state.panier_commerce]
                             details_text = ", ".join([f"{i['nom']} x{i['qte']}" for i in st.session_state.panier_commerce])
-
                             num_fact, pdf_bytes = creer_facture_auto("Vente Commerce", nom_client, details_text, total, "FC", details_list, tel_client)
 
                             st.session_state.vente_finie = True
@@ -609,7 +601,6 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     width="stretch",
                     key="dl_facture_immo"
                 )
-                # Bouton Imprimer
                 pdf_b64 = base64.b64encode(pdf_bytes).decode()
                 st.components.v1.html(f"""
                     <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
@@ -660,7 +651,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -727,7 +718,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         width="stretch",
                         key="dl_facture_auto"
                     )
-                    # Bouton Imprimer
                     pdf_b64 = base64.b64encode(st.session_state.pdf_auto).decode()
                     st.components.v1.html(f"""
                         <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
@@ -787,8 +777,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 vente_result = supabase.table("ventes").insert({
                                     "total": total,
                                     "id_utilisateur": id_utilisateur,
-                                    "nom_client": nom_client,
-                                    "telephone_client": tel_client
+                                    "nom_client": str(nom_client),
+                                    "telephone_client": str(tel_client)
                                 }).execute()
 
                                 id_vente = vente_result.data[0]['id']
@@ -796,9 +786,9 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 for i in st.session_state.panier_voiture:
                                     supabase.table("ventes_details").insert({
                                         "id_vente": id_vente,
-                                        "id_voiture": i['id'],
-                                        "quantite": i['qte'],
-                                        "prix_unitaire": i['prix'],
+                                        "id_voiture": int(i['id']),
+                                        "quantite": int(i['qte']),
+                                        "prix_unitaire": float(i['prix']),
                                         "sous_total": float(i['prix']) * int(i['qte'])
                                     }).execute()
                                     try:
@@ -977,7 +967,6 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         width="stretch",
                         key="dl_facture_compta"
                     )
-                    # Bouton Imprimer
                     pdf_b64 = base64.b64encode(pdf_bytes).decode()
                     st.components.v1.html(f"""
                         <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
@@ -1321,7 +1310,6 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.set_font("Arial", "", 8)
                 for _, row in df_cat.iterrows():
                     pdf_global.cell(25, 6, str(row.get('date','')), 1)
-                  
                     pdf_global.cell(25, 6, str(row.get('type','')), 1)
                     desc = str(row.get('description',''))[:45]
                     pdf_global.cell(90, 6, desc, 1)
