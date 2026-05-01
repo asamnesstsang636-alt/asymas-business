@@ -14,24 +14,33 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
 # === CACHE LE MENU STREAMLIT POUR TOUT LE MONDE SAUF PDG ===
-# Cache sur page login + pour GERANTE/BASAM
 if st.session_state.get("user_role")!= "PDG":
     st.markdown("""
         <style>
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
-       .stDeployButton {display:none;}
+     .stDeployButton {display:none;}
         </style>
     """, unsafe_allow_html=True)
 
-# === SYSTÈME DE MOTS DE PASSE MODIFIABLES ===
-if 'passwords' not in st.session_state:
-    st.session_state.passwords = {
-        "PDG": "tsang2024",
-        "GERANTE": "asiya2024",
-        "UTILISATEUR": "basam2024"
-    }
+# === SYSTÈME DE MOTS DE PASSE PERSISTANT DANS SUPABASE ===
+@st.cache_data(ttl=10)
+def load_passwords():
+    try:
+        data = supabase.table("utilisateurs").select("nom,role,password").execute()
+        passwords = {}
+        for user in data.data:
+            passwords[user['role']] = user['password']
+        return passwords
+    except:
+        return {
+            "PDG": "tsang2024",
+            "GERANTE": "asiya2024",
+            "UTILISATEUR": "basam2024"
+        }
+
+passwords_db = load_passwords()
 
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
@@ -47,15 +56,15 @@ if st.session_state.user_role is None:
         password = st.text_input("Mot de passe", type="password", key="pwd")
 
         if st.button("SE CONNECTER", use_container_width=True, type="primary"):
-            if profil == "PDG TSANG" and password == st.session_state.passwords["PDG"]:
+            if profil == "PDG TSANG" and password == passwords_db["PDG"]:
                 st.session_state.user_role = "PDG"
                 st.session_state.user_name = "TSANG"
                 st.rerun()
-            elif profil == "Gérante ASIYA" and password == st.session_state.passwords["GERANTE"]:
+            elif profil == "Gérante ASIYA" and password == passwords_db["GERANTE"]:
                 st.session_state.user_role = "GERANTE"
                 st.session_state.user_name = "ASIYA"
                 st.rerun()
-            elif profil == "BASAM" and password == st.session_state.passwords["UTILISATEUR"]:
+            elif profil == "BASAM" and password == passwords_db["UTILISATEUR"]:
                 st.session_state.user_role = "UTILISATEUR"
                 st.session_state.user_name = "BASAM"
                 st.rerun()
@@ -244,6 +253,7 @@ df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
 df_factures = load_table("factures_proforma")
+df_utilisateurs = load_table("utilisateurs")
 
 st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
 st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
@@ -252,20 +262,6 @@ with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
     st.info("ASYMAS BUSINESS v1.0")
-
-    if st.session_state.user_role == "PDG":
-        with st.expander("🔐 GESTION ACCÈS", expanded=False):
-            st.markdown("### Modifier les mots de passe")
-            c1, c2 = st.columns(2)
-            new_pwd_pdg = c1.text_input("PDG", value=st.session_state.passwords["PDG"], type="password", key="pwd_pdg")
-            new_pwd_gerante = c2.text_input("Gérante", value=st.session_state.passwords["GERANTE"], type="password", key="pwd_gerante")
-            new_pwd_user = c1.text_input("BASAM", value=st.session_state.passwords["UTILISATEUR"], type="password", key="pwd_user")
-
-            if st.button("💾 Sauvegarder Mots de Passe", use_container_width=True):
-                st.session_state.passwords["PDG"] = new_pwd_pdg
-                st.session_state.passwords["GERANTE"] = new_pwd_gerante
-                st.session_state.passwords["UTILISATEUR"] = new_pwd_user
-                st.success("Mots de passe mis à jour")
 
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
@@ -277,11 +273,16 @@ with st.sidebar:
 
 if st.session_state.user_role == "UTILISATEUR":
     tab2, = st.tabs(["🛍️ Commerce"])
-    tab1 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = None
+    tab1 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = tab9 = None
+elif st.session_state.user_role == "PDG":
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+        "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "👥 Utilisateurs"
+    ])
 else:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures"
     ])
+    tab9 = None
 
 if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab1:
@@ -326,7 +327,7 @@ with tab2:
             df_articles_filtre = df_articles
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -578,7 +579,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -664,7 +665,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             total += sous_total
 
                     st.divider()
-                    st.markdown(f"### Total : **{total:,.0f} $**")
+                    st.markdown(f"
+                    ### Total : **{total:,.0f} $**")
 
                     if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
                         try:
@@ -1181,3 +1183,38 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 use_container_width=True,
                 key="dl_pdf_global"
             )
+
+# === NOUVEL ONGLET UTILISATEURS - RÉSERVÉ PDG ===
+if tab9 and st.session_state.user_role == "PDG":
+    with tab9:
+        st.markdown("## 👥 Gestion des Utilisateurs")
+        st.warning("⚠️ Zone sensible - Seul le PDG peut modifier les mots de passe")
+
+        st.subheader("🔐 Modifier les Mots de Passe")
+
+        if df_utilisateurs.empty:
+            st.error("Table 'utilisateurs' introuvable. Crée-la dans Supabase avec le SQL fourni.")
+        else:
+            for _, user in df_utilisateurs.iterrows():
+                with st.expander(f"👤 {user['nom']} - Rôle: {user['role']}", expanded=True):
+                    col1, col2 = st.columns([3,1])
+
+                    new_password = col1.text_input(
+                        "Nouveau mot de passe",
+                        value=user['password'],
+                        type="password",
+                        key=f"pwd_{user['id']}"
+                    )
+
+                    if col2.button("💾 Sauvegarder", key=f"save_{user['id']}", use_container_width=True):
+                        try:
+                            supabase.table("utilisateurs").update({"password": new_password}).eq("id", int(user['id'])).execute()
+                            st.success(f"✅ Mot de passe de {user['nom']} mis à jour!")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur sauvegarde")
+                            st.code(repr(e))
+
+            st.divider()
+            st.info("💡 Les changements sont immédiats et permanents dans Supabase")
