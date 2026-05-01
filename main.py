@@ -5,6 +5,8 @@ from datetime import date, datetime
 from fpdf import FPDF
 import base64
 import io
+import qrcode
+from PIL import Image
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -18,18 +20,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-   .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-   .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-   .st-emotion-cache-1wbqy5l {display: none!important;}
+ .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -120,7 +122,22 @@ def get_table_columns(table_name):
     except:
         return []
 
-# === GÉNÉRATEUR PDF FACTURE - BENI RDC ===
+# === GÉNÉRER QR CODE ===
+def generer_qrcode(data_text):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=3,
+        border=1,
+    )
+    qr.add_data(data_text)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+# === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR CODE ===
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
     def clean_text(txt):
         return str(txt).encode('latin-1', 'replace').decode('latin-1')
@@ -140,6 +157,17 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
     pdf.set_xy(10, 21)
     pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
+
+    # === QR CODE EN HAUT DROITE ===
+    qr_data = f"""ASYMAS BUSINESS
+Facture: {numero}
+Type: {type_op}
+Client: {client}
+Montant: {montant:,.0f} {devise}
+Date: {date.today().strftime('%d/%m/%Y')}
+Tel: +243 995 105 623"""
+    qr_img_bytes = generer_qrcode(qr_data)
+    pdf.image(io.BytesIO(qr_img_bytes), x=170, y=8, w=30)
 
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
@@ -382,6 +410,22 @@ with tab2:
                     width="stretch",
                     key="dl_facture_commerce"
                 )
+                # Bouton Imprimer
+                pdf_b64 = base64.b64encode(st.session_state.pdf_data).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
                 if st.button("Nouvelle Vente", width="stretch", key="new_vente_c"):
                     st.session_state.panier_commerce = []
                     st.session_state.vente_finie = False
@@ -565,6 +609,22 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     width="stretch",
                     key="dl_facture_immo"
                 )
+                # Bouton Imprimer
+                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
                 st.cache_data.clear()
             else:
                 st.error("Nom client + Adresse obligatoires")
@@ -619,7 +679,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
                         c2.markdown(f"**KM:** {voiture_choisie.get('kilometrage','N/A')}")
-                        c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
                         st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
@@ -665,6 +724,22 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         width="stretch",
                         key="dl_facture_auto"
                     )
+                    # Bouton Imprimer
+                    pdf_b64 = base64.b64encode(st.session_state.pdf_auto).decode()
+                    st.components.v1.html(f"""
+                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                            🖨️ IMPRIMER LA FACTURE
+                        </button>
+                        <script>
+                        function printPDF() {{
+                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                            const win = window.open('', '_blank');
+                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                            win.document.close();
+                            setTimeout(() => {{ win.print(); }}, 1000);
+                        }}
+                        </script>
+                    """, height=60)
                     if st.button("Nouvelle Vente", width="stretch", key="new_vente_auto"):
                         st.session_state.panier_voiture = []
                         st.session_state.vente_auto_finie = False
@@ -898,6 +973,22 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         width="stretch",
                         key="dl_facture_compta"
                     )
+                    # Bouton Imprimer
+                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                    st.components.v1.html(f"""
+                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                            🖨️ IMPRIMER LA FACTURE
+                        </button>
+                        <script>
+                        function printPDF() {{
+                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                            const win = window.open('', '_blank');
+                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                            win.document.close();
+                            setTimeout(() => {{ win.print(); }}, 1000);
+                        }}
+                        </script>
+                    """, height=60)
                     st.cache_data.clear()
                     st.rerun()
                 else:
@@ -1179,7 +1270,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             pdf_global.set_fill_color(20, 50, 40)
             pdf_global.rect(0, 0, 210, 35, 'F')
-            pdf_global.set_text_color(255, 255, 255)
+            pdf_global.set_text_color(255, 255)
             pdf_global.set_font("Arial", "B", 20)
             pdf_global.set_xy(10, 8)
             pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
@@ -1231,68 +1322,4 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     pdf_global.cell(90, 6, desc, 1)
                     pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                     pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-                pdf_global.ln(5)
-
-            pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
-
-            col_dl_g2.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - PDF",
-                data=pdf_bytes_global,
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                width="stretch",
-                key="dl_pdf_global"
-            )
-
-# === NOUVEL ONGLET UTILISATEURS - RÉSERVÉ PDG ===
-if tab9 and st.session_state.user_role == "PDG":
-    with tab9:
-        st.markdown("## 👥 Gestion des Utilisateurs")
-        st.warning("⚠️ Zone sensible - Seul le PDG peut modifier les mots de passe")
-
-        st.subheader("🔐 Modifier les Mots de Passe")
-
-        if df_utilisateurs.empty:
-            st.error("Table 'utilisateurs' introuvable. Crée-la dans Supabase avec le SQL fourni.")
-        else:
-            for _, user in df_utilisateurs.iterrows():
-                with st.expander(f"👤 {user['nom']} - Rôle: {user['role']}", expanded=True):
-                    col1, col2 = st.columns([3,1])
-
-                    new_password = col1.text_input(
-                        "Nouveau mot de passe",
-                        value=user['password'],
-                        type="password",
-                        key=f"pwd_{user['id']}"
-                    )
-
-                    if col2.button("💾 Sauvegarder", key=f"save_{user['id']}", width="stretch"):
-                        try:
-                            supabase.table("utilisateurs").update({"password": new_password}).eq("id", int(user['id'])).execute()
-                            st.success(f"✅ Mot de passe de {user['nom']} mis à jour!")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur sauvegarde")
-                            st.code(repr(e))
-
-            st.divider()
-            st.info("💡 Les changements sont immédiats et permanents dans Supabase")
-
-# === TUE LE MENU STREAMLIT CLOUD POUR NON-PDG ===
-if st.session_state.get("user_role")!= "PDG":
-    st.components.v1.html("""
-        <script>
-        const killMenu = () => {
-            try {
-                const parent = window.parent.document;
-                parent.querySelectorAll('button[title="Manage app"], a[href*="share.streamlit.io"], [data-testid="manage-app-button"]').forEach(el => {
-                    el.style.display = 'none';
-                    el.remove();
-                });
-            } catch(e) {}
-        };
-        setInterval(killMenu, 300);
-        killMenu();
-        </script>
-    """, height=0)
+                pdf_global
