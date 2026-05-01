@@ -7,6 +7,8 @@ import base64
 import io
 import qrcode
 from PIL import Image
+import tempfile
+import os
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -20,18 +22,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-  .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-  .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-  .st-emotion-cache-1wbqy5l {display: none!important;}
+ .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -122,7 +124,7 @@ def get_table_columns(table_name):
     except:
         return []
 
-# === GÉNÉRER QR CODE OBLIGATOIRE ===
+# === GÉNÉRER QR CODE - VERSION CORRIGÉE AVEC FICHIER TEMP ===
 def generer_qrcode(data_text):
     qr = qrcode.QRCode(
         version=1,
@@ -133,9 +135,9 @@ def generer_qrcode(data_text):
     qr.add_data(data_text)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    img.save(temp_file.name)
+    return temp_file.name
 
 # === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR CODE ===
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
@@ -166,8 +168,9 @@ Client: {client}
 Montant: {montant:,.0f} {devise}
 Date: {date.today().strftime('%d/%m/%Y')}
 Tel: +243 995 105 623"""
-    qr_img_bytes = generer_qrcode(qr_data)
-    pdf.image(io.BytesIO(qr_img_bytes), x=170, y=8, w=30)
+    qr_path = generer_qrcode(qr_data)
+    pdf.image(qr_path, x=170, y=8, w=30)
+    os.unlink(qr_path)
 
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
@@ -366,7 +369,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -651,7 +654,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures[mask]
 
                 if not df_voitures_filtre.empty:
                     options = []
