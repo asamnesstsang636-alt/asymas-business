@@ -768,7 +768,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.divider()
                     st.markdown(f"### Total : **{total:,.0f} $**")
 
-                    if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture_auto"):
+                if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture_auto"):
                     try:
                         if not nom_client or not st.session_state.panier_voiture:
                             st.warning("Nom client + panier requis")
