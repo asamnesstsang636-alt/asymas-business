@@ -665,8 +665,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             total += sous_total
 
                     st.divider()
-                    st.markdown(f"
-                    ### Total : **{total:,.0f} $**")
+                    st.markdown(f"### Total : **{total:,.0f} $**")
+                
 
                     if st.button("💳 Finaliser Vente", type="primary", use_container_width=True, key="btn_facture_auto"):
                         try:
