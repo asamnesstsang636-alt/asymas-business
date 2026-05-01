@@ -20,18 +20,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
- .stAppToolbar {display: none!important;}
+   .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
- .stDeployButton {display:none!important;}
+   .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
- .st-emotion-cache-1wbqy5l {display: none!important;}
+   .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -208,7 +208,7 @@ Tel: +243 995 105 623"""
 
     pdf.ln(8)
 
-    pdf.set_fill_color(0, 102)
+    pdf.set_fill_color(0, 102, 0)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(120, 8, "DESIGNATION", 1, 0, 'C', True)
@@ -679,12 +679,13 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
                         km_val = voiture_choisie.get('kilometrage')
-                        km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
+                                                km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
                         c2.markdown(f"**KM:** {km_display}")
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
                         st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
+
                     c1, c2 = st.columns([1,1])
                     qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
 
@@ -768,62 +769,61 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.divider()
                     st.markdown(f"### Total : **{total:,.0f} $**")
 
-                if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture_auto"):
-                    try:
-                        if not nom_client or not st.session_state.panier_voiture:
-                            st.warning("Nom client + panier requis")
-                            st.stop()
+                    if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture_auto"):
+                        try:
+                            if not nom_client or not st.session_state.panier_voiture:
+                                st.warning("Nom client + panier requis")
+                                st.stop()
 
-                        with st.spinner("Enregistrement vente..."):
-                            total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
+                            with st.spinner("Enregistrement vente..."):
+                                total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
 
-                            id_utilisateur = 1
-                            if st.session_state.user_name == "ASIYA":
-                                id_utilisateur = 2
-                            elif st.session_state.user_name == "BASAM":
-                                id_utilisateur = 3
+                                id_utilisateur = 1
+                                if st.session_state.user_name == "ASIYA":
+                                    id_utilisateur = 2
+                                elif st.session_state.user_name == "BASAM":
+                                    id_utilisateur = 3
 
-                            vente_result = supabase.table("ventes").insert({
-                                "total": total,
-                                "id_utilisateur": id_utilisateur,
-                                "nom_client": nom_client,
-                                "telephone_client": tel_client
-                            }).execute()
-
-                            id_vente = vente_result.data[0]['id']
-
-                            for i in st.session_state.panier_voiture:
-                                supabase.table("ventes_details").insert({
-                                    "id_vente": id_vente,
-                                    "id_voiture": i['id'],
-                                    "quantite": i['qte'],
-                                    "prix_unitaire": i['prix'],
-                                    "sous_total": float(i['prix']) * int(i['qte'])
+                                vente_result = supabase.table("ventes").insert({
+                                    "total": total,
+                                    "id_utilisateur": id_utilisateur,
+                                    "nom_client": nom_client,
+                                    "telephone_client": tel_client
                                 }).execute()
-                                try:
-                                    supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
-                                except:
-                                    pass
 
-                            details_list = []
-                            for i in st.session_state.panier_voiture:
-                                nom_complet = f"{i['marque']} {i['modele']} | Année: {i.get('annee','')} | Plaque: {i.get('plaque','')} | Couleur: {i.get('couleur','')}"
-                                details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
+                                id_vente = vente_result.data[0]['id']
 
-                            # ON GÉNÈRE LE PDF MAIS ON L'INSÈRE JAMAIS DANS SUPABASE
-                            num_fact, pdf_bytes = creer_facture_auto("Vente Auto", nom_client, f"Vente {len(st.session_state.panier_voiture)} véhicule(s)", total, "$", details_list, tel_client)
+                                for i in st.session_state.panier_voiture:
+                                    supabase.table("ventes_details").insert({
+                                        "id_vente": id_vente,
+                                        "id_voiture": i['id'],
+                                        "quantite": i['qte'],
+                                        "prix_unitaire": i['prix'],
+                                        "sous_total": float(i['prix']) * int(i['qte'])
+                                    }).execute()
+                                    try:
+                                        supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
+                                    except:
+                                        pass
 
-                            st.session_state.vente_auto_finie = True
-                            st.session_state.pdf_auto = pdf_bytes
-                            st.session_state.num_fact_auto = num_fact
-                            st.session_state.total_auto = total
-                            st.session_state.panier_voiture = []
-                            st.cache_data.clear()
-                            st.rerun()
+                                details_list = []
+                                for i in st.session_state.panier_voiture:
+                                    nom_complet = f"{i['marque']} {i['modele']} | Année: {i.get('annee','')} | Plaque: {i.get('plaque','')} | Couleur: {i.get('couleur','')}"
+                                    details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
 
-                    except Exception as e:
-                        st.error(f"ERREUR SUPABASE : {e}")
-                        st.code(str(e))
+                                num_fact, pdf_bytes = creer_facture_auto("Vente Auto", nom_client, f"Vente {len(st.session_state.panier_voiture)} véhicule(s)", total, "$", details_list, tel_client)
+
+                                st.session_state.vente_auto_finie = True
+                                st.session_state.pdf_auto = pdf_bytes
+                                st.session_state.num_fact_auto = num_fact
+                                st.session_state.total_auto = total
+                                st.session_state.panier_voiture = []
+                                st.cache_data.clear()
+                                st.rerun()
+
+                        except Exception as e:
+                            st.error(f"ERREUR SUPABASE : {e}")
+                            st.code(str(e))
 
 if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab6:
@@ -1321,6 +1321,59 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.set_font("Arial", "", 8)
                 for _, row in df_cat.iterrows():
                     pdf_global.cell(25, 6, str(row.get('date','')), 1)
+                                        pdf_global.cell(25, 6, str(row.get('date','')), 1)
                     pdf_global.cell(25, 6, str(row.get('type','')), 1)
                     desc = str(row.get('description',''))[:45]
-                   
+                    pdf_global.cell(90, 6, desc, 1)
+                    pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                    pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
+
+                pdf_global.ln(5)
+
+            pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
+
+            col_dl_g2.download_button(
+                label="📥 TÉLÉCHARGER RELEVÉ COMPLET - PDF",
+                data=pdf_bytes_global,
+                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                width="stretch",
+                key="dl_pdf_global"
+            )
+
+if tab9 and st.session_state.user_role == "PDG":
+    with tab9:
+        st.markdown("## 👥 Gestion Utilisateurs - PDG UNIQUEMENT")
+
+        if df_utilisateurs.empty:
+            st.warning("Table 'utilisateurs' vide. Crée-la dans Supabase avec colonnes: id, nom, role, password")
+        else:
+            st.subheader("🔐 Changer les Mots de Passe")
+
+            with st.form("form_passwords", clear_on_submit=False):
+                st.markdown("### Nouveaux mots de passe")
+                c1, c2, c3 = st.columns(3)
+
+                new_pdg = c1.text_input("Nouveau MDP PDG", type="password", value=passwords_db.get("PDG",""))
+                new_gerante = c2.text_input("Nouveau MDP Gérante", type="password", value=passwords_db.get("GERANTE",""))
+                new_user = c3.text_input("Nouveau MDP Utilisateur", type="password", value=passwords_db.get("UTILISATEUR",""))
+
+                if st.form_submit_button("💾 Sauvegarder les Mots de Passe", type="primary"):
+                    try:
+                        if new_pdg:
+                            supabase.table("utilisateurs").update({"password": new_pdg}).eq("role", "PDG").execute()
+                        if new_gerante:
+                            supabase.table("utilisateurs").update({"password": new_gerante}).eq("role", "GERANTE").execute()
+                        if new_user:
+                            supabase.table("utilisateurs").update({"password": new_user}).eq("role", "UTILISATEUR").execute()
+
+                        st.success("✅ Mots de passe mis à jour dans Supabase")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error("Erreur mise à jour")
+                        st.code(repr(e))
+
+            st.divider()
+            st.subheader("👥 Liste des Utilisateurs")
+            st.dataframe(df_utilisateurs[['nom', 'role']], use_container_width=True, hide_index=True)
