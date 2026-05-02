@@ -659,7 +659,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
         col1, col2, col3 = st.columns(3)
         with col1:
-            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type
+            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
                                              if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
