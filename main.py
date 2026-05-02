@@ -1172,7 +1172,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 total_depense_global = df_filtre_fact[df_filtre_fact['type']=='Dépense']['montant'].sum()
                 solde_global = total_revenu_global - total_depense_global
 
-                                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
+                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
                                                       total_revenu_global, total_depense_global, solde_global)
 
                 safe_date_debut = str(date_debut).replace("-", "_")
