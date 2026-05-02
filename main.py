@@ -24,18 +24,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-.stAppToolbar {display: none!important;}
+   .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-.stDeployButton {display:none!important;}
+   .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-.st-emotion-cache-1wbqy5l {display: none!important;}
+   .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -152,7 +152,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
 
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255)
+    pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 20)
     pdf.set_xy(10, 8)
     pdf.cell(0, 10, "ASYMAS BUSINESS", ln=True)
@@ -740,7 +740,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False))
-                    df_voitures_filtre = df_voitures[mask]
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -952,7 +952,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             if quantite > 1:
                                 data_temp["plaque"] = f"{plaque}-{i+1}"
                             supabase.table("voitures").insert(data_temp).execute()
-                        
+
                         st.success(f"{quantite} voiture(s) ajoutée(s)")
                         st.cache_data.clear()
                         st.rerun()
@@ -1091,11 +1091,11 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
         else:
             st.markdown("### 🔍 Filtres de Tri")
             col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-            
+
             date_debut = col_f1.date_input("Date début", value=date.today() - timedelta(days=30), key="date_debut_releve")
             date_fin = col_f2.date_input("Date fin", value=date.today(), key="date_fin_releve")
             filtre_type = col_f3.selectbox("Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta_tri")
-            
+
             categories_dispo = ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique())
             filtre_cat = col_f4.selectbox("Catégorie", categories_dispo, key="filtre_cat_compta_tri")
 
@@ -1104,10 +1104,10 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             filtre_client = col_f6.text_input("Nom Client contient", placeholder="Tape un nom...", key="filtre_client_tri")
 
             df_filtre = df_compta.copy()
-            
+
             df_filtre['date'] = pd.to_datetime(df_filtre['date']).dt.date
             df_filtre = df_filtre[(df_filtre['date'] >= date_debut) & (df_filtre['date'] <= date_fin)]
-            
+
             if filtre_type!= "Tous":
                 df_filtre = df_filtre[df_filtre['type'] == filtre_type]
             if filtre_cat!= "Toutes":
@@ -1142,7 +1142,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.markdown("### 📥 Télécharger/Imprimer le Relevé Trié")
             col_dl1, col_dl2, col_dl3 = st.columns(3)
 
-            excel_bytes_tri = generer_excel_pro(df_filtre, f"Releve Trié {date_debut} au {date_fin}", 
+            excel_bytes_tri = generer_excel_pro(df_filtre, f"Releve Trié {date_debut} au {date_fin}",
                                                total_revenu, total_depense, solde)
             col_dl1.download_button(
                 label="📥 TÉLÉCHARGER EXCEL TRIÉ",
@@ -1245,7 +1245,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             # === NOUVEAUX FILTRES DATE ===
             st.markdown("### 🔍 Filtres de Tri")
             col_f1, col_f2, col_f3 = st.columns(3)
-            
+
             type_periode = col_f1.selectbox("Période", ["Aujourd'hui", "Cette semaine", "Ce mois", "Ce mois dernier", "Cette année", "Personnalisé"], key="periode_fact")
 
             if type_periode == "Aujourd'hui":
