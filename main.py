@@ -560,31 +560,30 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 st.success(f"✅ Facture générée : {num_fact}")
                 st.download_button(
                     label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
-                            data=pdf_bytes,
-                            file_name=f"{num_fact}.pdf",
-                            mime="application/pdf",
-                            width="stretch",
-                            key="dl_facture_immo"
-                        )
-                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                        st.components.v1.html(f"""
-                            <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                                🖨️ IMPRIMER LA FACTURE
-                            </button>
-                            <script>
-                            function printPDF() {{
-                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                const win = window.open('', '_blank');
-                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                win.document.close();
-                                setTimeout(() => {{ win.print(); }}, 1000);
-                            }}
-                            </script>
-                        """, height=60)
-                        st.cache_data.clear()
-                    else:
-                        st.error("Nom client + Adresse obligatoires")
-
+                    data=pdf_bytes,
+                    file_name=f"{num_fact}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    key="dl_facture_immo"
+                )
+                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
+                st.cache_data.clear()
+            else:
+                st.error("Nom client + Adresse obligatoires")
 if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab5:
         st.markdown("## 🚗 Automobile - Point de Vente")
