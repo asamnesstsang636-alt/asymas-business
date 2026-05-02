@@ -292,8 +292,8 @@ solde=0):
         worksheet['A1'].font = Font(size=20, bold=True, color='006600') 
         worksheet['A1'].alignment = Alignment(horizontal='center') 
         worksheet.merge_cells('A2:F2') 
-        worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | 
-asamnesstsang636@gmail.com' 
+        worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com' 
+ 
         worksheet['A2'].font = Font(size=10, italic=True) 
         worksheet['A2'].alignment = Alignment(horizontal='center') 
         worksheet.merge_cells('A3:F3') 
