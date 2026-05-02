@@ -11,6 +11,7 @@ import tempfile
 import os
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -438,6 +439,8 @@ with tab2:
         st.session_state.pdf_data = None
     if 'num_fact' not in st.session_state:
         st.session_state.num_fact = None
+    if 'scan_active' not in st.session_state:
+        st.session_state.scan_active = False
 
     if df_articles.empty:
         st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
@@ -450,15 +453,34 @@ with tab2:
             tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_c")
 
             st.subheader("📦 Rubrique Produit")
-            recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom...", key="search_c")
+
+            # === SCANNER QR/CODE-BARRES ===
+            col_scan1, col_scan2 = st.columns([1,3])
+            with col_scan1:
+                if st.button("📷 Scanner Code", width="stretch", key="scan_prod"):
+                    st.session_state.scan_active = True
+
+            code_scanned = ""
+            if st.session_state.get('scan_active', False):
+                code_scanned = qrcode_scanner(key="qr_scan")
+                if code_scanned:
+                    st.session_state.scan_active = False
+                    st.success(f"Code scanné: {code_scanned}")
+                    st.rerun()
+
+            # === RECHERCHE MANUELLE OU PAR CODE ===
+            recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom ou code-barres...", key="search_c", value=code_scanned)
 
             df_articles_filtre = df_articles.copy()
             if recherche:
-                mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
+                # Cherche dans nom ET code_barre - CORRECTION ICI
+                mask_nom = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
+                mask_code = df_articles.get('code_barre', pd.Series(dtype=str)).astype(str).str.contains(recherche, case=False, na=False)
+                mask = mask_nom | mask_code
                 df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
-                options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
+                options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')} | Code:{row.get('code_barre','N/A')}" for _, row in df_articles_filtre.iterrows()]
                 choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
                 idx_choisi = options.index(choix)
                 produit_choisi = df_articles_filtre.iloc[idx_choisi]
@@ -595,13 +617,21 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 prix_achat = c3.number_input("Prix Achat FC", min_value=0.0)
                 prix_vente = c1.number_input("Prix Vente FC", min_value=0.0)
                 stock = c2.number_input("Stock", min_value=0)
+                code_barre = c3.text_input("Code-Barres / QR", placeholder="Scanne ou tape le code")
 
                 if st.form_submit_button("💾 Ajouter Article"):
                     try:
-                        supabase.table("articles").insert({
-                            "nom_article": str(nom), "categorie": str(cat),
-                            "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock)
-                        }).execute()
+                        data_insert = {
+                            "nom_article": str(nom),
+                            "categorie": str(cat),
+                            "prix_achat": float(prix_achat),
+                            "prix_vente": float(prix_vente),
+                            "stock": int(stock)
+                        }
+                        if code_barre:
+                            data_insert["code_barre"] = str(code_barre)
+
+                        supabase.table("articles").insert(data_insert).execute()
                         st.success("Article ajouté")
                         st.cache_data.clear()
                         st.rerun()
@@ -615,12 +645,13 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.info("Aucun article")
         else:
             for _, row in df_articles.iterrows():
-                with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)}"):
+                with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)} - Code:{row.get('code_barre','N/A')}"):
                     c1, c2 = st.columns(2)
                     with c1:
                         new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
                         new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_{row['id']}")
                         new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
+                        new_code = st.text_input("Code-Barres", value=row.get('code_barre',''), key=f"code_{row['id']}")
                     with c2:
                         new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
                         new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
@@ -628,10 +659,17 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
-                            supabase.table("articles").update({
-                                "nom_article": str(new_nom), "categorie": str(new_cat),
-                                "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock)
-                            }).eq("id", int(row['id'])).execute()
+                            data_update = {
+                                "nom_article": str(new_nom),
+                                "categorie": str(new_cat),
+                                "prix_achat": float(new_prix_a),
+                                "prix_vente": float(new_prix_v),
+                                "stock": int(new_stock)
+                            }
+                            if new_code:
+                                data_update["code_barre"] = str(new_code)
+
+                            supabase.table("articles").update(data_update).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
@@ -653,6 +691,8 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c2.info("🔒 Suppression réservée au PDG")
 
 if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
+    with tab4:
+    if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
         st.markdown("## 🏠 Immobilier - Générer Facture")
         nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
@@ -739,7 +779,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 if recherche_voiture:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
-                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False))
+                            df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False))
                     df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
@@ -764,7 +804,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
-                        st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
+                        st.markdown(f"### Prix: **{voiture_choisi.get('prix',0):,.0f} $**")
 
                     c1, c2 = st.columns([1,1])
                     qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
@@ -1096,7 +1136,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             date_fin = col_f2.date_input("Date fin", value=date.today(), key="date_fin_releve")
             filtre_type = col_f3.selectbox("Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta_tri")
 
-            categories_dispo = ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique())
+            categories_dispo = ["Toutes"] + list(df_compta.get('categorie', pd.Series(dtype=str)).dropna().unique())
             filtre_cat = col_f4.selectbox("Catégorie", categories_dispo, key="filtre_cat_compta_tri")
 
             col_f5, col_f6 = st.columns(2)
@@ -1267,38 +1307,35 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 date_debut = col_f2.date_input("Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
                 date_fin = col_f3.date_input("Date fin", value=date.today(), key="date_fin_fact")
 
-            col_f4, col_f5 = st.columns(2)
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series()).dropna().unique())
+                        col_f4, col_f5 = st.columns(2)
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
 
-            # === APPLICATION DES FILTRES ===
-            df_filtre_fact = df_compta_sorted.copy()
-            df_filtre_fact = df_filtre_fact[(df_filtre_fact['date'] >= date_debut) & (df_filtre_fact['date'] <= date_fin)]
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= date_debut) & (df_compta_sorted['date'] <= date_fin)]
 
             if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+
             if filtre_client_fact:
                 df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
 
-            # === MÉTRIQUES FILTRÉES ===
-            c1, c2, c3, c4 = st.columns(4)
+            col_t1, col_t2, col_t3 = st.columns(3)
             total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
             total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
             total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
-            c1.metric("📄 Écritures Trouvées", len(df_filtre_fact))
-            c2.metric("💰 Total FC", f"{total_fc:,.0f} FC")
-            c3.metric("💵 Total USD", f"{total_usd:,.0f} $")
-            c4.metric("💶 Total EUR", f"{total_eur:,.0f} €")
 
-            st.info(f"📅 Période: {date_debut.strftime('%d/%m/%Y')} au {date_fin.strftime('%d/%m/%Y')}")
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+
             st.divider()
 
-            if df_filtre_fact.empty:
-                st.warning("Aucune écriture pour cette période/filtre")
-            else:
-                categories = df_filtre_fact.get('categorie', pd.Series()).dropna().unique()
+            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
 
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période sélectionnée")
+            else:
                 for cat in sorted(categories):
                     df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
                     total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
@@ -1315,7 +1352,6 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                         col_dl1, col_dl2 = st.columns(2)
 
-                        # === EXCEL PRO PAR CATÉGORIE FILTRÉE ===
                         excel_bytes_cat = generer_excel_pro(df_cat, f"Releve {cat} {date_debut}-{date_fin}",
                                                            df_cat[df_cat['type']=='Revenu']['montant'].sum(),
                                                            df_cat[df_cat['type']=='Dépense']['montant'].sum(),
@@ -1332,7 +1368,6 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                         pdf_cat = FPDF()
                         pdf_cat.add_page()
-
                         pdf_cat.set_fill_color(20, 50, 40)
                         pdf_cat.rect(0, 0, 210, 35, 'F')
                         pdf_cat.set_text_color(255, 255, 255)
@@ -1344,30 +1379,24 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
                         pdf_cat.set_xy(10, 21)
                         pdf_cat.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
                         pdf_cat.set_font("Arial", "B", 10)
                         pdf_cat.set_xy(150, 8)
                         pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
-
                         pdf_cat.ln(15)
-
                         pdf_cat.set_text_color(0, 0, 0)
                         pdf_cat.set_fill_color(255, 204, 0)
                         pdf_cat.set_font("Arial", "B", 14)
                         pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
                         pdf_cat.ln(5)
-
                         pdf_cat.set_font("Arial", "B", 11)
                         pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
                         pdf_cat.ln(3)
-
                         pdf_cat.set_font("Arial", "B", 9)
                         pdf_cat.cell(25, 7, "Date", 1)
                         pdf_cat.cell(25, 7, "Type", 1)
                         pdf_cat.cell(90, 7, "Description", 1)
                         pdf_cat.cell(30, 7, "Montant", 1)
                         pdf_cat.cell(20, 7, "Devise", 1, ln=True)
-
                         pdf_cat.set_font("Arial", "", 8)
                         for _, row in df_cat.iterrows():
                             pdf_cat.cell(25, 6, str(row.get('date','')), 1)
