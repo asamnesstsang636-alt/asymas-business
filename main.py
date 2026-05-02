@@ -11,10 +11,14 @@ import streamlit_qrcode_scanner
 
 st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="💎", layout="wide")
 
-SUPABASE_URL = st.secrets["supabase"]["url"]
-SUPABASE_KEY = st.secrets["supabase"]["key"]
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
+# --- Connexion Supabase ---
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    st.error(f"Erreur de connexion à Supabase : {e}")
+    st.stop()
 def generer_excel_pro(df, nom_fichier, total_revenu, total_depense, solde):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
