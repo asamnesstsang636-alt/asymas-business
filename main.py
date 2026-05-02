@@ -1305,7 +1305,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 date_debut = col_f2.date_input("Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
                 date_fin = col_f3.date_input("Date fin", value=date.today(), key="date_fin_fact")
 
-                        col_f4, col_f5 = st.columns(2)
+                col_f4, col_f5 = st.columns(2)
             categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
