@@ -656,7 +656,7 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
                         new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
 
-                    c1, c2 = st.columns(2)
+                        c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
                             data_update = {
@@ -684,11 +684,11 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 st.success("Supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
-                      except Exception as e:
-                        st.error("Erreur suppression")
-                        st.code(repr(e))
-                else:
-                    c2.info("🔒 Suppression réservée au PDG")
+                            except Exception as e:
+                                st.error("Erreur suppression")
+                                st.code(repr(e))
+                    else:
+                        c2.info("🔒 Suppression réservée au PDG")
 
 if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
