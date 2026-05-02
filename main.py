@@ -248,7 +248,7 @@ Tel: +243 995 105 623"""
     pdf.cell(140, 5, "Scannez ce QR Code pour verifier l'authenticite de la facture", ln=False)
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output(dest='S')
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -394,7 +394,7 @@ with tab2:
                     df_articles['nom_article'].str.contains(search_clean, case=False, na=False) |
                     df_articles.get('code_barres', pd.Series(dtype=str)).str.contains(search_clean, case=False, na=False)
                 )
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
                 if not df_articles_filtre.empty:
                     st.success(f"✅ {len(df_articles_filtre)} produit(s) trouvé(s)")
             if not df_articles_filtre.empty:
@@ -562,7 +562,8 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "prix": eau}
                 ]
                 details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Durée Contrat: {duree_contrat} | Loyer: {prix} $ | Electricité: {electricite} $ | Eau: {eau} $"
-                periode = date.today().strftime("%B %Y")
+                periode = date.today().strftime
+        ("%B %Y")
                 num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode)
                 st.success(f"✅ Facture générée : {num_fact}")
                 st.download_button(
@@ -1073,7 +1074,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                             pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
-                        pdf_bytes_cat = pdf_cat.output(dest='S').encode('latin-1')
+                        pdf_bytes_cat = pdf_cat.output(dest='S')
 
                         col_dl2.download_button(
                             label=f"📥 Télécharger {cat} - PDF",
@@ -1155,12 +1156,12 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_global.cell(25, 6, str(row.get('type','')), 1)
                         desc = str(row.get('description',''))[:45]
                         pdf_global.cell(90, 6, desc, 1)
-                        pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                        pdf_global.cell(30, 6, f"{row.get(''montant',0):,.0f}", 1)
                         pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
                     pdf_global.ln(5)
 
-                pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
+                pdf_bytes_global = pdf_global.output(dest='S')
 
                 col_dl_g2.download_button(
                     label="📥 TÉLÉCHARGER TOUT - PDF",
