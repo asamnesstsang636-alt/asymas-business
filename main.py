@@ -24,18 +24,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-  .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-  .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-  .st-emotion-cache-1wbqy5l {display: none!important;}
+ .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -387,13 +387,22 @@ with tab2:
             nom_client = st.text_input("Nom Client", key="nom_client_c")
             tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_c")
             st.subheader("📦 Rubrique Produit")
-            recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom...", key="search_c")
+
+            # === SCAN QR/CODE-BARRE + RECHERCHE TEMPS RÉEL ===
+            scan_code = st.text_input("📱 Scanner QR/Code-barre ou chercher", placeholder="Scanne ou tape le nom/code...", key="search_c_realtime")
+
             df_articles_filtre = df_articles.copy()
-            if recherche:
-                mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+            if scan_code:
+                # Recherche temps réel : nom, code_barre, id
+                mask = (
+                    df_articles['nom_article'].str.contains(scan_code, case=False, na=False) |
+                    df_articles.get('code_barre', pd.Series(dtype=str)).astype(str).str.contains(scan_code, case=False, na=False) |
+                    df_articles['id'].astype(str).str.contains(scan_code, case=False, na=False)
+                )
+                df_articles_filtre = df_articles
+
             if not df_articles_filtre.empty:
-                options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
+                options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')} | Code:{row.get('code_barre','N/A')}" for _, row in df_articles_filtre.iterrows()]
                 choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
                 idx_choisi = options.index(choix)
                 produit_choisi = df_articles_filtre.iloc[idx_choisi]
@@ -405,7 +414,7 @@ with tab2:
                     if stock_dispo < qte:
                         st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
                         st.stop()
-                    st.session_state.panier_commerce.append({"id": int(produit_choisi['id']), "nom": str(produit_choisi['nom_article']), "prix": float(produit_choisi.get('prix_vente',0)), "qte": int(qte), "stock_dispo": stock_dispo})
+                    st.session_state.panier_commerce.append({"id": int(produit_choisi['id']), "nom": str(produit_choisi['nom_article']), "prix": float(produit_choisi.get('prix_vente',0)), "qte": int(qte), "stock_dispo": stock_dispo, "code_barre": str(produit_choisi.get('code_barre',''))})
                     st.session_state.vente_finie = False
                     st.rerun()
             else:
@@ -431,6 +440,8 @@ with tab2:
                 for i, item in enumerate(st.session_state.panier_commerce):
                     with st.container(border=True):
                         st.markdown(f"**{item['nom']}**")
+                        if item.get('code_barre'):
+                            st.caption(f"Code: {item['code_barre']}")
                         c1, c2 = st.columns([2,1])
                         new_qte = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_c_{i}")
                         if new_qte > item.get('stock_dispo', 999):
@@ -481,9 +492,10 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 prix_achat = c3.number_input("Prix Achat FC", min_value=0.0)
                 prix_vente = c1.number_input("Prix Vente FC", min_value=0.0)
                 stock = c2.number_input("Stock", min_value=0)
+                code_barre = c3.text_input("Code-barre/QR", placeholder="Scanne ou tape le code")
                 if st.form_submit_button("💾 Ajouter Article"):
                     try:
-                        supabase.table("articles").insert({"nom_article": str(nom), "categorie": str(cat), "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock)}).execute()
+                        supabase.table("articles").insert({"nom_article": str(nom), "categorie": str(cat), "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock), "code_barre": str(code_barre) if code_barre else None}).execute()
                         st.success("Article ajouté")
                         st.cache_data.clear()
                         st.rerun()
@@ -496,19 +508,20 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.info("Aucun article")
         else:
             for _, row in df_articles.iterrows():
-                with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)}"):
+                with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)} | Code:{row.get('code_barre','N/A')}"):
                     c1, c2 = st.columns(2)
                     with c1:
                         new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
                         new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_{row['id']}")
                         new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
+                        new_code = st.text_input("Code-barre", value=row.get('code_barre',''), key=f"code_{row['id']}")
                     with c2:
                         new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
                         new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
-                            supabase.table("articles").update({"nom_article": str(new_nom), "categorie": str(new_cat), "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock)}).eq("id", int(row['id'])).execute()
+                            supabase.table("articles").update({"nom_article": str(new_nom), "categorie": str(new_cat), "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock), "code_barre": str(new_code) if new_code else None}).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
@@ -539,7 +552,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
             adresse = st.text_input("Adresse", key="adresse_bien")
         with col2:
             prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
-            electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
+                        electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
         with col3:
             eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
             duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
@@ -609,13 +622,18 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_v")
 
                 st.subheader("🚗 Rubrique Véhicule")
-                recherche_voiture = st.text_input("🔍 Chercher une voiture", placeholder="Marque, modèle, plaque...", key="search_v")
+                # === RECHERCHE TEMPS RÉEL + QR VOITURE ===
+                recherche_voiture = st.text_input("🔍 Chercher/Scanner QR", placeholder="Marque, modèle, plaque, code QR...", key="search_v_realtime")
 
                 df_voitures_filtre = df_voitures.copy()
                 if recherche_voiture:
-                    mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
-                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
-                            df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False))
+                    mask = (
+                        df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
+                        df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
+                        df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False) |
+                        df_voitures.get('code_qr', pd.Series(dtype=str)).astype(str).str.contains(recherche_voiture, case=False, na=False) |
+                        df_voitures['id'].astype(str).str.contains(recherche_voiture, case=False, na=False)
+                    )
                     df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
@@ -643,14 +661,21 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
                         st.markdown(f"**Statut:** {voiture_choisie.get('statut','N/A')}")
+                        st.markdown(f"**Code QR:** {voiture_choisie.get('code_qr','N/A')}")
                         st.markdown(f"### Prix: **{voiture_choisie.get('prix',0):,.0f} $**")
 
                     c1, c2 = st.columns([1,1])
-                    qte = c1.number_input("QTE", min_value=1, value=1, key="qte_v")
+                    # === QUANTITÉ VOITURE TOUJOURS = 1 ===
+                    c1.info("QTE: 1 - Véhicule unique")
+                    qte = 1
 
                     if c2.button("➕ Ajouter au Panier", width="stretch", key="add_panier_v"):
                         if voiture_choisie.get('statut') == 'Vendue':
                             st.error("Cette voiture est déjà vendue!")
+                            st.stop()
+                        # Vérifier si déjà dans panier
+                        if any(item['id'] == int(voiture_choisie['id']) for item in st.session_state.panier_voiture):
+                            st.warning("Véhicule déjà dans le panier!")
                             st.stop()
                         st.session_state.panier_voiture.append({
                             "id": int(voiture_choisie['id']),
@@ -664,7 +689,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             "boite": str(voiture_choisie.get('boite','')),
                             "statut": str(voiture_choisie.get('statut','')),
                             "prix": float(voiture_choisie.get('prix',0)),
-                            "qte": int(qte)
+                            "qte": 1,
+                            "code_qr": str(voiture_choisie.get('code_qr',''))
                         })
                         st.session_state.vente_auto_finie = False
                         st.rerun()
@@ -713,10 +739,10 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     for i, item in enumerate(st.session_state.panier_voiture):
                         with st.container(border=True):
                             st.markdown(f"**{item['marque']} {item['modele']}**")
-                            st.caption(f"Année: {item.get('annee','')} | Plaque: {item.get('plaque','')}")
+                            st.caption(f"Année: {item.get('annee','')} | Plaque: {item.get('plaque','')} | QR: {item.get('code_qr','')}")
                             c1, c2 = st.columns([2,1])
-                            st.session_state.panier_voiture[i]['qte'] = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_v_{i}")
-                            sous_total = float(item['prix']) * int(st.session_state.panier_voiture[i]['qte'])
+                            c1.info("QTE: 1 - Fixe")
+                            sous_total = float(item['prix'])
                             c2.markdown(f"**{sous_total:,.0f} $**")
                             if st.button("❌ Supprimer", key=f"del_v_{i}"):
                                 st.session_state.panier_voiture.pop(i)
@@ -733,7 +759,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 st.stop()
 
                             with st.spinner("Enregistrement vente..."):
-                                total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier_voiture)
+                                total = sum(float(i['prix']) for i in st.session_state.panier_voiture)
 
                                 id_utilisateur = 1
                                 if st.session_state.user_name == "ASIYA":
@@ -753,14 +779,14 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 details_list = []
                                 for i in st.session_state.panier_voiture:
                                     nom_complet = f"{i['marque']} {i['modele']} - {i.get('annee','')} - {i.get('plaque','')} - {i.get('couleur','')} - {i.get('kilometrage','')} KM"
-                                    details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
+                                    details_list.append({"nom": nom_complet, "qte": 1, "prix": i['prix']})
 
                                     supabase.table("ventes_details").insert({
                                         "id_vente": id_vente,
                                         "id_article": int(i['id']),
-                                        "quantite": int(i['qte']),
+                                        "quantite": 1,
                                         "prix_unitaire": float(i['prix']),
-                                        "sous_total": float(i['prix']) * int(i['qte'])
+                                        "sous_total": float(i['prix'])
                                     }).execute()
 
                                     supabase.table("voitures").update({"statut": "Vendue"}).eq("id", i['id']).execute()
@@ -819,6 +845,11 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 if "statut" in colonnes_voitures:
                     statut = c1.selectbox("Statut", ["Disponible", "Réservée", "Vendue"])
                     data_insert["statut"] = str(statut)
+                # === AJOUT CODE QR VOITURE ===
+                code_qr = c2.text_input("Code QR", placeholder="Scanne ou génère auto", key="qr_voiture")
+                if not code_qr:
+                    code_qr = f"V-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                data_insert["code_qr"] = str(code_qr)
 
                 if st.form_submit_button("💾 Ajouter Voiture"):
                     try:
@@ -837,7 +868,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.info("Aucune voiture")
         else:
             for _, row in df_voitures.iterrows():
-                with st.expander(f"{row['marque']} {row['modele']} - {row.get('plaque','')} - {row.get('statut','')}"):
+                with st.expander(f"{row['marque']} {row['modele']} - {row.get('plaque','')} - {row.get('statut','')} | QR: {row.get('code_qr','N/A')}"):
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         new_marque = st.text_input("Marque", value=row['marque'], key=f"marque_{row['id']}")
@@ -885,6 +916,8 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             statut_val = row.get('statut','Disponible')
                             new_statut = st.selectbox("Statut", statut_options, index=statut_options.index(statut_val) if statut_val in statut_options else 0, key=f"statut_{row['id']}")
                             data_update["statut"] = str(new_statut)
+                        new_code_qr = st.text_input("Code QR", value=row.get('code_qr',''), key=f"code_qr_{row['id']}")
+                        data_update["code_qr"] = str(new_code_qr)
 
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_v_{row['id']}", width="stretch"):
@@ -954,25 +987,54 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
         if df_compta.empty:
             st.info("Aucune opération")
         else:
-            col1, col2, col3 = st.columns(3)
-            total_revenu = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            total_depense = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-            solde = total_revenu - total_depense
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
 
-            col1.metric("💰 Total Revenus", f"{total_revenu:,.0f}")
-            col2.metric("💸 Total Dépenses", f"{total_depense:,.0f}")
-            col3.metric("💎 Solde", f"{solde:,.0f}")
+            # === TRIAGE IDENTIQUE À FACTURES ===
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_deb_compta")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_compta")
+            col_f3.markdown("### ")
+
+            col_f4, col_f5 = st.columns(2)
+            categories_compta = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
+            filtre_cat_compta = col_f4.selectbox("📂 Filtrer par Catégorie", categories_compta, key="filtre_cat_compta")
+            filtre_client_compta = col_f5.text_input("👤 Description contient", placeholder="Tape un nom...", key="filtre_client_compta")
+
+            df_filtre_compta = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+
+            if filtre_cat_compta!= "Toutes":
+                df_filtre_compta = df_filtre_compta[df_filtre_compta.get('categorie', '') == filtre_cat_compta]
+
+            if filtre_client_compta:
+                df_filtre_compta = df_filtre_compta[df_filtre_compta['description'].str.contains(filtre_client_compta, case=False, na=False)]
+
+            # === TOTAUX PAR DEVISE ===
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_compta[df_filtre_compta.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_compta[df_filtre_compta.get('devise','FC')=='€']['montant'].sum()
+
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
 
             st.divider()
 
-            categories = df_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            # === RELEVÉ PAR CATÉGORIE FILTRÉ ===
+            categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
             if len(categories) > 0:
-                st.subheader("📂 Relevé par Catégorie")
+                st.subheader("📂 Relevé par Catégorie Filtré")
                 for cat in sorted(categories):
-                    df_cat = df_compta[df_compta.get('categorie', '') == cat]
+                    df_cat = df_filtre_compta[df_filtre_compta.get('categorie', '') == cat]
                     total_cat = df_cat['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}"):
-                        st.dataframe(df_cat, use_container_width=True, hide_index=True)
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        st.dataframe(df_cat[['date', 'type', 'description', 'montant', 'devise']], use_container_width=True, hide_index=True)
+            else:
+                st.info("Aucune opération dans la période/filtre sélectionné")
 
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
@@ -1110,7 +1172,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 total_depense_global = df_filtre_fact[df_filtre_fact['type']=='Dépense']['montant'].sum()
                 solde_global = total_revenu_global - total_depense_global
 
-                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
+                                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
                                                       total_revenu_global, total_depense_global, solde_global)
 
                 safe_date_debut = str(date_debut).replace("-", "_")
