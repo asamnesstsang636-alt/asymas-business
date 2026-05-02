@@ -552,7 +552,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
             adresse = st.text_input("Adresse", key="adresse_bien")
         with col2:
             prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
-                        electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
+          electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
         with col3:
             eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
             duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
