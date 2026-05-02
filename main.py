@@ -206,7 +206,7 @@ else:
     pdf.cell(30, 7, "1", 1, 0, 'C')
     pdf.cell(40, 7, f"{montant:,.0f}", 1, 1, 'R')
                     
-                if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
+                 if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
                     try:
                         supabase.table("utilisateurs").update({"password": new_pass_pdg}).eq("role", "PDG").execute()
                         supabase.table("utilisateurs").update({"password": new_pass_gerante}).eq("role", "GERANTE").execute()
