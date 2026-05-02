@@ -677,7 +677,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         total_mensuel = float(prix) + float(electricite) + float(eau)
         st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
 
-         if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
                     {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Durée: {duree_contrat}", "qte": 1, "prix": prix},
