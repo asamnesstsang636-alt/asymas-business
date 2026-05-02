@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fpdf import FPDF
 import base64
 import io
@@ -455,7 +455,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -659,19 +659,8 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
         col1, col2, col3 = st.columns(3)
         with col1:
-            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
-            adresse = st.text_input("Adresse", key="adresse_bien")
-        with col2:
-            prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
-            electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
-        with col3:
-            eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
-            duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
-
-        total_mensuel = float(prix) + float(electricite) + float(eau)
-        st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
-
-        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type
+                                             if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
                     {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Durée: {duree_contrat}", "qte": 1, "prix": prix},
@@ -917,6 +906,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 modele = c2.text_input("Modèle")
                 annee = c3.number_input("Année", min_value=1990, max_value=2026, value=2020)
                 plaque = c1.text_input("Plaque")
+                quantite = c2.number_input("Quantité", min_value=1, value=1)
 
                 data_insert = {
                     "marque": str(marque),
@@ -946,8 +936,13 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                 if st.form_submit_button("💾 Ajouter Voiture"):
                     try:
-                        supabase.table("voitures").insert(data_insert).execute()
-                        st.success("Voiture ajoutée")
+                        for i in range(int(quantite)):
+                            data_temp = data_insert.copy()
+                            if quantite > 1:
+                                data_temp["plaque"] = f"{plaque}-{i+1}"
+                            supabase.table("voitures").insert(data_temp).execute()
+                        
+                        st.success(f"{quantite} voiture(s) ajoutée(s)")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
@@ -1078,20 +1073,38 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
         st.divider()
 
-        st.subheader("📊 Relevé Comptable - Classé par Catégorie")
+        st.subheader("📊 Relevé Comptable - Tri Personnalisé")
 
         if df_compta.empty:
             st.warning("Aucune écriture comptable.")
         else:
-            col_f1, col_f2 = st.columns(2)
-            filtre_type = col_f1.selectbox("Filtrer Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta")
-            filtre_cat = col_f2.selectbox("Filtrer Catégorie", ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique()), key="filtre_cat_compta")
+            st.markdown("### 🔍 Filtres de Tri")
+            col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+            
+            date_debut = col_f1.date_input("Date début", value=date.today() - timedelta(days=30), key="date_debut_releve")
+            date_fin = col_f2.date_input("Date fin", value=date.today(), key="date_fin_releve")
+            filtre_type = col_f3.selectbox("Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta_tri")
+            
+            categories_dispo = ["Toutes"] + list(df_compta.get('categorie', pd.Series()).dropna().unique())
+            filtre_cat = col_f4.selectbox("Catégorie", categories_dispo, key="filtre_cat_compta_tri")
+
+            col_f5, col_f6 = st.columns(2)
+            filtre_devise = col_f5.selectbox("Devise", ["Toutes", "FC", "$", "€"], key="filtre_devise_tri")
+            filtre_client = col_f6.text_input("Nom Client contient", placeholder="Tape un nom...", key="filtre_client_tri")
 
             df_filtre = df_compta.copy()
+            
+            df_filtre['date'] = pd.to_datetime(df_filtre['date']).dt.date
+            df_filtre = df_filtre[(df_filtre['date'] >= date_debut) & (df_filtre['date'] <= date_fin)]
+            
             if filtre_type!= "Tous":
                 df_filtre = df_filtre[df_filtre['type'] == filtre_type]
             if filtre_cat!= "Toutes":
                 df_filtre = df_filtre[df_filtre.get('categorie', '') == filtre_cat]
+            if filtre_devise!= "Toutes":
+                df_filtre = df_filtre[df_filtre.get('devise', 'FC') == filtre_devise]
+            if filtre_client:
+                df_filtre = df_filtre[df_filtre['description'].str.contains(filtre_client, case=False, na=False)]
 
             df_filtre = df_filtre.sort_values('date', ascending=False)
 
@@ -1106,99 +1119,103 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             st.divider()
 
-            if 'categorie' in df_filtre.columns:
-                categories = df_filtre['categorie'].dropna().unique()
-                for cat in sorted(categories):
-                    df_cat = df_filtre[df_filtre['categorie'] == cat]
-                    total_cat = df_cat['montant'].sum()
-
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=True):
-                        st.dataframe(
-                            df_cat[['date', 'type', 'description', 'montant', 'devise']],
-                            use_container_width=True,
-                            hide_index=True
-                        )
-            else:
-                st.dataframe(
-                    df_filtre[['date', 'type', 'description', 'montant']],
-                    use_container_width=True,
-                    hide_index=True
-                )
+            st.markdown(f"### 📋 Résultat du Tri : {len(df_filtre)} écritures")
+            st.dataframe(
+                df_filtre[['date', 'type', 'categorie', 'description', 'montant', 'devise']],
+                use_container_width=True,
+                hide_index=True
+            )
 
             st.divider()
 
-            col_dl1, col_dl2 = st.columns(2)
+            st.markdown("### 📥 Télécharger/Imprimer le Relevé Trié")
+            col_dl1, col_dl2, col_dl3 = st.columns(3)
 
-            # === EXCEL PRO AVEC EN-TÊTE ===
-            excel_bytes = generer_excel_pro(df_filtre, "Relevé Comptable", total_revenu, total_depense, solde)
-
+            excel_bytes_tri = generer_excel_pro(df_filtre, f"Releve Trié {date_debut} au {date_fin}", 
+                                               total_revenu, total_depense, solde)
             col_dl1.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ EXCEL PRO",
-                data=excel_bytes,
-                file_name=f"Releve_ASYMAS_{date.today().strftime('%Y%m%d')}.xlsx",
+                label="📥 TÉLÉCHARGER EXCEL TRIÉ",
+                data=excel_bytes_tri,
+                file_name=f"Releve_Trie_{date_debut}_{date_fin}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
-                key="dl_releve_excel_pro"
+                key="dl_excel_trie"
             )
 
-            pdf_releve = FPDF()
-            pdf_releve.add_page()
-            pdf_releve.set_auto_page_break(auto=True, margin=15)
+            pdf_tri = FPDF()
+            pdf_tri.add_page()
+            pdf_tri.set_auto_page_break(auto=True, margin=15)
 
-            pdf_releve.set_fill_color(20, 50, 40)
-            pdf_releve.rect(0, 0, 210, 35, 'F')
-            pdf_releve.set_text_color(255, 255, 255)
-            pdf_releve.set_font("Arial", "B", 20)
-            pdf_releve.set_xy(10, 8)
-            pdf_releve.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-            pdf_releve.set_font("Arial", "", 9)
-            pdf_releve.set_xy(10, 16)
-            pdf_releve.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-            pdf_releve.set_xy(10, 21)
-            pdf_releve.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
+            pdf_tri.set_fill_color(20, 50, 40)
+            pdf_tri.rect(0, 0, 210, 35, 'F')
+            pdf_tri.set_text_color(255, 255, 255)
+            pdf_tri.set_font("Arial", "B", 20)
+            pdf_tri.set_xy(10, 8)
+            pdf_tri.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+            pdf_tri.set_font("Arial", "", 9)
+            pdf_tri.set_xy(10, 16)
+            pdf_tri.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+            pdf_tri.set_xy(10, 21)
+            pdf_tri.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
 
-            pdf_releve.set_font("Arial", "B", 10)
-            pdf_releve.set_xy(150, 8)
-            pdf_releve.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
+            pdf_tri.set_font("Arial", "B", 10)
+            pdf_tri.set_xy(150, 8)
+            pdf_tri.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
 
-            pdf_releve.ln(15)
+            pdf_tri.ln(15)
 
-            pdf_releve.set_text_color(0, 0, 0)
-            pdf_releve.set_fill_color(255, 204, 0)
-            pdf_releve.set_font("Arial", "B", 14)
-            pdf_releve.cell(0, 10, "RELEVE COMPTABLE", ln=True, fill=True)
-            pdf_releve.ln(5)
+            pdf_tri.set_text_color(0, 0, 0)
+            pdf_tri.set_fill_color(255, 204, 0)
+            pdf_tri.set_font("Arial", "B", 14)
+            pdf_tri.cell(0, 10, f"RELEVE TRIE - {date_debut} AU {date_fin}", ln=True, fill=True)
+            pdf_tri.ln(5)
 
-            pdf_releve.set_font("Arial", "B", 11)
-            pdf_releve.cell(0, 8, f"Total Revenus: {total_revenu:,.0f} | Total Depenses: {total_depense:,.0f} | Solde: {solde:,.0f}", ln=True)
-            pdf_releve.ln(3)
+            pdf_tri.set_font("Arial", "B", 11)
+            pdf_tri.cell(0, 8, f"Revenus: {total_revenu:,.0f} | Depenses: {total_depense:,.0f} | Solde: {solde:,.0f}", ln=True)
+            pdf_tri.ln(3)
 
-            pdf_releve.set_font("Arial", "B", 9)
-            pdf_releve.cell(25, 7, "Date", 1)
-            pdf_releve.cell(25, 7, "Type", 1)
-            pdf_releve.cell(90, 7, "Description", 1)
-            pdf_releve.cell(30, 7, "Montant", 1)
-            pdf_releve.cell(20, 7, "Devise", 1, ln=True)
+            pdf_tri.set_font("Arial", "B", 9)
+            pdf_tri.cell(25, 7, "Date", 1)
+            pdf_tri.cell(25, 7, "Type", 1)
+            pdf_tri.cell(90, 7, "Description", 1)
+            pdf_tri.cell(30, 7, "Montant", 1)
+            pdf_tri.cell(20, 7, "Devise", 1, ln=True)
 
-            pdf_releve.set_font("Arial", "", 8)
+            pdf_tri.set_font("Arial", "", 8)
             for _, row in df_filtre.iterrows():
-                pdf_releve.cell(25, 6, str(row.get('date','')), 1)
-                pdf_releve.cell(25, 6, str(row.get('type','')), 1)
+                pdf_tri.cell(25, 6, str(row.get('date','')), 1)
+                pdf_tri.cell(25, 6, str(row.get('type','')), 1)
                 desc = str(row.get('description',''))[:45]
-                pdf_releve.cell(90, 6, desc, 1)
-                pdf_releve.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                pdf_releve.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
+                pdf_tri.cell(90, 6, desc, 1)
+                pdf_tri.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                pdf_tri.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
-            pdf_bytes_releve = pdf_releve.output(dest='S').encode('latin-1')
+            pdf_bytes_tri = pdf_tri.output(dest='S').encode('latin-1')
 
             col_dl2.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ PDF",
-                data=pdf_bytes_releve,
-                file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.pdf",
+                label="📥 TÉLÉCHARGER PDF TRIÉ",
+                data=pdf_bytes_tri,
+                file_name=f"Releve_Trie_{date_debut}_{date_fin}.pdf",
                 mime="application/pdf",
                 width="stretch",
-                key="dl_releve_pdf"
+                key="dl_pdf_trie"
             )
+
+            pdf_b64 = base64.b64encode(pdf_bytes_tri).decode()
+            col_dl3.markdown(f"""
+                <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                    🖨️ IMPRIMER RELEVÉ TRIÉ
+                </button>
+                <script>
+                function printPDF() {{
+                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                    const win = window.open('', '_blank');
+                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                    win.document.close();
+                    setTimeout(() => {{ win.print(); }}, 1000);
+                }}
+                </script>
+            """, unsafe_allow_html=True)
 
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
