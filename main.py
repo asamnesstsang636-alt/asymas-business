@@ -1156,7 +1156,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_global.cell(25, 6, str(row.get('type','')), 1)
                         desc = str(row.get('description',''))[:45]
                         pdf_global.cell(90, 6, desc, 1)
-                        pdf_global.cell(30, 6, f"{row.get(:'montant',0):,.0f}", 1)
+                        pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                         pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
                     pdf_global.ln(5)
