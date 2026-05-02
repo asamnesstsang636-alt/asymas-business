@@ -562,8 +562,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "prix": eau}
                 ]
                 details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Durée Contrat: {duree_contrat} | Loyer: {prix} $ | Electricité: {electricite} $ | Eau: {eau} $"
-                periode = date.today().strftime
-       ("%B %Y")
+                periode = date.today().strftime("%B %Y")
                 num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode)
                 st.success(f"✅ Facture générée : {num_fact}")
                 st.download_button(
