@@ -152,7 +152,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
 
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255, 255)
+    pdf.set_text_color(255, 255)
     pdf.set_font("Arial", "B", 20)
     pdf.set_xy(10, 8)
     pdf.cell(0, 10, "ASYMAS BUSINESS", ln=True)
@@ -660,6 +660,17 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         col1, col2, col3 = st.columns(3)
         with col1:
             type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
+            adresse = st.text_input("Adresse", key="adresse_bien")
+        with col2:
+            prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
+            electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
+        with col3:
+            eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
+            duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
+
+        total_mensuel = float(prix) + float(electricite) + float(eau)
+        st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
+
         if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
@@ -729,7 +740,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False))
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures[mask]
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -1227,211 +1238,242 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.warning("Aucune écriture comptable.")
             st.info("👉 Fais une vente dans Commerce, Immobilier ou Automobile pour voir le relevé ici")
         else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            df_compta_sorted = df_compta.copy()
+            df_compta_sorted['date'] = pd.to_datetime(df_compta_sorted['date']).dt.date
+            df_compta_sorted = df_compta_sorted.sort_values('date', ascending=False)
 
+            # === NOUVEAUX FILTRES DATE ===
+            st.markdown("### 🔍 Filtres de Tri")
+            col_f1, col_f2, col_f3 = st.columns(3)
+            
+            type_periode = col_f1.selectbox("Période", ["Aujourd'hui", "Cette semaine", "Ce mois", "Ce mois dernier", "Cette année", "Personnalisé"], key="periode_fact")
+
+            if type_periode == "Aujourd'hui":
+                date_debut = date_fin = date.today()
+            elif type_periode == "Cette semaine":
+                date_debut = date.today() - timedelta(days=date.today().weekday())
+                date_fin = date.today()
+            elif type_periode == "Ce mois":
+                date_debut = date.today().replace(day=1)
+                date_fin = date.today()
+            elif type_periode == "Ce mois dernier":
+                premier_mois_actuel = date.today().replace(day=1)
+                date_fin = premier_mois_actuel - timedelta(days=1)
+                date_debut = date_fin.replace(day=1)
+            elif type_periode == "Cette année":
+                date_debut = date.today().replace(month=1, day=1)
+                date_fin = date.today()
+            else:
+                date_debut = col_f2.date_input("Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+                date_fin = col_f3.date_input("Date fin", value=date.today(), key="date_fin_fact")
+
+            col_f4, col_f5 = st.columns(2)
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series()).dropna().unique())
+            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
+
+            # === APPLICATION DES FILTRES ===
+            df_filtre_fact = df_compta_sorted.copy()
+            df_filtre_fact = df_filtre_fact[(df_filtre_fact['date'] >= date_debut) & (df_filtre_fact['date'] <= date_fin)]
+
+            if filtre_cat_fact!= "Toutes":
+                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+            if filtre_client_fact:
+                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
+
+            # === MÉTRIQUES FILTRÉES ===
             c1, c2, c3, c4 = st.columns(4)
-            total_fc = df_compta_sorted[df_compta_sorted.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_compta_sorted[df_compta_sorted.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_compta_sorted[df_compta_sorted.get('devise','FC')=='€']['montant'].sum()
-            c1.metric("📄 Total Écritures", len(df_compta_sorted))
+            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
+            c1.metric("📄 Écritures Trouvées", len(df_filtre_fact))
             c2.metric("💰 Total FC", f"{total_fc:,.0f} FC")
             c3.metric("💵 Total USD", f"{total_usd:,.0f} $")
             c4.metric("💶 Total EUR", f"{total_eur:,.0f} €")
 
+            st.info(f"📅 Période: {date_debut.strftime('%d/%m/%Y')} au {date_fin.strftime('%d/%m/%Y')}")
             st.divider()
 
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series()).dropna().unique())
-            filtre_cat_fact = st.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            if df_filtre_fact.empty:
+                st.warning("Aucune écriture pour cette période/filtre")
+            else:
+                categories = df_filtre_fact.get('categorie', pd.Series()).dropna().unique()
 
-            df_filtre_fact = df_compta_sorted.copy()
-            if filtre_cat_fact!= "Toutes":
-                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
 
-            st.divider()
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
 
-            categories = df_filtre_fact.get('categorie', pd.Series()).dropna().unique()
+                        st.dataframe(
+                            df_cat[['date', 'type', 'description', 'montant', 'devise']],
+                            use_container_width=True,
+                            hide_index=True
+                        )
 
-            for cat in sorted(categories):
-                df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                        col_dl1, col_dl2 = st.columns(2)
 
-                with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        # === EXCEL PRO PAR CATÉGORIE FILTRÉE ===
+                        excel_bytes_cat = generer_excel_pro(df_cat, f"Releve {cat} {date_debut}-{date_fin}",
+                                                           df_cat[df_cat['type']=='Revenu']['montant'].sum(),
+                                                           df_cat[df_cat['type']=='Dépense']['montant'].sum(),
+                                                           df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum())
 
-                    st.dataframe(
-                        df_cat[['date', 'type', 'description', 'montant', 'devise']],
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                        col_dl1.download_button(
+                            label=f"📥 Télécharger {cat} - EXCEL",
+                            data=excel_bytes_cat,
+                            file_name=f"Releve_{cat}_{date_debut}_{date_fin}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            width="stretch",
+                            key=f"dl_excel_cat_{cat}_{date_debut}"
+                        )
 
-                    col_dl1, col_dl2 = st.columns(2)
+                        pdf_cat = FPDF()
+                        pdf_cat.add_page()
 
-                    # === EXCEL PRO PAR CATÉGORIE ===
-                    excel_bytes_cat = generer_excel_pro(df_cat, f"Relevé {cat}",
-                                                       df_cat[df_cat['type']=='Revenu']['montant'].sum(),
-                                                       df_cat[df_cat['type']=='Dépense']['montant'].sum(),
-                                                       df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum())
+                        pdf_cat.set_fill_color(20, 50, 40)
+                        pdf_cat.rect(0, 0, 210, 35, 'F')
+                        pdf_cat.set_text_color(255, 255, 255)
+                        pdf_cat.set_font("Arial", "B", 20)
+                        pdf_cat.set_xy(10, 8)
+                        pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+                        pdf_cat.set_font("Arial", "", 9)
+                        pdf_cat.set_xy(10, 16)
+                        pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+                        pdf_cat.set_xy(10, 21)
+                        pdf_cat.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
 
-                    col_dl1.download_button(
-                        label=f"📥 Télécharger {cat} - EXCEL PRO",
-                        data=excel_bytes_cat,
-                        file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        width="stretch",
-                        key=f"dl_excel_cat_{cat}"
-                    )
+                        pdf_cat.set_font("Arial", "B", 10)
+                        pdf_cat.set_xy(150, 8)
+                        pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
 
-                    pdf_cat = FPDF()
-                    pdf_cat.add_page()
+                        pdf_cat.ln(15)
 
-                    pdf_cat.set_fill_color(20, 50, 40)
-                    pdf_cat.rect(0, 0, 210, 35, 'F')
-                    pdf_cat.set_text_color(255, 255, 255)
-                    pdf_cat.set_font("Arial", "B", 20)
-                    pdf_cat.set_xy(10, 8)
-                    pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                    pdf_cat.set_font("Arial", "", 9)
-                    pdf_cat.set_xy(10, 16)
-                    pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                    pdf_cat.set_xy(10, 21)
-                    pdf_cat.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
+                        pdf_cat.set_text_color(0, 0, 0)
+                        pdf_cat.set_fill_color(255, 204, 0)
+                        pdf_cat.set_font("Arial", "B", 14)
+                        pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
+                        pdf_cat.ln(5)
 
-                    pdf_cat.set_font("Arial", "B", 10)
-                    pdf_cat.set_xy(150, 8)
-                    pdf_cat.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
+                        pdf_cat.set_font("Arial", "B", 11)
+                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
+                        pdf_cat.ln(3)
 
-                    pdf_cat.ln(15)
+                        pdf_cat.set_font("Arial", "B", 9)
+                        pdf_cat.cell(25, 7, "Date", 1)
+                        pdf_cat.cell(25, 7, "Type", 1)
+                        pdf_cat.cell(90, 7, "Description", 1)
+                        pdf_cat.cell(30, 7, "Montant", 1)
+                        pdf_cat.cell(20, 7, "Devise", 1, ln=True)
 
-                    pdf_cat.set_text_color(0, 0, 0)
-                    pdf_cat.set_fill_color(255, 204, 0)
-                    pdf_cat.set_font("Arial", "B", 14)
-                    pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
-                    pdf_cat.ln(5)
+                        pdf_cat.set_font("Arial", "", 8)
+                        for _, row in df_cat.iterrows():
+                            pdf_cat.cell(25, 6, str(row.get('date','')), 1)
+                            pdf_cat.cell(25, 6, str(row.get('type','')), 1)
+                            desc = str(row.get('description',''))[:45]
+                            pdf_cat.cell(90, 6, desc, 1)
+                            pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                            pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
-                    pdf_cat.set_font("Arial", "B", 11)
-                    pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
-                    pdf_cat.ln(3)
+                        pdf_bytes_cat = pdf_cat.output(dest='S').encode('latin-1')
 
-                    pdf_cat.set_font("Arial", "B", 9)
-                    pdf_cat.cell(25, 7, "Date", 1)
-                    pdf_cat.cell(25, 7, "Type", 1)
-                    pdf_cat.cell(90, 7, "Description", 1)
-                    pdf_cat.cell(30, 7, "Montant", 1)
-                    pdf_cat.cell(20, 7, "Devise", 1, ln=True)
+                        col_dl2.download_button(
+                            label=f"📥 Télécharger {cat} - PDF",
+                            data=pdf_bytes_cat,
+                            file_name=f"Releve_{cat}_{date_debut}_{date_fin}.pdf",
+                            mime="application/pdf",
+                            width="stretch",
+                            key=f"dl_pdf_cat_{cat}_{date_debut}"
+                        )
 
-                    pdf_cat.set_font("Arial", "", 8)
-                    for _, row in df_cat.iterrows():
-                        pdf_cat.cell(25, 6, str(row.get('date','')), 1)
-                        pdf_cat.cell(25, 6, str(row.get('type','')), 1)
-                        desc = str(row.get('description',''))[:45]
-                        pdf_cat.cell(90, 6, desc, 1)
-                        pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                        pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
+                st.divider()
 
-                    pdf_bytes_cat = pdf_cat.output(dest='S').encode('latin-1')
+                st.subheader("📥 Télécharger Relevé Complet Filtré")
+                col_dl_g1, col_dl_g2 = st.columns(2)
 
-                    col_dl2.download_button(
-                        label=f"📥 Télécharger {cat} - PDF",
-                        data=pdf_bytes_cat,
-                        file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.pdf",
-                        mime="application/pdf",
-                        width="stretch",
-                        key=f"dl_pdf_cat_{cat}"
-                    )
+                total_revenu_global = df_filtre_fact[df_filtre_fact['type']=='Revenu']['montant'].sum()
+                total_depense_global = df_filtre_fact[df_filtre_fact['type']=='Dépense']['montant'].sum()
+                solde_global = total_revenu_global - total_depense_global
 
-            st.divider()
+                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
+                                                      total_revenu_global, total_depense_global, solde_global)
 
-            st.subheader("📥 Télécharger Relevé Complet Toutes Catégories")
-            col_dl_g1, col_dl_g2 = st.columns(2)
+                col_dl_g1.download_button(
+                    label="📥 TÉLÉCHARGER TOUT - EXCEL",
+                    data=excel_bytes_global,
+                    file_name=f"Releve_Filtre_{date_debut}_{date_fin}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    width="stretch",
+                    key="dl_excel_global_filtre"
+                )
 
-            # === EXCEL GLOBAL PRO ===
-            total_revenu_global = df_compta_sorted[df_compta_sorted['type']=='Revenu']['montant'].sum()
-            total_depense_global = df_compta_sorted[df_compta_sorted['type']=='Dépense']['montant'].sum()
-            solde_global = total_revenu_global - total_depense_global
-
-            excel_bytes_global = generer_excel_pro(df_compta_sorted, "Relevé Général Complet", 
-                                                  total_revenu_global, total_depense_global, solde_global)
-
-            col_dl_g1.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - EXCEL PRO",
-                data=excel_bytes_global,
-                file_name=f"Releve_Complet_ASYMAS_{date.today().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch",
-                key="dl_excel_global"
-            )
-
-            pdf_global = FPDF()
-            pdf_global.add_page()
-
-            pdf_global.set_fill_color(20, 50, 40)
-            pdf_global.rect(0, 0, 210, 35, 'F')
-            pdf_global.set_text_color(255, 255, 255)
-            pdf_global.set_font("Arial", "B", 20)
-            pdf_global.set_xy(10, 8)
-            pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-            pdf_global.set_font("Arial", "", 9)
-            pdf_global.set_xy(10, 16)
-            pdf_global.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-            pdf_global.set_xy(10, 21)
-            pdf_global.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
-            pdf_global.set_font("Arial", "B", 10)
-            pdf_global.set_xy(150, 8)
-            pdf_global.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-
-            pdf_global.ln(15)
-
-            pdf_global.set_text_color(0, 0, 0)
-            pdf_global.set_fill_color(255, 204, 0)
-            pdf_global.set_font("Arial", "B", 14)
-            pdf_global.cell(0, 10, "RELEVE GENERAL COMPLET", ln=True, fill=True)
-            pdf_global.ln(5)
-
-            pdf_global.set_font("Arial", "B", 11)
-            pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
-            pdf_global.ln(3)
-
-            for cat in sorted(categories):
-                df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
-                total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-
-                pdf_global.set_font("Arial", "B", 12)
-                pdf_global.cell(0, 8, f"CATEGORIE: {cat} - {len(df_cat)} operations", ln=True)
+                pdf_global = FPDF()
+                pdf_global.add_page()
+                pdf_global.set_fill_color(20, 50, 40)
+                pdf_global.rect(0, 0, 210, 35, 'F')
+                pdf_global.set_text_color(255, 255, 255)
+                pdf_global.set_font("Arial", "B", 20)
+                pdf_global.set_xy(10, 8)
+                pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+                pdf_global.set_font("Arial", "", 9)
+                pdf_global.set_xy(10, 16)
+                pdf_global.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+                pdf_global.set_xy(10, 21)
+                pdf_global.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
                 pdf_global.set_font("Arial", "B", 10)
-                pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
-                pdf_global.ln(2)
-
-                pdf_global.set_font("Arial", "B", 9)
-                pdf_global.cell(25, 7, "Date", 1)
-                pdf_global.cell(25, 7, "Type", 1)
-                pdf_global.cell(90, 7, "Description", 1)
-                pdf_global.cell(30, 7, "Montant", 1)
-                pdf_global.cell(20, 7, "Devise", 1, ln=True)
-
-                pdf_global.set_font("Arial", "", 8)
-                for _, row in df_cat.iterrows():
-                    pdf_global.cell(25, 6, str(row.get('date','')), 1)
-                    pdf_global.cell(25, 6, str(row.get('type','')), 1)
-                    desc = str(row.get('description',''))[:45]
-                    pdf_global.cell(90, 6, desc, 1)
-                    pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                    pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
-
+                pdf_global.set_xy(150, 8)
+                pdf_global.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
+                pdf_global.ln(15)
+                pdf_global.set_text_color(0, 0, 0)
+                pdf_global.set_fill_color(255, 204, 0)
+                pdf_global.set_font("Arial", "B", 14)
+                pdf_global.cell(0, 10, "RELEVE GENERAL FILTRE", ln=True, fill=True)
                 pdf_global.ln(5)
+                pdf_global.set_font("Arial", "B", 11)
+                pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
+                pdf_global.ln(3)
 
-            pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
 
-            col_dl_g2.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ COMPLET - PDF",
-                data=pdf_bytes_global,
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                width="stretch",
-                key="dl_pdf_global"
-            )
+                    pdf_global.set_font("Arial", "B", 12)
+                    pdf_global.cell(0, 8, f"CATEGORIE: {cat} - {len(df_cat)} operations", ln=True)
+                    pdf_global.set_font("Arial", "B", 10)
+                    pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
+                    pdf_global.ln(2)
+
+                    pdf_global.set_font("Arial", "B", 9)
+                    pdf_global.cell(25, 7, "Date", 1)
+                    pdf_global.cell(25, 7, "Type", 1)
+                    pdf_global.cell(90, 7, "Description", 1)
+                    pdf_global.cell(30, 7, "Montant", 1)
+                    pdf_global.cell(20, 7, "Devise", 1, ln=True)
+
+                    pdf_global.set_font("Arial", "", 8)
+                    for _, row in df_cat.iterrows():
+                        pdf_global.cell(25, 6, str(row.get('date','')), 1)
+                        pdf_global.cell(25, 6, str(row.get('type','')), 1)
+                        desc = str(row.get('description',''))[:45]
+                        pdf_global.cell(90, 6, desc, 1)
+                        pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                        pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
+
+                    pdf_global.ln(5)
+
+                pdf_bytes_global = pdf_global.output(dest='S').encode('latin-1')
+
+                col_dl_g2.download_button(
+                    label="📥 TÉLÉCHARGER TOUT - PDF",
+                    data=pdf_bytes_global,
+                    file_name=f"Releve_Filtre_{date_debut}_{date_fin}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    key="dl_pdf_global_filtre"
+                )
 
 if tab9 and st.session_state.user_role == "PDG":
     with tab9:
@@ -1439,6 +1481,19 @@ if tab9 and st.session_state.user_role == "PDG":
 
         if df_utilisateurs.empty:
             st.warning("Table 'utilisateurs' vide. Crée-la dans Supabase avec colonnes: id, nom, role, password")
+            st.code("""
+CREATE TABLE utilisateurs (
+    id SERIAL PRIMARY KEY,
+    nom TEXT NOT NULL,
+    role TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
+);
+
+INSERT INTO utilisateurs (nom, role, password) VALUES
+('TSANG', 'PDG', 'tsang2024'),
+('ASIYA', 'GERANTE', 'asiya2024'),
+('BASAM', 'UTILISATEUR', 'basam2024');
+            """, language="sql")
         else:
             st.subheader("🔐 Changer les Mots de Passe")
 
