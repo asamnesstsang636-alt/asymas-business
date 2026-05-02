@@ -9,6 +9,8 @@ import qrcode
 from PIL import Image
 import tempfile
 import os
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -322,6 +324,58 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
 
     return numero_facture, pdf_bytes
 
+# === FONCTION EXCEL PRO ===
+def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_data.to_excel(writer, sheet_name='Releve', index=False, startrow=6)
+
+        workbook = writer.book
+        worksheet = writer.sheets['Releve']
+
+        worksheet.merge_cells('A1:F1')
+        worksheet['A1'] = 'ASYMAS BUSINESS'
+        worksheet['A1'].font = Font(size=20, bold=True, color='006600')
+        worksheet['A1'].alignment = Alignment(horizontal='center')
+
+        worksheet.merge_cells('A2:F2')
+        worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com'
+        worksheet['A2'].font = Font(size=10, italic=True)
+        worksheet['A2'].alignment = Alignment(horizontal='center')
+
+        worksheet.merge_cells('A3:F3')
+        worksheet['A3'] = f'{titre.upper()} - Edité le {date.today().strftime("%d/%m/%Y")}'
+        worksheet['A3'].font = Font(size=14, bold=True, color='FF6600')
+        worksheet['A3'].alignment = Alignment(horizontal='center')
+
+        worksheet.merge_cells('A4:F4')
+        worksheet['A4'] = f'Total Revenus: {total_revenu:,.0f} FC | Total Dépenses: {total_depense:,.0f} FC | Solde: {solde:,.0f} FC'
+        worksheet['A4'].font = Font(size=11, bold=True)
+        worksheet['A4'].alignment = Alignment(horizontal='center')
+        worksheet['A4'].fill = PatternFill(start_color='FFCC00', end_color='FFCC00', fill_type='solid')
+
+        header_fill = PatternFill(start_color='006600', end_color='006600', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF')
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                            top=Side(style='thin'), bottom=Side(style='thin'))
+
+        for col in range(1, len(df_data.columns) + 1):
+            cell = worksheet.cell(row=7, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+
+        for row in range(7, len(df_data) + 8):
+            for col in range(1, len(df_data.columns) + 1):
+                worksheet.cell(row=row, column=col).border = thin_border
+                worksheet.cell(row=row, column=col).alignment = Alignment(horizontal='left')
+
+        for col in range(1, len(df_data.columns) + 1):
+            worksheet.column_dimensions[get_column_letter(col)].width = 18
+
+    return output.getvalue()
+
 df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
@@ -401,7 +455,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -683,15 +737,15 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                 df_voitures_filtre = df_voitures.copy()
                 if recherche_voiture:
-                    mask = df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) | \
-                           df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) | \
-                           df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False)
+                    mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
+                            df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
+                            df_voitures.get('plaque', pd.Series()).str.contains(recherche_voiture, case=False, na=False))
                     df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
                     for _, row in df_voitures_filtre.iterrows():
-                        details = f"{row['marque']} {row['modele']} - {row.get('annee','')} - {row.get('plaque','')} - {row.get('prix',0):,.0f} $"
+                        details = f"{row['marque']} {row['modele']} - {row.get('annee','')} - {row.get('plaque','')} - {row.get('prix',0):,.0f} $ - {row.get('statut','')}"
                         options.append(details)
 
                     choix = st.selectbox("Choisir le véhicule", options, key="choix_veh_v")
@@ -1075,21 +1129,16 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             col_dl1, col_dl2 = st.columns(2)
 
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_filtre.to_excel(writer, sheet_name='Releve_Comptable', index=False)
-                if 'categorie' in df_filtre.columns:
-                    for cat in df_filtre['categorie'].dropna().unique():
-                        df_cat = df_filtre[df_filtre['categorie'] == cat]
-                        df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
+            # === EXCEL PRO AVEC EN-TÊTE ===
+            excel_bytes = generer_excel_pro(df_filtre, "Relevé Comptable", total_revenu, total_depense, solde)
 
             col_dl1.download_button(
-                label="📥 TÉLÉCHARGER RELEVÉ EXCEL",
-                data=output.getvalue(),
-                file_name=f"Releve_Compta_{date.today().strftime('%Y%m%d')}.xlsx",
+                label="📥 TÉLÉCHARGER RELEVÉ EXCEL PRO",
+                data=excel_bytes,
+                file_name=f"Releve_ASYMAS_{date.today().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
-                key="dl_releve_excel"
+                key="dl_releve_excel_pro"
             )
 
             pdf_releve = FPDF()
@@ -1201,13 +1250,15 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     col_dl1, col_dl2 = st.columns(2)
 
-                    output_cat = io.BytesIO()
-                    with pd.ExcelWriter(output_cat, engine='openpyxl') as writer:
-                        df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
+                    # === EXCEL PRO PAR CATÉGORIE ===
+                    excel_bytes_cat = generer_excel_pro(df_cat, f"Relevé {cat}",
+                                                       df_cat[df_cat['type']=='Revenu']['montant'].sum(),
+                                                       df_cat[df_cat['type']=='Dépense']['montant'].sum(),
+                                                       df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum())
 
                     col_dl1.download_button(
-                        label=f"📥 Télécharger {cat} - EXCEL",
-                        data=output_cat.getvalue(),
+                        label=f"📥 Télécharger {cat} - EXCEL PRO",
+                        data=excel_bytes_cat,
                         file_name=f"Releve_{cat}_{date.today().strftime('%Y%m%d')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         width="stretch",
@@ -1277,17 +1328,18 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.subheader("📥 Télécharger Relevé Complet Toutes Catégories")
             col_dl_g1, col_dl_g2 = st.columns(2)
 
-            output_global = io.BytesIO()
-            with pd.ExcelWriter(output_global, engine='openpyxl') as writer:
-                df_compta_sorted.to_excel(writer, sheet_name='Toutes_Operations', index=False)
-                for cat in categories:
-                    df_cat = df_compta_sorted[df_compta_sorted.get('categorie', '') == cat]
-                    df_cat.to_excel(writer, sheet_name=cat[:30], index=False)
+            # === EXCEL GLOBAL PRO ===
+            total_revenu_global = df_compta_sorted[df_compta_sorted['type']=='Revenu']['montant'].sum()
+            total_depense_global = df_compta_sorted[df_compta_sorted['type']=='Dépense']['montant'].sum()
+            solde_global = total_revenu_global - total_depense_global
+
+            excel_bytes_global = generer_excel_pro(df_compta_sorted, "Relevé Général Complet", 
+                                                  total_revenu_global, total_depense_global, solde_global)
 
             col_dl_g1.download_button(
-                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - EXCEL",
-                data=output_global.getvalue(),
-                file_name=f"Releve_Complet_{date.today().strftime('%Y%m%d')}.xlsx",
+                label="📥 TÉLÉCHARGER TOUTES LES OPÉRATIONS - EXCEL PRO",
+                data=excel_bytes_global,
+                file_name=f"Releve_Complet_ASYMAS_{date.today().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
                 key="dl_excel_global"
@@ -1298,7 +1350,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
             pdf_global.set_fill_color(20, 50, 40)
             pdf_global.rect(0, 0, 210, 35, 'F')
-            pdf_global.set_text_color(255, 255)
+            pdf_global.set_text_color(255, 255, 255)
             pdf_global.set_font("Arial", "B", 20)
             pdf_global.set_xy(10, 8)
             pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
