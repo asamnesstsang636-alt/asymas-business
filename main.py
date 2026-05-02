@@ -685,13 +685,11 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
-                    else:
-                        c2.info("🔒 Suppression réservée au PDG")
+                        st.error("Erreur suppression")
+                        st.code(repr(e))
+                else:
+                    c2.info("🔒 Suppression réservée au PDG")
 
-if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
-    with tab4:
 if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
         st.markdown("## 🏠 Immobilier - Générer Facture")
