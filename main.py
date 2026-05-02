@@ -566,7 +566,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             width="stretch",
                             key="dl_facture_immo"
                         )
-                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
                         st.components.v1.html(f"""
                             <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
                                 🖨️ IMPRIMER LA FACTURE
