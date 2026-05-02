@@ -395,7 +395,7 @@ st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v1.0")
+    st.info("ASYMAS BUSINESS v2.0")
 
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
@@ -461,7 +461,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles # <-- BUG FIXÉ: ÉTAIT df_articles_filtre = df_articles
+                df_articles_filtre = df_articles # BUG FIXÉ ICI
 
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
@@ -677,7 +677,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         total_mensuel = float(prix) + float(electricite) + float(eau)
         st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
 
-        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
                     {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Durée: {duree_contrat}", "qte": 1, "prix": prix},
@@ -746,7 +746,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False))
-                    df_voitures_filtre = df_voitures # <-- BUG FIXÉ ICI
+                    df_voitures_filtre = df_voitures # BUG FIXÉ ICI
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -765,7 +765,10 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
                         km_val = voiture_choisie.get('kilometrage')
-                        km_display = f"{int(km_val):,}" if km_val and str(km_val).isdigit() else 'N/A'
+                        try:
+                            km_display = f"{int(float(km_val)):,}" if km_val else 'N/A'
+                        except:
+                            km_display = 'N/A'
                         c2.markdown(f"**KM:** {km_display}")
                         c3.markdown(f"**Carburant:** {voiture_choisie.get('carburant','N/A')}")
                         c3.markdown(f"**Boîte:** {voiture_choisie.get('boite','N/A')}")
@@ -985,7 +988,12 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_{row['id']}")
                             data_update["couleur"] = str(new_couleur)
                         if "kilometrage" in colonnes_voitures:
-                            new_km = st.number_input("KM", value=int(row.get('kilometrage',0)), key=f"km_{row['id']}")
+                            km_val = row.get('kilometrage', 0)
+                            try:
+                                km_val = int(float(km_val)) if km_val else 0
+                            except:
+                                km_val = 0
+                            new_km = st.number_input("KM", value=km_val, key=f"km_{row['id']}")
                             data_update["kilometrage"] = int(new_km)
 
                     with c3:
@@ -1167,7 +1175,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.add_page()
                         pdf_cat.set_fill_color(20, 50, 40)
                         pdf_cat.rect(0, 0, 210, 35, 'F')
-                        pdf_cat.set_text_color(255, 255, 255)
+                        pdf_cat.set_text_color(255, 255)
                         pdf_cat.set_font("Arial", "B", 20)
                         pdf_cat.set_xy(10, 8)
                         pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
@@ -1314,7 +1322,8 @@ CREATE TABLE utilisateurs (
     role TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
 );
-            INSERT INTO utilisateurs (nom, role, password) VALUES
+
+INSERT INTO utilisateurs (nom, role, password) VALUES
 ('TSANG', 'PDG', 'tsang2024'),
 ('ASIYA', 'GERANTE', 'asiya2024'),
 ('BASAM', 'UTILISATEUR', 'basam2024');
