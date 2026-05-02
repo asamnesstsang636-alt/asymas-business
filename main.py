@@ -1211,7 +1211,7 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
                 c1, c2, c3 = st.columns(3)
 
                 new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
-                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key
+                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
                 new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
                 
                 if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
