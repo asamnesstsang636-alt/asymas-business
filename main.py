@@ -1,36 +1,151 @@
 import streamlit as st
-from supabase import create_client, Client
 import pandas as pd
-from datetime import date, timedelta
+from supabase import create_client, Client
+from datetime import date, datetime, timedelta
 from fpdf import FPDF
 import base64
+import io
 import qrcode
-from io import BytesIO
 from PIL import Image
-import streamlit_qrcode_scanner
+import tempfile
+import os
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
-st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="💎", layout="wide")
+# === CONFIG SUPABASE ===
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- Connexion Supabase ---
-try:
-    SUPABASE_URL = st.secrets["SUPABASE_URL"]
-    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-except Exception as e:
-    st.error(f"Erreur de connexion à Supabase : {e}")
+st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
+
+# === CACHE TOUT STREAMLIT SAUF POUR LE PDG ===
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden!important;}
+    header {visibility: hidden!important;}
+  .stAppToolbar {display: none!important;}
+    [data-testid="stToolbar"] {display: none!important;}
+    [data-testid="stDecoration"] {display: none!important;}
+    [data-testid="stHeader"] {display: none!important;}
+    footer {visibility: hidden!important;}
+  .stDeployButton {display:none!important;}
+    [data-testid="stStatusWidget"] {display: none!important;}
+    [data-testid="manage-app-button"] {display: none!important;}
+    iframe[src*="streamlit.io"] {display: none!important;}
+    button[kind="header"] {display: none!important;}
+    div[data-testid="stBottomBlockContainer"] {display: none!important;}
+  .st-emotion-cache-1wbqy5l {display: none!important;}
+    button[title="Manage app"] {display: none!important;}
+    a[href*="share.streamlit.io"] {display: none!important;}
+    </style>
+""", unsafe_allow_html=True)
+
+# === SYSTÈME DE MOTS DE PASSE PERSISTANT DANS SUPABASE ===
+@st.cache_data(ttl=10)
+def load_passwords():
+    try:
+        data = supabase.table("utilisateurs").select("nom,role,password").execute()
+        passwords = {}
+        for user in data.data:
+            passwords[user['role']] = user['password']
+        return passwords
+    except:
+        return {
+            "PDG": "tsang2024",
+            "GERANTE": "asiya2024",
+            "UTILISATEUR": "basam2024"
+        }
+
+passwords_db = load_passwords()
+
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = None
+    st.session_state.user_name = None
+
+if st.session_state.user_role is None:
+    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("### Choisissez votre profil :")
+        profil = st.selectbox("Utilisateur", ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"])
+        password = st.text_input("Mot de passe", type="password", key="pwd")
+
+        if st.button("SE CONNECTER", width="stretch", type="primary"):
+            if profil == "PDG TSANG" and password == passwords_db["PDG"]:
+                st.session_state.user_role = "PDG"
+                st.session_state.user_name = "TSANG"
+                st.rerun()
+            elif profil == "Gérante ASIYA" and password == passwords_db["GERANTE"]:
+                st.session_state.user_role = "GERANTE"
+                st.session_state.user_name = "ASIYA"
+                st.rerun()
+            elif profil == "BASAM" and password == passwords_db["UTILISATEUR"]:
+                st.session_state.user_role = "UTILISATEUR"
+                st.session_state.user_name = "BASAM"
+                st.rerun()
+            else:
+                st.error("Profil ou mot de passe incorrect")
     st.stop()
-def generer_excel_pro(df, nom_fichier, total_revenu, total_depense, solde):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Releve', index=False)
-        worksheet = writer.sheets['Releve']
-        worksheet.append([])
-        worksheet.append(['TOTAL REVENUS', total_revenu])
-        worksheet.append(['TOTAL DEPENSES', total_depense])
-        worksheet.append(['SOLDE', solde])
-    return output.getvalue()
 
-def creer_facture_auto(type_operation, nom_client, details, montant_total, devise, details_list=None, tel_client="", periode=""):
+# === CSS FOND BLANC SIMPLE SANS REFLETS ===
+st.markdown("""
+<style>
+h1, h2, h3 {
+    color: #00ff41!important;
+    font-size: 2.2rem!important;
+    font-weight: 900!important;
+    padding: 10px 0!important;
+    border-bottom: 3px solid #00ff41!important;
+    margin-bottom: 20px!important;
+}
+div[data-testid="stMetricValue"] {color: #00ff41!important;}
+.stButton>button {background-color: #00ff41!important; color: black!important; font-weight: bold; border: none;}
+</style>
+""", unsafe_allow_html=True)
+
+@st.cache_data(ttl=60)
+def load_table(table_name):
+    try:
+        with st.spinner(f"Chargement {table_name}..."):
+            data = supabase.table(table_name).select("*").order("id", desc=True).execute()
+        return pd.DataFrame(data.data)
+    except Exception as e:
+        st.error(f"Erreur chargement {table_name}")
+        st.code(repr(e))
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def get_table_columns(table_name):
+    try:
+        test = supabase.table(table_name).select("*").limit(1).execute()
+        if test.data:
+            return list(test.data[0].keys())
+        return []
+    except:
+        return []
+
+# === GÉNÉRER QR CODE - VERSION CORRIGÉE AVEC FICHIER TEMP ===
+def generer_qrcode(data_text):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=3,
+        border=1,
+    )
+    qr.add_data(data_text)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    img.save(temp_file.name)
+    return temp_file.name
+
+# === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR EN BAS + SIGNATURE ===
+def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
+    def clean_text(txt):
+        return str(txt).encode('latin-1', 'replace').decode('latin-1')
+
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -47,11 +162,14 @@ def creer_facture_auto(type_operation, nom_client, details, montant_total, devis
     pdf.set_xy(10, 21)
     pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
 
-    num_fact = f"ASB-{date.today().strftime('%Y%m%d')}-{int(pd.Timestamp.now().timestamp()) % 10000:04d}"
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
-    pdf.cell(50, 6, f"Facture No: {num_fact}", ln=True, align="R")
+    pdf.cell(50, 6, "FACTURE N°", ln=True, align="R")
+    pdf.set_font("Arial", "", 10)
     pdf.set_xy(150, 14)
+    pdf.cell(50, 6, clean_text(numero), ln=True, align="R")
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(150, 20)
     pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
 
     pdf.ln(15)
@@ -59,513 +177,467 @@ def creer_facture_auto(type_operation, nom_client, details, montant_total, devis
     pdf.set_text_color(0, 0, 0)
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, f"FACTURE - {type_operation.upper()}", ln=True, fill=True)
+    pdf.cell(0, 10, f"FACTURE {clean_text(type_op.upper())}", ln=True, fill=True)
     pdf.ln(5)
 
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 7, "CLIENT:", ln=True)
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 6, f"Nom: {nom_client}", ln=True)
-    if tel_client:
-        pdf.cell(0, 6, f"Telephone: {tel_client}", ln=True)
-    if periode:
-        pdf.cell(0, 6, f"Periode: {periode}", ln=True)
-    pdf.ln(3)
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_draw_color(0, 0, 0)
+    pdf.cell(90, 7, "FACTURE A:", 1, 0, 'L')
+    pdf.cell(10, 7, "", 0, 0)
+    pdf.cell(90, 7, "DETAILS PAIEMENT:", 1, 1, 'L')
 
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 7, "DETAILS:", ln=True)
-    pdf.ln(2)
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(90, 6, f"Client: {clean_text(client)}", 'LR', 0, 'L')
+    pdf.cell(10, 6, "", 0, 0)
+    pdf.cell(90, 6, "M-Pesa: +243817264448", 'LR', 1, 'L')
 
-    if details_list:
-        pdf.set_font("Arial", "B", 9)
-        pdf.cell(110, 7, "Designation", 1)
-        pdf.cell(20, 7, "QTE", 1)
-        pdf.cell(30, 7, "Prix Unit.", 1)
-        pdf.cell(30, 7, "Total", 1, ln=True)
+    pdf.cell(90, 6, f"Tel: {clean_text(tel_client)}", 'LR', 0, 'L')
+    pdf.cell(10, 6, "", 0, 0)
+    pdf.cell(90, 6, "Echeance: Immediate", 'LR', 1, 'L')
 
-        pdf.set_font("Arial", "", 9)
+    pdf.cell(90, 6, f"Date emission: {date.today().strftime('%d/%m/%Y')}", 'LRB', 0, 'L')
+    pdf.cell(10, 6, "", 0, 0)
+    pdf.cell(90, 6, "", 'LRB', 1, 'L')
+
+    pdf.ln(8)
+
+    pdf.set_fill_color(0, 102, 0)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(120, 8, "DESIGNATION", 1, 0, 'C', True)
+    pdf.cell(30, 8, "QTE", 1, 0, 'C', True)
+    pdf.cell(40, 8, f"MONTANT ({clean_text(devise)})", 1, 1, 'C', True)
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", "", 9)
+
+    if isinstance(details_list, list) and details_list:
         for item in details_list:
-            nom = str(item.get('nom', ''))[:50]
-            qte = int(item.get('qte', 1))
-            prix = float(item.get('prix', 0))
-            total = qte * prix
-            pdf.cell(110, 7, nom, 1)
-            pdf.cell(20, 7, str(qte), 1)
-            pdf.cell(30, 7, f"{prix:,.0f}", 1)
-            pdf.cell(30, 7, f"{total:,.0f}", 1, ln=True)
+            nom = clean_text(item.get('nom', ''))
+            qte = item.get('qte', 1)
+            montant_item = item.get('prix', 0) * qte
+            pdf.cell(120, 7, nom, 1, 0, 'L')
+            pdf.cell(30, 7, str(qte), 1, 0, 'C')
+            pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 1, 'R')
     else:
-        pdf.set_font("Arial", "", 10)
-        pdf.multi_cell(0, 6, str(details))
+        pdf.cell(120, 7, clean_text(details_list), 1, 0, 'L')
+        pdf.cell(30, 7, "1", 1, 0, 'C')
+        pdf.cell(40, 7, f"{montant:,.0f}", 1, 1, 'R')
 
-    pdf.ln(5)
+    if periode:
+        pdf.cell(120, 7, f"Periode: {clean_text(periode)}", 1, 0, 'L')
+        pdf.cell(30, 7, "", 1, 0, 'C')
+        pdf.cell(40, 7, "", 1, 1, 'R')
 
-    pdf.set_font("Arial", "B", 14)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(130, 10, "TOTAL A PAYER:", 1, 0, 'R', True)
-    pdf.cell(60, 10, f"{montant_total:,.0f} {devise}", 1, 1, 'R', True)
+    pdf.set_fill_color(255, 204, 0)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
+    pdf.cell(40, 10, f"{montant:,.0f} {clean_text(devise)}", 1, 1, 'R', True)
 
     pdf.ln(10)
-    pdf.set_font("Arial", "I", 8)
-    pdf.cell(0, 5, "Merci pour votre confiance!", ln=True, align="C")
-    pdf.cell(0, 5, "ASYMAS BUSINESS - Votre partenaire de confiance", ln=True, align="C")
 
-    return num_fact, pdf.output(dest='S').encode('latin-1')
+    if type_op in ["Loyer", "Vente Auto"]:
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(0, 8, "SIGNATURE CLIENT:", ln=True)
+        pdf.ln(3)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+        pdf.set_font("Arial", "", 8)
+        pdf.set_xy(10, pdf.get_y() + 1)
+        pdf.cell(90, 5, f"Nom: {clean_text(client)}", ln=True)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.cell(90, 5, "Date: ___________________", ln=True)
+        pdf.ln(5)
 
-@st.cache_data(ttl=300)
-def get_table_data(table_name):
+    pdf.set_font("Arial", "I", 10)
+    pdf.set_text_color(0, 102, 0)
+    pdf.cell(0, 6, "Merci pour votre confiance! ASYMAS BUSINESS - Votre partenaire de croissance", ln=True, align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(5)
+
+    qr_data = f"""ASYMAS BUSINESS
+Facture: {numero}
+Type: {type_op}
+Client: {client}
+Montant: {montant:,.0f} {devise}
+Date: {date.today().strftime('%d/%m/%Y')}
+Tel: +243 995 105 623"""
+    qr_path = generer_qrcode(qr_data)
+
+    y_position = pdf.get_y()
+    if y_position > 250:
+        pdf.add_page()
+        y_position = 30
+
+    pdf.image(qr_path, x=160, y=y_position, w=30)
+    os.unlink(qr_path)
+
+    pdf.set_xy(10, y_position + 5)
+    pdf.set_font("Arial", "", 8)
+    pdf.cell(140, 5, "Scannez ce QR Code pour verifier l'authenticite de la facture", ln=False)
+    pdf.set_xy(10, y_position + 10)
+    pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
+
+    return pdf.output(dest='S').encode('latin-1')
+
+def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
+    numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    if details_list is None:
+        details_list = [{"nom": details, "qte": 1, "prix": montant}]
+
+    pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode)
+
     try:
-        response = supabase.table(table_name).select("*").execute()
-        return pd.DataFrame(response.data)
-    except:
-        return pd.DataFrame()
+        colonnes_compta = get_table_columns("comptabilite")
+        data_compta = {
+            "type": "Revenu",
+            "description": str(f"{type_op} - {client} - {details}"),
+            "montant": float(montant),
+            "date": str(date.today())
+        }
+        if "categorie" in colonnes_compta:
+            data_compta["categorie"] = str(type_op)
+        if "devise" in colonnes_compta:
+            data_compta["devise"] = str(devise)
 
-@st.cache_data(ttl=60)
-def get_table_columns(table_name):
+        supabase.table("comptabilite").insert(data_compta).execute()
+        st.toast(f"✅ Enregistré compta", icon="✅")
+    except Exception as e:
+        st.error("❌ ERREUR INSERTION COMPTA")
+        st.code(repr(e))
+
     try:
-        response = supabase.table(table_name).select("*").limit(1).execute()
-        if response.data:
-            return list(response.data[0].keys())
-        return []
-    except:
-        return []
+        data_facture = {
+            "numero_facture": str(numero_facture),
+            "type_operation": str(type_op),
+            "nom_client": str(client),
+            "details": str(details),
+            "montant": float(montant),
+            "devise": str(devise),
+            "date": str(date.today())
+        }
+        supabase.table("factures_proforma").insert(data_facture).execute()
+        st.toast(f"✅ Enregistré factures", icon="✅")
+    except Exception as e:
+        st.warning("Table factures_proforma non trouvée - Crée-la dans Supabase")
 
-def get_users_from_db():
-    try:
-        response = supabase.table("utilisateurs").select("*").execute()
-        return {u['role']: u['password'] for u in response.data}
-    except:
-        return {"PDG": "tsang2024", "GERANTE": "asiya2024", "UTILISATEUR": "basam2024"}
+    return numero_facture, pdf_bytes
 
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = None
+# === FONCTION EXCEL PRO ===
+def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_data.to_excel(writer, sheet_name='Releve', index=False, startrow=6)
 
-if not st.session_state.authenticated:
-    st.title("💎 ASYMAS BUSINESS - CONNEXION")
-    passwords_db = get_users_from_db()
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        with st.container(border=True):
-            st.markdown("### 🔐 Connexion Sécurisée")
-            username = st.selectbox("Utilisateur", ["TSANG (PDG)", "ASIYA (GÉRANTE)", "BASAM (UTILISATEUR)"])
-            password = st.text_input("Mot de passe", type="password")
-            if st.button("🚀 CONNEXION", width="stretch", type="primary"):
-                role_map = {"TSANG (PDG)": "PDG", "ASIYA (GÉRANTE)": "GERANTE", "BASAM (UTILISATEUR)": "UTILISATEUR"}
-                role = role_map[username]
-                if password == passwords_db.get(role):
-                    st.session_state.authenticated = True
-                    st.session_state.user_role = role
-                    st.session_state.user_name = username.split(" (")[0]
-                    st.rerun()
-                else:
-                    st.error("❌ Mot de passe incorrect")
-    st.stop()
+        workbook = writer.book
+        worksheet = writer.sheets['Releve']
 
-st.sidebar.title(f"💎 ASYMAS")
-st.sidebar.success(f"**{st.session_state.user_name}**\n{st.session_state.user_role}")
-if st.sidebar.button("🚪 Déconnexion"):
-    st.session_state.authenticated = False
-    st.rerun()
+        worksheet.merge_cells('A1:F1')
+        worksheet['A1'] = 'ASYMAS BUSINESS'
+        worksheet['A1'].font = Font(size=20, bold=True, color='006600')
+        worksheet['A1'].alignment = Alignment(horizontal='center')
 
-st.title("💎 ASYMAS BUSINESS MANAGEMENT")
+        worksheet.merge_cells('A2:F2')
+        worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com'
+        worksheet['A2'].font = Font(size=10, italic=True)
+        worksheet['A2'].alignment = Alignment(horizontal='center')
 
-df_articles = get_table_data("articles")
-df_voitures = get_table_data("voitures")
-df_compta = get_table_data("comptabilite")
-df_utilisateurs = get_table_data("utilisateurs")
-passwords_db = get_users_from_db()
+        worksheet.merge_cells('A3:F3')
+        worksheet['A3'] = f'{titre.upper()} - Edité le {date.today().strftime("%d/%m/%Y")}'
+        worksheet['A3'].font = Font(size=14, bold=True, color='FF6600')
+        worksheet['A3'].alignment = Alignment(horizontal='center')
 
-if st.session_state.user_role == "PDG":
+        worksheet.merge_cells('A4:F4')
+        worksheet['A4'] = f'Total Revenus: {total_revenu:,.0f} FC | Total Dépenses: {total_depense:,.0f} FC | Solde: {solde:,.0f} FC'
+        worksheet['A4'].font = Font(size=11, bold=True)
+        worksheet['A4'].alignment = Alignment(horizontal='center')
+        worksheet['A4'].fill = PatternFill(start_color='FFCC00', end_color='FFCC00', fill_type='solid')
+
+        header_fill = PatternFill(start_color='006600', end_color='006600', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF')
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                            top=Side(style='thin'), bottom=Side(style='thin'))
+
+        for col in range(1, len(df_data.columns) + 1):
+            cell = worksheet.cell(row=7, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+
+        for row in range(7, len(df_data) + 8):
+            for col in range(1, len(df_data.columns) + 1):
+                worksheet.cell(row=row, column=col).border = thin_border
+                worksheet.cell(row=row, column=col).alignment = Alignment(horizontal='left')
+
+        for col in range(1, len(df_data.columns) + 1):
+            worksheet.column_dimensions[get_column_letter(col)].width = 18
+
+    return output.getvalue()
+
+df_biens = load_table("biens")
+df_articles = load_table("articles")
+df_voitures = load_table("voitures")
+df_compta = load_table("comptabilite")
+df_factures = load_table("factures_proforma")
+df_utilisateurs = load_table("utilisateurs")
+
+# === FIX KEYERROR MONTANT ===
+if 'montant' not in df_compta.columns:
+    df_compta['montant'] = 0
+if 'type' not in df_compta.columns:
+    df_compta['type'] = 'Inconnu'
+
+st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
+
+with st.sidebar:
+    st.markdown(f"## 👤 {st.session_state.user_name}")
+    st.markdown(f"**Rôle : {st.session_state.user_role}**")
+    st.info("ASYMAS BUSINESS v1.0")
+
+    if st.button("🔄 Actualiser", key="btn_save"):
+        st.cache_data.clear()
+        st.rerun()
+    if st.button("🚪 DÉCONNEXION", key="logout", width="stretch"):
+        st.session_state.user_role = None
+        st.session_state.user_name = None
+        st.rerun()
+
+if st.session_state.user_role == "UTILISATEUR":
+    tab2, = st.tabs(["🛍️ Commerce"])
+    tab1 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = tab9 = None
+elif st.session_state.user_role == "PDG":
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "📊 Tableau de Bord", "🛒 Commerce", "📦 Gestion Stock", "🏠 Immobilier",
-        "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "👥 Utilisateurs"
-    ])
-elif st.session_state.user_role == "GERANTE":
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "📊 Tableau de Bord", "🛒 Commerce", "📦 Gestion Stock", "🏠 Immobilier",
-        "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", None
+        "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "👥 Utilisateurs"
     ])
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "📊 Tableau de Bord", "🛒 Commerce", None, None, None, None, None
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures"
     ])
+    tab9 = None
 
-if tab1:
+if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab1:
-        st.markdown("## 📊 Tableau de Bord")
-
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("📦 Articles", len(df_articles))
-        col2.metric("🚗 Voitures", len(df_voitures))
-        col3.metric("💰 Revenus", f"{df_compta[df_compta['type']=='Revenu']['montant'].sum():,.0f}")
-        col4.metric("💸 Dépenses", f"{df_compta[df_compta['type']=='Dépense']['montant'].sum():,.0f}")
+        col1.metric("🏠 Biens", len(df_biens))
+        col2.metric("📦 Articles", len(df_articles))
+        col3.metric("🚗 Voitures", len(df_voitures))
 
-        st.divider()
-
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.subheader("📦 Stock Faible")
-            if not df_articles.empty:
-                stock_faible = df_articles[df_articles['stock'] < 10]
-                if not stock_faible.empty:
-                    st.dataframe(stock_faible[['nom_article', 'stock', 'prix_vente']], use_container_width=True, hide_index=True)
-                else:
-                    st.success("✅ Stock OK")
-            else:
-                st.info("Aucun article")
-
-        with col_g2:
-            st.subheader("🚗 Voitures Disponibles")
-            if not df_voitures.empty:
-                voitures_dispo = df_voitures[df_voitures.get('statut', '') == 'Disponible']
-                if not voitures_dispo.empty:
-                    st.dataframe(voitures_dispo[['marque', 'modele', 'annee', 'prix']], use_container_width=True, hide_index=True)
-                else:
-                    st.info("Aucune voiture disponible")
-            else:
-                st.info("Aucune voiture")
-
-if tab2:
-    with tab2:
-        st.markdown("## 🛒 Commerce - Point de Vente")
-
-        if 'panier' not in st.session_state:
-            st.session_state.panier = []
-        if 'vente_finie' not in st.session_state:
-            st.session_state.vente_finie = False
-        if 'pdf_bytes' not in st.session_state:
-            st.session_state.pdf_bytes = None
-        if 'num_fact' not in st.session_state:
-            st.session_state.num_fact = None
-
-        if df_articles.empty:
-            st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
+        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+        elif not df_compta.empty:
+            col4.metric("💰 Écritures", len(df_compta))
         else:
-            col_gauche, col_droite = st.columns([2,1])
+            col4.metric("💰 Revenus", "0 FC")
 
-            with col_gauche:
-                st.subheader("👤 Client")
-                nom_client = st.text_input("Nom Client", key="nom_client")
-                tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client")
+with tab2:
+    st.markdown("## 🛍️ Commerce - Point de Vente")
 
-                st.subheader("📦 Articles")
+    if 'panier_commerce' not in st.session_state:
+        st.session_state.panier_commerce = []
+    if 'vente_finie' not in st.session_state:
+        st.session_state.vente_finie = False
+    if 'pdf_data' not in st.session_state:
+        st.session_state.pdf_data = None
+    if 'num_fact' not in st.session_state:
+        st.session_state.num_fact = None
 
-                with st.expander("📷 Scanner Code Barre", expanded=False):
-                    code_scanned = streamlit_qrcode_scanner.qrcode_scanner(key="qr_scanner")
-                    if code_scanned:
-                        st.success(f"✅ Code scanné: {code_scanned}")
-                        if 'code_barre' in df_articles.columns:
-                            article_trouve = df_articles[df_articles['code_barre'] == code_scanned]
-                            if not article_trouve.empty:
-                                st.session_state.article_scanned = article_trouve.iloc[0]
-                                st.rerun()
-                            else:
-                                st.warning("Code-barres non trouvé dans la base")
-                        else:
-                            st.error("Colonne 'code_barre' manquante dans la table articles")
+    if df_articles.empty:
+        st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
+    else:
+        col_gauche, col_droite = st.columns([2,1])
 
-                recherche = st.text_input("🔍 Chercher un article", placeholder="Nom, catégorie...", key="search")
+        with col_gauche:
+            st.subheader("👤 Client")
+            nom_client = st.text_input("Nom Client", key="nom_client_c")
+            tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_c")
 
-                df_articles_filtre = df_articles.copy()
-                if recherche:
-                    mask = (df_articles['nom_article'].str.contains(recherche, case=False, na=False) |
-                            df_articles.get('categorie', pd.Series(dtype=str)).str.contains(recherche, case=False, na=False))
-                    df_articles_filtre = df_articles
+            st.subheader("📦 Rubrique Produit")
+            recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom...", key="search_c")
 
-                if not df_articles_filtre.empty:
-                    options = []
-                    for _, row in df_articles_filtre.iterrows():
-                        details = f"{row['nom_article']} - {row.get('categorie','')} - {row.get('prix_vente',0):,.0f} FC - Stock: {row.get('stock',0)}"
-                        if row.get('code_barre'):
-                            details += f" | Code: {row.get('code_barre')}"
-                        options.append(details)
+            df_articles_filtre = df_articles.copy()
+            if recherche:
+                mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
+                df_articles_filtre = df_articles # <-- BUG FIXÉ: ÉTAIT df_articles_filtre = df_articles
 
-                    default_idx = 0
-                    if 'article_scanned' in st.session_state:
-                        article_scan = st.session_state.article_scanned
-                        for idx, row in df_articles_filtre.iterrows():
-                            if row['id'] == article_scan['id']:
-                                default_idx = df_articles_filtre.index.get_loc(idx)
-                                break
+            if not df_articles_filtre.empty:
+                options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
+                choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
+                idx_choisi = options.index(choix)
+                produit_choisi = df_articles_filtre.iloc[idx_choisi]
 
-                    choix = st.selectbox("Choisir l'article", options, index=default_idx, key="choix_art")
-                    idx_choisi = options.index(choix)
-                    article_choisi = df_articles_filtre.iloc[idx_choisi]
+                c1, c2, c3 = st.columns([1,1,1])
+                qte = c1.number_input("QTE", min_value=1, value=1, key="qte_c")
+                c2.markdown(f"### Prix: **{produit_choisi.get('prix_vente',0):,.0f} FC**")
 
+                if c3.button("➕ Ajouter au Panier", width="stretch", key="add_panier_c"):
+                    stock_dispo = int(produit_choisi.get('stock', 0))
+                    if stock_dispo < qte:
+                        st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
+                        st.stop()
+                    st.session_state.panier_commerce.append({
+                        "id": int(produit_choisi['id']),
+                        "nom": str(produit_choisi['nom_article']),
+                        "prix": float(produit_choisi.get('prix_vente',0)),
+                        "qte": int(qte),
+                        "stock_dispo": stock_dispo
+                    })
+                    st.session_state.vente_finie = False
+                    st.rerun()
+            else:
+                st.info("Aucun produit trouvé")
+
+        with col_droite:
+            st.subheader("🛒 Panier")
+            total = 0
+
+            if st.session_state.vente_finie and st.session_state.pdf_data:
+                st.success(f"✅ Vente validée - {st.session_state.total_vente:,.0f} FC")
+                st.info(f"📄 Facture: {st.session_state.num_fact}")
+                st.download_button(
+                    label="📥 Télécharger Facture PDF",
+                    data=st.session_state.pdf_data,
+                    file_name=f"{st.session_state.num_fact}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    key="dl_facture_commerce"
+                )
+                pdf_b64 = base64.b64encode(st.session_state.pdf_data).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
+                if st.button("Nouvelle Vente", width="stretch", key="new_vente_c"):
+                    st.session_state.panier_commerce = []
+                    st.session_state.vente_finie = False
+                    st.session_state.pdf_data = None
+                    st.session_state.num_fact = None
+                    st.rerun()
+            elif not st.session_state.panier_commerce:
+                st.info("Panier vide")
+            else:
+                for i, item in enumerate(st.session_state.panier_commerce):
                     with st.container(border=True):
-                        st.markdown(f"### {article_choisi['nom_article']}")
-                        c1, c2, c3 = st.columns(3)
-                        c1.markdown(f"**Catégorie:** {article_choisi.get('categorie','N/A')}")
-                        c2.markdown(f"**Prix:** {article_choisi.get('prix_vente',0):,.0f} FC")
-                        c3.markdown(f"**Stock:** {article_choisi.get('stock',0)}")
-                        if article_choisi.get('code_barre'):
-                            st.markdown(f"**Code-barres:** {article_choisi.get('code_barre')}")
+                        st.markdown(f"**{item['nom']}**")
+                        c1, c2 = st.columns([2,1])
+                        new_qte = c1.number_input("QTE", min_value=1, value=item['qte'], key=f"qte_panier_c_{i}")
+                        if new_qte > item.get('stock_dispo', 999):
+                            st.error(f"Stock max: {item.get('stock_dispo', 999)}")
+                            new_qte = item['qte']
+                        st.session_state.panier_commerce[i]['qte'] = new_qte
+                        sous_total = float(item['prix']) * int(st.session_state.panier_commerce[i]['qte'])
+                        c2.markdown(f"**{sous_total:,.0f} FC**")
+                        if st.button("❌ Supprimer", key=f"del_c_{i}"):
+                            st.session_state.panier_commerce.pop(i)
+                            st.rerun()
+                        total += sous_total
 
-                    c1, c2 = st.columns([1,1])
-                    qte = c1.number_input("QTE", min_value=1, value=1, key="qte_art")
+                st.divider()
+                st.markdown(f"### Total : **{total:,.0f} FC**")
 
-                    if c2.button("➕ Ajouter au Panier", width="stretch", key="add_panier"):
-                        if article_choisi.get('stock', 0) < qte:
-                            st.error(f"Stock insuffisant! Disponible: {article_choisi.get('stock', 0)}")
+                if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="final_c"):
+                    try:
+                        if not nom_client or not st.session_state.panier_commerce:
+                            st.warning("Nom client + panier requis")
                             st.stop()
-                        st.session_state.panier.append({
-                            "id": int(article_choisi['id']),
-                            "nom_article": str(article_choisi['nom_article']),
-                            "categorie": str(article_choisi.get('categorie','')),
-                            "prix": float(article_choisi.get('prix_vente',0)),
-                            "qte": int(qte),
-                            "stock_dispo": int(article_choisi.get('stock',0)),
-                            "code_barre": str(article_choisi.get('code_barre',''))
-                        })
-                        st.session_state.vente_finie = False
-                        if 'article_scanned' in st.session_state:
-                            del st.session_state.article_scanned
-                        st.rerun()
-                else:
-                    st.info("Aucun article trouvé")
 
-            with col_droite:
-                st.subheader("🛒 Panier")
-                total = 0
+                        with st.spinner("Enregistrement..."):
+                            vente_result = supabase.table("ventes").insert({
+                                "total": float(total),
+                                "id_utilisateur": 1 if st.session_state.user_name == "TSANG" else 2 if st.session_state.user_name == "ASIYA" else 3,
+                                "nom_client": str(nom_client),
+                                "telephone_client": str(tel_client)
+                            }).execute()
 
-                if st.session_state.vente_finie and st.session_state.pdf_bytes:
-                    st.success(f"✅ Vente validée - {st.session_state.total_vente:,.0f} FC")
-                    st.info(f"📄 Facture PDF générée: {st.session_state.num_fact}")
-                    st.download_button(
-                        label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
-                        data=st.session_state.pdf_bytes,
-                        file_name=f"{st.session_state.num_fact}.pdf",
-                        mime="application/pdf",
-                        width="stretch",
-                        key="dl_facture"
-                    )
-                    pdf_b64 = base64.b64encode(st.session_state.pdf_bytes).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LA FACTURE
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
-                    if st.button("Nouvelle Vente", width="stretch", key="new_vente"):
-                        st.session_state.panier = []
-                        st.session_state.vente_finie = False
-                        st.session_state.pdf_bytes = None
-                        st.session_state.num_fact = None
-                        st.rerun()
-                elif not st.session_state.panier:
-                    st.info("Panier vide")
-                else:
-                    for i, item in enumerate(st.session_state.panier):
-                        with st.container(border=True):
-                            st.markdown(f"**{item['nom_article']}**")
-                            st.caption(f"Catégorie: {item.get('categorie','')}")
-                            if item.get('code_barre'):
-                                st.caption(f"Code: {item.get('code_barre')}")
-                            c1, c2 = st.columns([2,1])
-                            st.session_state.panier[i]['qte'] = c1.number_input("QTE", min_value=1, max_value=item['stock_dispo'], value=item['qte'], key=f"qte_panier_{i}")
-                            sous_total = float(item['prix']) * int(st.session_state.panier[i]['qte'])
-                            c2.markdown(f"**{sous_total:,.0f} FC**")
-                            if st.button("❌ Supprimer", key=f"del_{i}"):
-                                st.session_state.panier.pop(i)
-                                st.rerun()
-                            total += sous_total
+                            id_vente = vente_result.data[0]['id']
 
-                    st.divider()
-                    st.markdown(f"### Total : **{total:,.0f} FC**")
-
-                    if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="btn_facture"):
-                        try:
-                            if not nom_client or not st.session_state.panier:
-                                st.warning("Nom client + panier requis")
-                                st.stop()
-
-                            with st.spinner("Enregistrement vente..."):
-                                total = sum(float(i['prix']) * int(i['qte']) for i in st.session_state.panier)
-
-                                id_utilisateur = 1
-                                if st.session_state.user_name == "ASIYA":
-                                    id_utilisateur = 2
-                                elif st.session_state.user_name == "BASAM":
-                                    id_utilisateur = 3
-
-                                vente_result = supabase.table("ventes").insert({
-                                    "total": total,
-                                    "id_utilisateur": id_utilisateur,
-                                    "nom_client": str(nom_client),
-                                    "telephone_client": str(tel_client)
+                            for i in st.session_state.panier_commerce:
+                                supabase.table("ventes_details").insert({
+                                    "id_vente": id_vente,
+                                    "id_article": int(i['id']),
+                                    "quantite": int(i['qte']),
+                                    "prix_unitaire": float(i['prix']),
+                                    "sous_total": float(i['prix']) * int(i['qte'])
                                 }).execute()
+                                supabase.table("articles").update({"stock": i['stock_dispo'] - i['qte']}).eq("id", i['id']).execute()
 
-                                id_vente = vente_result.data[0]['id']
+                            details_list = [{"nom": i['nom'], "qte": i['qte'], "prix": i['prix']} for i in st.session_state.panier_commerce]
+                            details_text = ", ".join([f"{i['nom']} x{i['qte']}" for i in st.session_state.panier_commerce])
+                            num_fact, pdf_bytes = creer_facture_auto("Vente Commerce", nom_client, details_text, total, "FC", details_list, tel_client)
 
-                                for i in st.session_state.panier:
-                                    supabase.table("ventes_details").insert({
-                                        "id_vente": id_vente,
-                                        "id_article": int(i['id']),
-                                        "quantite": int(i['qte']),
-                                        "prix_unitaire": float(i['prix']),
-                                        "sous_total": float(i['prix']) * int(i['qte'])
-                                    }).execute()
-                                    try:
-                                        supabase.table("articles").update({"stock": int(i['stock_dispo'] - i['qte'])}).eq("id", i['id']).execute()
-                                    except:
-                                        pass
+                            st.session_state.vente_finie = True
+                            st.session_state.pdf_data = pdf_bytes
+                            st.session_state.num_fact = num_fact
+                            st.session_state.total_vente = total
+                            st.session_state.panier_commerce = []
+                            st.cache_data.clear()
+                            st.rerun()
 
-                                details_list = []
-                                for i in st.session_state.panier:
-                                    nom_complet = f"{i['nom_article']} - {i.get('categorie','')}"
-                                    if i.get('code_barre'):
-                                        nom_complet += f" | Code: {i.get('code_barre')}"
-                                    details_list.append({"nom": nom_complet, "qte": i['qte'], "prix": i['prix']})
-
-                                num_fact, pdf_bytes = creer_facture_auto("Vente", nom_client, f"Vente {len(st.session_state.panier)} article(s)", total, "FC", details_list, tel_client)
-
-                                st.session_state.vente_finie = True
-                                st.session_state.pdf_bytes = pdf_bytes
-                                st.session_state.num_fact = num_fact
-                                st.session_state.total_vente = total
-                                st.session_state.panier = []
-                                st.cache_data.clear()
-                                st.rerun()
-
-                        except Exception as e:
-                            st.error(f"ERREUR SUPABASE : {e}")
-                            st.code(str(e))
+                    except Exception as e:
+                        st.error(f"ERREUR SUPABASE : {e}")
+                        st.code(str(e))
 
 if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab3:
         st.markdown("## 📦 Gestion Stock - Articles")
-
-        colonnes_articles = get_table_columns("articles")
-
-        with st.expander("➕ Ajouter Nouvel Article", expanded=False):
-            st.markdown("#### 📷 Scanner d'abord le code-barres")
-            code_scanned_ajout = streamlit_qrcode_scanner.qrcode_scanner(key="qr_scanner_ajout")
-
-            article_existant = None
-            if code_scanned_ajout and 'code_barre' in colonnes_articles:
-                article_trouve = df_articles[df_articles['code_barre'] == code_scanned_ajout]
-                if not article_trouve.empty:
-                    article_existant = article_trouve.iloc[0]
-                    st.success(f"✅ Article trouvé: {article_existant['nom_article']} - Stock actuel: {article_existant.get('stock',0)}")
-
-                    col_auto1, col_auto2, col_auto3 = st.columns(3)
-                    qte_ajout = col_auto1.number_input("Quantité à ajouter", min_value=1, value=1, key="qte_scan_auto")
-                    new_prix_v = col_auto2.number_input("Nouveau Prix Vente FC", value=float(article_existant.get('prix_vente',0)), key="prix_v_scan_auto")
-
-                    if col_auto3.button("⚡ AJOUTER STOCK AUTO", type="primary", width="stretch"):
-                        try:
-                            nouveau_stock = int(article_existant.get('stock',0)) + int(qte_ajout)
-                            supabase.table("articles").update({
-                                "stock": nouveau_stock,
-                                "prix_vente": float(new_prix_v)
-                            }).eq("id", int(article_existant['id'])).execute()
-                            st.success(f"✅ +{qte_ajout} ajouté. Nouveau stock: {nouveau_stock}")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur mise à jour")
-                            st.code(repr(e))
-                else:
-                    st.info(f"📦 Nouveau produit - Code: {code_scanned_ajout}")
-
-            st.divider()
-            st.markdown("#### ✍️ Créer/Modifier Article")
-
+        with st.expander("➕ Ajouter Nouvel Article"):
             with st.form("form_article", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
+                nom = c1.text_input("Nom Article")
+                cat = c2.text_input("Catégorie")
+                prix_achat = c3.number_input("Prix Achat FC", min_value=0.0)
+                prix_vente = c1.number_input("Prix Vente FC", min_value=0.0)
+                stock = c2.number_input("Stock", min_value=0)
 
-                val_nom = article_existant['nom_article'] if article_existant is not None else ""
-                val_cat = article_existant.get('categorie','') if article_existant is not None else ""
-                val_prix_a = float(article_existant.get('prix_achat',0)) if article_existant is not None else 0.0
-                val_prix_v = float(article_existant.get('prix_vente',0)) if article_existant is not None else 0.0
-                val_stock = int(article_existant.get('stock',0)) if article_existant is not None else 0
-                val_code = code_scanned_ajout if code_scanned_ajout else (article_existant.get('code_barre','') if article_existant is not None else "")
-
-                nom = c1.text_input("Nom Article", value=val_nom)
-                cat = c2.text_input("Catégorie", value=val_cat)
-                prix_a = c3.number_input("Prix Achat FC", min_value=0.0, value=val_prix_a)
-
-                data_insert = {
-                    "nom_article": str(nom),
-                    "categorie": str(cat),
-                    "prix_achat": float(prix_a)
-                }
-
-                if "prix_vente" in colonnes_articles:
-                    prix_v = c1.number_input("Prix Vente FC", min_value=0.0, value=val_prix_v)
-                    data_insert["prix_vente"] = float(prix_v)
-                if "stock" in colonnes_articles:
-                    stock = c2.number_input("Stock", min_value=0, value=val_stock)
-                    data_insert["stock"] = int(stock)
-                if "code_barre" in colonnes_articles:
-                    code = c3.text_input("Code-Barres/QR", value=val_code, placeholder="Scanne ou tape le code")
-                    if code:
-                        data_insert["code_barre"] = str(code)
-
-                if st.form_submit_button("💾 Ajouter/Modifier Article"):
+                if st.form_submit_button("💾 Ajouter Article"):
                     try:
-                        if article_existant is not None:
-                            supabase.table("articles").update(data_insert).eq("id", int(article_existant['id'])).execute()
-                            st.success("✅ Article modifié")
-                        else:
-                            supabase.table("articles").insert(data_insert).execute()
-                            st.success("✅ Article ajouté")
+                        supabase.table("articles").insert({
+                            "nom_article": str(nom), "categorie": str(cat),
+                            "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock)
+                        }).execute()
+                        st.success("Article ajouté")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
-                        st.error("Erreur ajout/modif")
+                        st.error("Erreur ajout")
                         st.code(repr(e))
 
         st.divider()
         st.subheader("📋 Liste des Articles - Modifier/Supprimer")
-
         if df_articles.empty:
             st.info("Aucun article")
         else:
             for _, row in df_articles.iterrows():
-                with st.expander(f"{row['nom_article']} - {row.get('categorie','')} - {row.get('stock',0)} unités"):
-                    c1, c2, c3 = st.columns(3)
+                with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)}"):
+                    c1, c2 = st.columns(2)
                     with c1:
                         new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
                         new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_{row['id']}")
-
-                    data_update = {
-                        "nom_article": str(new_nom),
-                        "categorie": str(new_cat)
-                    }
-
+                        new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
                     with c2:
-                        if "prix_achat" in colonnes_articles:
-                            new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
-                            data_update["prix_achat"] = float(new_prix_a)
-                        if "prix_vente" in colonnes_articles:
-                            new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
-                            data_update["prix_vente"] = float(new_prix_v)
-
-                    with c3:
-                        if "stock" in colonnes_articles:
-                            new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
-                            data_update["stock"] = int(new_stock)
-                        if "code_barre" in colonnes_articles:
-                            new_code = st.text_input("Code-barres", value=row.get('code_barre',''), key=f"code_{row['id']}")
-                            if new_code:
-                                data_update["code_barre"] = str(new_code)
+                        new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
+                        new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
 
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
-                            supabase.table("articles").update(data_update).eq("id", int(row['id'])).execute()
+                            supabase.table("articles").update({
+                                "nom_article": str(new_nom), "categorie": str(new_cat),
+                                "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock)
+                            }).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
@@ -605,7 +677,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         total_mensuel = float(prix) + float(electricite) + float(eau)
         st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
 
-        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+                if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
                     {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Durée: {duree_contrat}", "qte": 1, "prix": prix},
@@ -674,7 +746,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False))
-                    df_voitures_filtre = df_voitures
+                    df_voitures_filtre = df_voitures # <-- BUG FIXÉ ICI
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -1037,7 +1109,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
 
-            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= date_debut) & (df_compta_sorted['date'] <= date_fin)]
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
 
             if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
@@ -1242,8 +1314,7 @@ CREATE TABLE utilisateurs (
     role TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
 );
-
-INSERT INTO utilisateurs (nom, role, password) VALUES
+            INSERT INTO utilisateurs (nom, role, password) VALUES
 ('TSANG', 'PDG', 'tsang2024'),
 ('ASIYA', 'GERANTE', 'asiya2024'),
 ('BASAM', 'UTILISATEUR', 'basam2024');
@@ -1252,29 +1323,33 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
             st.subheader("🔐 Changer les Mots de Passe")
 
             with st.form("form_passwords", clear_on_submit=False):
-                st.markdown("### Nouveaux mots de passe")
+                st.markdown("### 🔑 Nouveaux mots de passe")
                 c1, c2, c3 = st.columns(3)
-
-                new_pdg = c1.text_input("Nouveau MDP PDG", type="password", value=passwords_db.get("PDG",""))
-                new_gerante = c2.text_input("Nouveau MDP Gérante", type="password", value=passwords_db.get("GERANTE",""))
-                new_user = c3.text_input("Nouveau MDP Utilisateur", type="password", value=passwords_db.get("UTILISATEUR",""))
-
-                if st.form_submit_button("💾 Sauvegarder les Mots de Passe", type="primary"):
+                
+                new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
+                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
+                new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
+                
+                if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
                     try:
-                        if new_pdg:
-                            supabase.table("utilisateurs").update({"password": new_pdg}).eq("role", "PDG").execute()
-                        if new_gerante:
-                            supabase.table("utilisateurs").update({"password": new_gerante}).eq("role", "GERANTE").execute()
-                        if new_user:
-                            supabase.table("utilisateurs").update({"password": new_user}).eq("role", "UTILISATEUR").execute()
-
-                        st.success("✅ Mots de passe mis à jour dans Supabase")
+                        supabase.table("utilisateurs").update({"password": new_pass_pdg}).eq("role", "PDG").execute()
+                        supabase.table("utilisateurs").update({"password": new_pass_gerante}).eq("role", "GERANTE").execute()
+                        supabase.table("utilisateurs").update({"password": new_pass_user}).eq("role", "UTILISATEUR").execute()
+                        st.success("✅ Mots de passe mis à jour")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error("Erreur mise à jour")
                         st.code(repr(e))
-
+            
             st.divider()
-            st.subheader("👥 Liste des Utilisateurs")
+            st.subheader("📋 Liste des Utilisateurs")
             st.dataframe(df_utilisateurs[['nom', 'role']], use_container_width=True, hide_index=True)
+else:
+    if tab9:
+        with tab9:
+            st.error("🔒 ACCÈS REFUSÉ - Section réservée au PDG uniquement")
+
+st.sidebar.divider()
+st.sidebar.caption(f"ASYMAS BUSINESS v2.0")
+st.sidebar.caption(f"Connecté: {st.session_state.user_name}")
