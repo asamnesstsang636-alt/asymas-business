@@ -121,7 +121,7 @@ def get_table_columns(table_name):
             return list(test.data[0].keys()) 
         return [] 
     except: 
-return [] 
+        return [] 
 # === QR CODE === 
 def generer_qrcode(data_text): 
 qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, 
