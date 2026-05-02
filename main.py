@@ -684,7 +684,7 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 st.success("Supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
-                       except Exception as e:
+                      except Exception as e:
                         st.error("Erreur suppression")
                         st.code(repr(e))
                 else:
