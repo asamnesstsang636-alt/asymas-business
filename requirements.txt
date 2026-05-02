@@ -4,4 +4,5 @@ pandas
 fpdf
 openpyxl
 qrcode[pil]
+Pillow
 streamlit-qrcode-scanner
