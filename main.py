@@ -24,18 +24,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-   .stAppToolbar {display: none!important;}
+  .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-   .stDeployButton {display:none!important;}
+  .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-   .st-emotion-cache-1wbqy5l {display: none!important;}
+  .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -250,7 +250,7 @@ Tel: +243 995 105 623"""
     pdf.cell(140, 5, "Scannez ce QR Code pour verifier l'authenticite de la facture", ln=False)
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
-    return pdf.output(dest='S')
+    return bytes(pdf.output(dest='S'))
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -391,7 +391,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles
+                df_articles_filtre = df_articles[mask]
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
                 choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
@@ -1038,13 +1038,16 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                                            df_cat[df_cat['type']=='Dépense']['montant'].sum(),
                                                            df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum())
 
+                        safe_cat = "".join(c if c.isalnum() else "_" for c in cat)
+                        safe_date = str(date_debut).replace("-", "_")
+
                         col_dl1.download_button(
                             label=f"📥 Télécharger {cat} - EXCEL",
                             data=excel_bytes_cat,
-                            file_name=f"Releve_{cat}_{date_debut}_{date_fin}.xlsx",
+                            file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             width="stretch",
-                            key=f"dl_excel_cat_{cat}_{date_debut}"
+                            key=f"dl_excel_cat_{safe_cat}_{safe_date}"
                         )
 
                         pdf_cat = FPDF()
@@ -1087,15 +1090,15 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                             pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
-                        pdf_bytes_cat = pdf_cat.output(dest='S')
+                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
 
                         col_dl2.download_button(
                             label=f"📥 Télécharger {cat} - PDF",
                             data=pdf_bytes_cat,
-                            file_name=f"Releve_{cat}_{date_debut}_{date_fin}.pdf",
+                            file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.pdf",
                             mime="application/pdf",
                             width="stretch",
-                            key=f"dl_pdf_cat_{cat}_{date_debut}"
+                            key=f"dl_pdf_cat_{safe_cat}_{safe_date}"
                         )
 
                 st.divider()
@@ -1110,13 +1113,16 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
                                                       total_revenu_global, total_depense_global, solde_global)
 
+                safe_date_debut = str(date_debut).replace("-", "_")
+                safe_date_fin = str(date_fin).replace("-", "_")
+
                 col_dl_g1.download_button(
                     label="📥 TÉLÉCHARGER TOUT - EXCEL",
                     data=excel_bytes_global,
                     file_name=f"Releve_Filtre_{date_debut}_{date_fin}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     width="stretch",
-                    key="dl_excel_global_filtre"
+                    key=f"dl_excel_global_filtre_{safe_date_debut}_{safe_date_fin}"
                 )
 
                 pdf_global = FPDF()
@@ -1174,7 +1180,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     pdf_global.ln(5)
 
-                pdf_bytes_global = pdf_global.output(dest='S')
+                pdf_bytes_global = bytes(pdf_global.output(dest='S'))
 
                 col_dl_g2.download_button(
                     label="📥 TÉLÉCHARGER TOUT - PDF",
@@ -1182,7 +1188,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     file_name=f"Releve_Filtre_{date_debut}_{date_fin}.pdf",
                     mime="application/pdf",
                     width="stretch",
-                    key="dl_pdf_global_filtre"
+                    key=f"dl_pdf_global_filtre_{safe_date_debut}_{safe_date_fin}"
                 )
 
 if tab9 and st.session_state.user_role == "PDG":
@@ -1214,7 +1220,7 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
                 new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
                 new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
                 new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
-                                
+                
                 if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
                     try:
                         supabase.table("utilisateurs").update({"password": new_pass_pdg}).eq("role", "PDG").execute()
