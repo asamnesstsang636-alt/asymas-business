@@ -692,7 +692,7 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
 if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
-    if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
+        if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab4:
         st.markdown("## 🏠 Immobilier - Générer Facture")
         nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
