@@ -24,18 +24,18 @@ st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
     header {visibility: hidden!important;}
-  .stAppToolbar {display: none!important;}
+ .stAppToolbar {display: none!important;}
     [data-testid="stToolbar"] {display: none!important;}
     [data-testid="stDecoration"] {display: none!important;}
     [data-testid="stHeader"] {display: none!important;}
     footer {visibility: hidden!important;}
-  .stDeployButton {display:none!important;}
+ .stDeployButton {display:none!important;}
     [data-testid="stStatusWidget"] {display: none!important;}
     [data-testid="manage-app-button"] {display: none!important;}
     iframe[src*="streamlit.io"] {display: none!important;}
     button[kind="header"] {display: none!important;}
     div[data-testid="stBottomBlockContainer"] {display: none!important;}
-  .st-emotion-cache-1wbqy5l {display: none!important;}
+ .st-emotion-cache-1wbqy5l {display: none!important;}
     button[title="Manage app"] {display: none!important;}
     a[href*="share.streamlit.io"] {display: none!important;}
     </style>
@@ -390,7 +390,7 @@ with tab2:
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                df_articles_filtre = df_articles # BUG FIXÉ ICI
+                df_articles_filtre = df_articles[mask]
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
                 choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
@@ -615,7 +615,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     mask = (df_voitures['marque'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures['modele'].str.contains(recherche_voiture, case=False, na=False) |
                             df_voitures.get('plaque', pd.Series(dtype=str)).str.contains(recherche_voiture, case=False, na=False))
-                    df_voitures_filtre = df_voitures # BUG FIXÉ ICI
+                    df_voitures_filtre = df_voitures
 
                 if not df_voitures_filtre.empty:
                     options = []
@@ -867,16 +867,22 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     with c3:
                         if "carburant" in colonnes_voitures:
-                            new_carb = st.selectbox("Carburant", ["Essence", "Diesel", "Hybride", "Électrique"], index=["Essence", "Diesel", "Hybride", "Électrique"].index(row.get('carburant','Essence')), key=f"carb_{row['id']}")
+                            carburant_options = ["Essence", "Diesel", "Hybride", "Électrique"]
+                            carb_val = row.get('carburant','Essence')
+                            new_carb = st.selectbox("Carburant", carburant_options, index=carburant_options.index(carb_val) if carb_val in carburant_options else 0, key=f"carb_{row['id']}")
                             data_update["carburant"] = str(new_carb)
                         if "boite" in colonnes_voitures:
-                            new_boite = st.selectbox("Boîte", ["Manuelle", "Automatique"], index=["Manuelle", "Automatique"].index(row.get('boite','Manuelle')), key=f"boite_{row['id']}")
+                            boite_options = ["Manuelle", "Automatique"]
+                            boite_val = row.get('boite','Manuelle')
+                            new_boite = st.selectbox("Boîte", boite_options, index=boite_options.index(boite_val) if boite_val in boite_options else 0, key=f"boite_{row['id']}")
                             data_update["boite"] = str(new_boite)
                         if "prix" in colonnes_voitures:
                             new_prix = st.number_input("Prix $", value=float(row.get('prix',0)), key=f"prix_{row['id']}")
                             data_update["prix"] = float(new_prix)
                         if "statut" in colonnes_voitures:
-                            new_statut = st.selectbox("Statut", ["Disponible", "Réservée", "Vendue"], index=["Disponible", "Réservée", "Vendue"].index(row.get('statut','Disponible')), key=f"statut_{row['id']}")
+                            statut_options = ["Disponible", "Réservée", "Vendue"]
+                            statut_val = row.get('statut','Disponible')
+                            new_statut = st.selectbox("Statut", statut_options, index=statut_options.index(statut_val) if statut_val in statut_options else 0, key=f"statut_{row['id']}")
                             data_update["statut"] = str(new_statut)
 
                     c1, c2 = st.columns(2)
@@ -1203,9 +1209,9 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
             with st.form("form_passwords", clear_on_submit=False):
                 st.markdown("### 🔑 Nouveaux mots de passe")
                 c1, c2, c3 = st.columns(3)
-                
+
                 new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
-                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
+                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key
                 new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
                 
                 if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
