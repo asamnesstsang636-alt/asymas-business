@@ -685,7 +685,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     with st.container(border=True):
                         st.markdown(f"### {voiture_choisie['marque']} {voiture_choisie['modele']}")
                         c1, c2, c3 = st.columns(3)
-                                                c1.markdown(f"**Année:** {voiture_choisie.get('annee','N/A')}")
+                        c1.markdown(f"**Année:** {voiture_choisie.get('annee','N/A')}")
                         c1.markdown(f"**Plaque:** {voiture_choisie.get('plaque','N/A')}")
                         c2.markdown(f"**Couleur:** {voiture_choisie.get('couleur','N/A')}")
                         km_val = voiture_choisie.get('kilometrage')
