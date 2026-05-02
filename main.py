@@ -19,7 +19,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
 
-# === CACHE TOUT STREAMLIT SAUF POUR LE PDG ===
+# === CACHE TOUT STREAMLIT ===
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden!important;}
@@ -41,7 +41,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# === SYSTÈME DE MOTS DE PASSE PERSISTANT DANS SUPABASE ===
+# === SYSTÈME DE MOTS DE PASSE ===
 @st.cache_data(ttl=10)
 def load_passwords():
     try:
@@ -65,13 +65,11 @@ if 'user_role' not in st.session_state:
 
 if st.session_state.user_role is None:
     st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
-
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
         profil = st.selectbox("Utilisateur", ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"])
         password = st.text_input("Mot de passe", type="password", key="pwd")
-
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if profil == "PDG TSANG" and password == passwords_db["PDG"]:
                 st.session_state.user_role = "PDG"
@@ -89,7 +87,7 @@ if st.session_state.user_role is None:
                 st.error("Profil ou mot de passe incorrect")
     st.stop()
 
-# === CSS FOND BLANC SIMPLE SANS REFLETS ===
+# === CSS ===
 st.markdown("""
 <style>
 h1, h2, h3 {
@@ -126,14 +124,9 @@ def get_table_columns(table_name):
     except:
         return []
 
-# === GÉNÉRER QR CODE - VERSION CORRIGÉE AVEC FICHIER TEMP ===
+# === QR CODE ===
 def generer_qrcode(data_text):
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=3,
-        border=1,
-    )
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=3, border=1)
     qr.add_data(data_text)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
@@ -141,7 +134,7 @@ def generer_qrcode(data_text):
     img.save(temp_file.name)
     return temp_file.name
 
-# === GÉNÉRATEUR PDF FACTURE - BENI RDC AVEC QR EN BAS + SIGNATURE ===
+# === PDF FACTURE ===
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
     def clean_text(txt):
         return str(txt).encode('latin-1', 'replace').decode('latin-1')
@@ -149,7 +142,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
     pdf.set_text_color(255, 255, 255)
@@ -161,7 +153,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
     pdf.set_xy(10, 21)
     pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
     pdf.cell(50, 6, "FACTURE N°", ln=True, align="R")
@@ -171,46 +162,36 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.set_font("Arial", "", 9)
     pdf.set_xy(150, 20)
     pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-
     pdf.ln(15)
-
     pdf.set_text_color(0, 0, 0)
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, f"FACTURE {clean_text(type_op.upper())}", ln=True, fill=True)
     pdf.ln(5)
-
     pdf.set_font("Arial", "B", 10)
     pdf.set_draw_color(0, 0, 0)
     pdf.cell(90, 7, "FACTURE A:", 1, 0, 'L')
     pdf.cell(10, 7, "", 0, 0)
     pdf.cell(90, 7, "DETAILS PAIEMENT:", 1, 1, 'L')
-
     pdf.set_font("Arial", "", 9)
     pdf.cell(90, 6, f"Client: {clean_text(client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
     pdf.cell(90, 6, "M-Pesa: +243817264448", 'LR', 1, 'L')
-
     pdf.cell(90, 6, f"Tel: {clean_text(tel_client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
     pdf.cell(90, 6, "Echeance: Immediate", 'LR', 1, 'L')
-
     pdf.cell(90, 6, f"Date emission: {date.today().strftime('%d/%m/%Y')}", 'LRB', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
     pdf.cell(90, 6, "", 'LRB', 1, 'L')
-
     pdf.ln(8)
-
     pdf.set_fill_color(0, 102, 0)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(120, 8, "DESIGNATION", 1, 0, 'C', True)
     pdf.cell(30, 8, "QTE", 1, 0, 'C', True)
     pdf.cell(40, 8, f"MONTANT ({clean_text(devise)})", 1, 1, 'C', True)
-
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "", 9)
-
     if isinstance(details_list, list) and details_list:
         for item in details_list:
             nom = clean_text(item.get('nom', ''))
@@ -223,19 +204,15 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
         pdf.cell(120, 7, clean_text(details_list), 1, 0, 'L')
         pdf.cell(30, 7, "1", 1, 0, 'C')
         pdf.cell(40, 7, f"{montant:,.0f}", 1, 1, 'R')
-
     if periode:
         pdf.cell(120, 7, f"Periode: {clean_text(periode)}", 1, 0, 'L')
         pdf.cell(30, 7, "", 1, 0, 'C')
         pdf.cell(40, 7, "", 1, 1, 'R')
-
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 11)
     pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
     pdf.cell(40, 10, f"{montant:,.0f} {clean_text(devise)}", 1, 1, 'R', True)
-
     pdf.ln(10)
-
     if type_op in ["Loyer", "Vente Auto"]:
         pdf.set_font("Arial", "B", 10)
         pdf.cell(0, 8, "SIGNATURE CLIENT:", ln=True)
@@ -248,13 +225,11 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
         pdf.set_xy(10, pdf.get_y())
         pdf.cell(90, 5, "Date: ___________________", ln=True)
         pdf.ln(5)
-
     pdf.set_font("Arial", "I", 10)
     pdf.set_text_color(0, 102, 0)
     pdf.cell(0, 6, "Merci pour votre confiance! ASYMAS BUSINESS - Votre partenaire de croissance", ln=True, align="C")
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
-
     qr_data = f"""ASYMAS BUSINESS
 Facture: {numero}
 Type: {type_op}
@@ -263,123 +238,88 @@ Montant: {montant:,.0f} {devise}
 Date: {date.today().strftime('%d/%m/%Y')}
 Tel: +243 995 105 623"""
     qr_path = generer_qrcode(qr_data)
-
     y_position = pdf.get_y()
     if y_position > 250:
         pdf.add_page()
         y_position = 30
-
     pdf.image(qr_path, x=160, y=y_position, w=30)
     os.unlink(qr_path)
-
     pdf.set_xy(10, y_position + 5)
     pdf.set_font("Arial", "", 8)
     pdf.cell(140, 5, "Scannez ce QR Code pour verifier l'authenticite de la facture", ln=False)
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
-
     return pdf.output(dest='S').encode('latin-1')
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
     if details_list is None:
         details_list = [{"nom": details, "qte": 1, "prix": montant}]
-
     pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode)
-
     try:
-        colonnes_compta = get_table_columns("comptabilite")
-        data_compta = {
-            "type": "Revenu",
-            "description": str(f"{type_op} - {client} - {details}"),
-            "montant": float(montant),
-            "date": str(date.today())
-        }
+        colonnes_compta = get_table_columns("compta")
+        data_compta = {"type": "Revenu", "description": str(f"{type_op} - {client} - {details}"), "montant": float(montant), "date": str(date.today())}
         if "categorie" in colonnes_compta:
             data_compta["categorie"] = str(type_op)
         if "devise" in colonnes_compta:
             data_compta["devise"] = str(devise)
-
-        supabase.table("comptabilite").insert(data_compta).execute()
+        supabase.table("compta").insert(data_compta).execute()
         st.toast(f"✅ Enregistré compta", icon="✅")
     except Exception as e:
         st.error("❌ ERREUR INSERTION COMPTA")
         st.code(repr(e))
-
     try:
-        data_facture = {
-            "numero_facture": str(numero_facture),
-            "type_operation": str(type_op),
-            "nom_client": str(client),
-            "details": str(details),
-            "montant": float(montant),
-            "devise": str(devise),
-            "date": str(date.today())
-        }
+        data_facture = {"numero_facture": str(numero_facture), "type_operation": str(type_op), "nom_client": str(client), "details": str(details), "montant": float(montant), "devise": str(devise), "date": str(date.today())}
         supabase.table("factures_proforma").insert(data_facture).execute()
         st.toast(f"✅ Enregistré factures", icon="✅")
     except Exception as e:
         st.warning("Table factures_proforma non trouvée - Crée-la dans Supabase")
-
     return numero_facture, pdf_bytes
 
-# === FONCTION EXCEL PRO ===
 def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_data.to_excel(writer, sheet_name='Releve', index=False, startrow=6)
-
         workbook = writer.book
         worksheet = writer.sheets['Releve']
-
         worksheet.merge_cells('A1:F1')
         worksheet['A1'] = 'ASYMAS BUSINESS'
         worksheet['A1'].font = Font(size=20, bold=True, color='006600')
         worksheet['A1'].alignment = Alignment(horizontal='center')
-
         worksheet.merge_cells('A2:F2')
         worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com'
         worksheet['A2'].font = Font(size=10, italic=True)
         worksheet['A2'].alignment = Alignment(horizontal='center')
-
         worksheet.merge_cells('A3:F3')
         worksheet['A3'] = f'{titre.upper()} - Edité le {date.today().strftime("%d/%m/%Y")}'
         worksheet['A3'].font = Font(size=14, bold=True, color='FF6600')
         worksheet['A3'].alignment = Alignment(horizontal='center')
-
         worksheet.merge_cells('A4:F4')
         worksheet['A4'] = f'Total Revenus: {total_revenu:,.0f} FC | Total Dépenses: {total_depense:,.0f} FC | Solde: {solde:,.0f} FC'
         worksheet['A4'].font = Font(size=11, bold=True)
         worksheet['A4'].alignment = Alignment(horizontal='center')
         worksheet['A4'].fill = PatternFill(start_color='FFCC00', end_color='FFCC00', fill_type='solid')
-
         header_fill = PatternFill(start_color='006600', end_color='006600', fill_type='solid')
         header_font = Font(bold=True, color='FFFFFF')
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                            top=Side(style='thin'), bottom=Side(style='thin'))
-
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
         for col in range(1, len(df_data.columns) + 1):
             cell = worksheet.cell(row=7, column=col)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center')
             cell.border = thin_border
-
         for row in range(7, len(df_data) + 8):
             for col in range(1, len(df_data.columns) + 1):
                 worksheet.cell(row=row, column=col).border = thin_border
                 worksheet.cell(row=row, column=col).alignment = Alignment(horizontal='left')
-
         for col in range(1, len(df_data.columns) + 1):
             worksheet.column_dimensions[get_column_letter(col)].width = 18
-
     return output.getvalue()
 
 df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
-df_compta = load_table("comptabilite")
+df_compta = load_table("compta")
 df_factures = load_table("factures_proforma")
 df_utilisateurs = load_table("utilisateurs")
 
@@ -396,7 +336,6 @@ with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
     st.info("ASYMAS BUSINESS v2.0")
-
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -409,13 +348,9 @@ if st.session_state.user_role == "UTILISATEUR":
     tab2, = st.tabs(["🛍️ Commerce"])
     tab1 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = tab9 = None
 elif st.session_state.user_role == "PDG":
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "👥 Utilisateurs"
-    ])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "👥 Utilisateurs"])
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-        "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures"
-    ])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures"])
     tab9 = None
 
 if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
@@ -424,7 +359,6 @@ if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
         col1.metric("🏠 Biens", len(df_biens))
         col2.metric("📦 Articles", len(df_articles))
         col3.metric("🚗 Voitures", len(df_voitures))
-
         if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
             revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
             col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
@@ -435,7 +369,6 @@ if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
 with tab2:
     st.markdown("## 🛍️ Commerce - Point de Vente")
-
     if 'panier_commerce' not in st.session_state:
         st.session_state.panier_commerce = []
     if 'vente_finie' not in st.session_state:
@@ -444,82 +377,47 @@ with tab2:
         st.session_state.pdf_data = None
     if 'num_fact' not in st.session_state:
         st.session_state.num_fact = None
-
     if df_articles.empty:
         st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
     else:
         col_gauche, col_droite = st.columns([2,1])
-
         with col_gauche:
             st.subheader("👤 Client")
             nom_client = st.text_input("Nom Client", key="nom_client_c")
             tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_c")
-
             st.subheader("📦 Rubrique Produit")
             recherche = st.text_input("🔍 Chercher un produit", placeholder="Tape le nom...", key="search_c")
-
             df_articles_filtre = df_articles.copy()
             if recherche:
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
                 df_articles_filtre = df_articles # BUG FIXÉ ICI
-
             if not df_articles_filtre.empty:
                 options = [f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}" for _, row in df_articles_filtre.iterrows()]
                 choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
                 idx_choisi = options.index(choix)
                 produit_choisi = df_articles_filtre.iloc[idx_choisi]
-
                 c1, c2, c3 = st.columns([1,1,1])
                 qte = c1.number_input("QTE", min_value=1, value=1, key="qte_c")
                 c2.markdown(f"### Prix: **{produit_choisi.get('prix_vente',0):,.0f} FC**")
-
                 if c3.button("➕ Ajouter au Panier", width="stretch", key="add_panier_c"):
                     stock_dispo = int(produit_choisi.get('stock', 0))
                     if stock_dispo < qte:
                         st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
                         st.stop()
-                    st.session_state.panier_commerce.append({
-                        "id": int(produit_choisi['id']),
-                        "nom": str(produit_choisi['nom_article']),
-                        "prix": float(produit_choisi.get('prix_vente',0)),
-                        "qte": int(qte),
-                        "stock_dispo": stock_dispo
-                    })
+                    st.session_state.panier_commerce.append({"id": int(produit_choisi['id']), "nom": str(produit_choisi['nom_article']), "prix": float(produit_choisi.get('prix_vente',0)), "qte": int(qte), "stock_dispo": stock_dispo})
                     st.session_state.vente_finie = False
                     st.rerun()
             else:
                 st.info("Aucun produit trouvé")
-
         with col_droite:
             st.subheader("🛒 Panier")
             total = 0
-
             if st.session_state.vente_finie and st.session_state.pdf_data:
                 st.success(f"✅ Vente validée - {st.session_state.total_vente:,.0f} FC")
                 st.info(f"📄 Facture: {st.session_state.num_fact}")
-                st.download_button(
-                    label="📥 Télécharger Facture PDF",
-                    data=st.session_state.pdf_data,
-                    file_name=f"{st.session_state.num_fact}.pdf",
-                    mime="application/pdf",
-                    width="stretch",
-                    key="dl_facture_commerce"
-                )
+                st.download_button(label="📥 Télécharger Facture PDF", data=st.session_state.pdf_data, file_name=f"{st.session_state.num_fact}.pdf", mime="application/pdf", width="stretch", key="dl_facture_commerce")
                 pdf_b64 = base64.b64encode(st.session_state.pdf_data).decode()
-                st.components.v1.html(f"""
-                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                        🖨️ IMPRIMER LA FACTURE
-                    </button>
-                    <script>
-                    function printPDF() {{
-                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                        const win = window.open('', '_blank');
-                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                        win.document.close();
-                        setTimeout(() => {{ win.print(); }}, 1000);
-                    }}
-                    </script>
-                """, height=60)
+                st.components.v1.html(f"""<button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">🖨️ IMPRIMER LA FACTURE</button><script>function printPDF() {{const pdfData = 'data:application/pdf;base64,{pdf_b64}'; const win = window.open('', '_blank'); win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>'); win.document.close(); setTimeout(() => {{ win.print(); }}, 1000);}}</script>""", height=60)
                 if st.button("Nouvelle Vente", width="stretch", key="new_vente_c"):
                     st.session_state.panier_commerce = []
                     st.session_state.vente_finie = False
@@ -544,40 +442,22 @@ with tab2:
                             st.session_state.panier_commerce.pop(i)
                             st.rerun()
                         total += sous_total
-
                 st.divider()
                 st.markdown(f"### Total : **{total:,.0f} FC**")
-
                 if st.button("💳 Finaliser Vente", type="primary", width="stretch", key="final_c"):
                     try:
                         if not nom_client or not st.session_state.panier_commerce:
                             st.warning("Nom client + panier requis")
                             st.stop()
-
                         with st.spinner("Enregistrement..."):
-                            vente_result = supabase.table("ventes").insert({
-                                "total": float(total),
-                                "id_utilisateur": 1 if st.session_state.user_name == "TSANG" else 2 if st.session_state.user_name == "ASIYA" else 3,
-                                "nom_client": str(nom_client),
-                                "telephone_client": str(tel_client)
-                            }).execute()
-
+                            vente_result = supabase.table("ventes").insert({"total": float(total), "id_utilisateur": 1 if st.session_state.user_name == "TSANG" else 2 if st.session_state.user_name == "ASIYA" else 3, "nom_client": str(nom_client), "telephone_client": str(tel_client)}).execute()
                             id_vente = vente_result.data[0]['id']
-
                             for i in st.session_state.panier_commerce:
-                                supabase.table("ventes_details").insert({
-                                    "id_vente": id_vente,
-                                    "id_article": int(i['id']),
-                                    "quantite": int(i['qte']),
-                                    "prix_unitaire": float(i['prix']),
-                                    "sous_total": float(i['prix']) * int(i['qte'])
-                                }).execute()
+                                supabase.table("ventes_details").insert({"id_vente": id_vente, "id_article": int(i['id']), "quantite": int(i['qte']), "prix_unitaire": float(i['prix']), "sous_total": float(i['prix']) * int(i['qte'])}).execute()
                                 supabase.table("articles").update({"stock": i['stock_dispo'] - i['qte']}).eq("id", i['id']).execute()
-
                             details_list = [{"nom": i['nom'], "qte": i['qte'], "prix": i['prix']} for i in st.session_state.panier_commerce]
                             details_text = ", ".join([f"{i['nom']} x{i['qte']}" for i in st.session_state.panier_commerce])
                             num_fact, pdf_bytes = creer_facture_auto("Vente Commerce", nom_client, details_text, total, "FC", details_list, tel_client)
-
                             st.session_state.vente_finie = True
                             st.session_state.pdf_data = pdf_bytes
                             st.session_state.num_fact = num_fact
@@ -585,7 +465,6 @@ with tab2:
                             st.session_state.panier_commerce = []
                             st.cache_data.clear()
                             st.rerun()
-
                     except Exception as e:
                         st.error(f"ERREUR SUPABASE : {e}")
                         st.code(str(e))
@@ -601,20 +480,15 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 prix_achat = c3.number_input("Prix Achat FC", min_value=0.0)
                 prix_vente = c1.number_input("Prix Vente FC", min_value=0.0)
                 stock = c2.number_input("Stock", min_value=0)
-
                 if st.form_submit_button("💾 Ajouter Article"):
                     try:
-                        supabase.table("articles").insert({
-                            "nom_article": str(nom), "categorie": str(cat),
-                            "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock)
-                        }).execute()
+                        supabase.table("articles").insert({"nom_article": str(nom), "categorie": str(cat), "prix_achat": float(prix_achat), "prix_vente": float(prix_vente), "stock": int(stock)}).execute()
                         st.success("Article ajouté")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error("Erreur ajout")
                         st.code(repr(e))
-
         st.divider()
         st.subheader("📋 Liste des Articles - Modifier/Supprimer")
         if df_articles.empty:
@@ -630,21 +504,16 @@ if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     with c2:
                         new_prix_v = st.number_input("Prix Vente", value=float(row.get('prix_vente',0)), key=f"pv_{row['id']}")
                         new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_{row['id']}")
-
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                         try:
-                            supabase.table("articles").update({
-                                "nom_article": str(new_nom), "categorie": str(new_cat),
-                                "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock)
-                            }).eq("id", int(row['id'])).execute()
+                            supabase.table("articles").update({"nom_article": str(new_nom), "categorie": str(new_cat), "prix_achat": float(new_prix_a), "prix_vente": float(new_prix_v), "stock": int(new_stock)}).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur modif")
                             st.code(repr(e))
-
                     if st.session_state.user_role == "PDG":
                         if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", width="stretch"):
                             try:
@@ -1038,7 +907,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab7:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
 
-        colonnes_compta = get_table_columns("comptabilite")
+        colonnes_compta = get_table_columns("compta")
 
         with st.expander("➕ Ajouter Opération"):
             with st.form("form_compta", clear_on_submit=True):
@@ -1065,7 +934,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                 if st.form_submit_button("💾 Ajouter Opération"):
                     try:
-                        supabase.table("comptabilite").insert(data_insert).execute()
+                        supabase.table("compta").insert(data_insert).execute()
                         st.success("Opération ajoutée")
                         st.cache_data.clear()
                         st.rerun()
@@ -1175,7 +1044,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.add_page()
                         pdf_cat.set_fill_color(20, 50, 40)
                         pdf_cat.rect(0, 0, 210, 35, 'F')
-                        pdf_cat.set_text_color(255, 255)
+                        pdf_cat.set_text_color(255, 255, 255)
                         pdf_cat.set_font("Arial", "B", 20)
                         pdf_cat.set_xy(10, 8)
                         pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
