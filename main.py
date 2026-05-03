@@ -403,8 +403,8 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
             
- with col_droite:
-    st.subheader("🛒 Panier")
+        with col_droite:
+          st.subheader("🛒 Panier")
 
     # === BLOC 1 : SUCCÈS EN PREMIER ===
     if st.session_state.vente_finie and st.session_state.pdf_data:
