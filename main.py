@@ -718,6 +718,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         df_voitures_filtre = pd.DataFrame()
                 else:
                     df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
+                else:
+                    df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
