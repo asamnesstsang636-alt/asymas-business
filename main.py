@@ -706,7 +706,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         st.rerun()
                         else:
                             st.warning(f"Aucun véhicule trouvé pour: {search_clean}")
-                    except Exception as e:
+                        except Exception as e:
                         st.error(f"Erreur recherche: {e}")
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
