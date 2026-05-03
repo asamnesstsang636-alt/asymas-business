@@ -1074,7 +1074,8 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
                             pdf_cat.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
 
-                        pdf_bytes_cat = pdf_cat.output(dest='S')
+                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
+                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
 
                         col_dl2.download_button(
                             label=f"📥 Télécharger {cat} - PDF",
@@ -1084,7 +1085,6 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             width="stretch",
                             key=f"dl_pdf_cat_{safe_cat}_{date_debut}"
                         )
-
                 st.divider()
 
                 st.subheader("📥 Télécharger Relevé Complet Filtré")
@@ -1161,7 +1161,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     pdf_global.ln(5)
 
-                pdf_bytes_global = pdf_global.output(dest='S')
+                    pdf_bytes_global = bytes(pdf_global.output(dest='S'))
 
                 col_dl_g2.download_button(
                     label="📥 TÉLÉCHARGER TOUT - PDF",
