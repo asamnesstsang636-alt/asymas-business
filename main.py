@@ -502,7 +502,7 @@ with tab2:
                     except Exception as e:
                         st.error("Erreur finalisation vente")
                         st.code(repr(e))
- if st.session_state.vente_finie and st.session_state.pdf_data:
+if st.session_state.vente_finie and st.session_state.pdf_data:
     st.success("✅ Vente enregistrée!")
     st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_data, file_name=f"{st.session_state.num_fact}.pdf", mime="application/pdf", width="stretch")
     if st.button("NOUVELLE VENTE", width="stretch"):
