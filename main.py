@@ -219,7 +219,9 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
     pdf.cell(40, 10, f"{montant:,.0f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
     pdf.ln(10)
-    if type_op in ["Loyer", "Vente Auto"]:
+
+    # === SIGNATURE CLIENT POUR IMMOBILIER ET AUTO ===
+    if type_op in ["Loyer", "Vente Voiture"]:
         pdf.set_font("Arial", "B", 10)
         pdf.cell(0, 8, "SIGNATURE CLIENT:", ln=True)
         pdf.ln(3)
@@ -231,6 +233,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
         pdf.set_xy(10, pdf.get_y())
         pdf.cell(90, 5, "Date: ___________________", ln=True)
         pdf.ln(5)
+
     pdf.set_font("Arial", "I", 10)
     pdf.set_text_color(0, 102, 0)
     pdf.cell(0, 6, "Merci pour votre confiance! ASYMAS BUSINESS - Votre partenaire de croissance", ln=True, align="C")
@@ -256,7 +259,6 @@ Tel: +243 995 105 623"""
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
-
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
