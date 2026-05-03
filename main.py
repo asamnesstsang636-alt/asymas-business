@@ -406,63 +406,70 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
 
-            # === SCANNER QR CAMÉRA + RECHERCHE TEXTE ===
+            # === SCANNER QR + RECHERCHE COMME AUTO ===
             col_scan1, col_scan2 = st.columns([1,3])
             with col_scan1:
-                qr_code = qrcode_scanner(key='qr_scanner')
+                qr_code = qrcode_scanner(key='qr_scanner_c')
             with col_scan2:
-                recherche_manuelle = st.text_input("🔍 Ou tape le nom/code", placeholder="Tape le nom ou QRA...", key="search_c").strip()
+                recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
 
             recherche = qr_code if qr_code else recherche_manuelle
             if qr_code:
                 st.success(f"QR Scanné: {qr_code}")
-            # ============================================
 
-            # === FILTRE QR + NOM CORRIGÉ ===
-            df_articles_filtre = df_articles.copy()
+            # === FILTRE CORRIGÉ ===
+            df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
             if recherche:
                 search_clean = str(recherche).upper().strip()
-                mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                if 'code_qr' in df_articles.columns:
-                    mask = mask | df_articles['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
-                df_articles_filtre = df_articles
-            # =================================
+                mask = df_articles_filtre['nom_article'].str.contains(recherche, case=False, na=False)
+                if 'code_qr' in df_articles_filtre.columns:
+                    mask = mask | df_articles_filtre['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
+                df_articles_filtre = df_articles_filtre
+            # ======================
 
-            if len(df_articles_filtre) == 0:
-                st.warning("Aucun produit trouvé")
-            elif len(df_articles_filtre) == 1:
-                produit = df_articles_filtre.iloc[0]
-                st.info(f"**{produit['nom_article']}** | Stock: {produit['stock']} | Prix: {produit['prix_vente']:,.0f} FC")
-                if 'code_qr' in produit and produit['code_qr']:
-                    st.caption(f"QR: {produit['code_qr']}")
-
-                qte = st.number_input("Quantité", min_value=1, max_value=int(produit['stock']), value=1, key="qte_c")
-                if st.button("➕ AJOUTER AU PANIER", width="stretch"):
-                    if int(produit['stock']) < qte:
-                        st.error(f"Stock insuffisant! Disponible: {produit['stock']}")
-                    else:
-                        item = {
-                            'id': int(produit['id']),
-                            'nom': str(produit['nom_article']),
-                            'qte': int(qte),
-                            'pu': float(produit['prix_vente'])
-                        }
-                        st.session_state.panier_commerce.append(item)
-                        st.success("Ajouté!")
-                        st.rerun()
+            if df_articles_filtre.empty:
+                st.warning("⚠️ Aucun produit disponible")
             else:
-                st.write(f"{len(df_articles_filtre)} produits trouvés:")
-                for _, p in df_articles_filtre.head(5).iterrows():
-                    qr_display = f" | QR: {p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
-                    if st.button(f"{p['nom_article']}{qr_display} - {p['prix_vente']:,.0f} FC", key=f"add_{p['id']}"):
-                        item = {
-                            'id': int(p['id']),
-                            'nom': str(p['nom_article']),
-                            'qte': 1,
-                            'pu': float(p['prix_vente'])
-                        }
-                        st.session_state.panier_commerce.append(item)
-                        st.success("Ajouté!")
+                st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
+
+                # === SELECTBOX COMME AUTO - 1 SEUL AJOUTER ===
+                options_articles = []
+                for _, p in df_articles_filtre.iterrows():
+                    qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
+                    options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{qr_txt} | ID:{p['id']}")
+
+                article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
+
+                if article_choisi:
+                    id_choisi = int(article_choisi.split("ID:")[1])
+                    p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
+
+                    c1, c2, c3 = st.columns(3)
+                    qte_max = int(p['stock'])
+                    qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
+                    c2.metric("Stock dispo", qte_max)
+                    c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
+
+                    st.info(f"**{p['nom_article']}** | Catégorie: {p.get('categorie','N/A')} | QR: {p.get('code_qr','N/A')}")
+
+                    if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
+                        existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
+                        if existant:
+                            if existant['qte'] + qte <= qte_max:
+                                existant['qte'] += qte
+                                st.success(f"Panier mis à jour: {existant['qte']}x")
+                            else:
+                                st.error(f"Stock insuffisant! Max dispo: {qte_max}")
+                        else:
+                            st.session_state.panier_commerce.append({
+                                "id": int(p['id']),
+                                "nom": str(p['nom_article']),
+                                "pu": float(p['prix_vente']),
+                                "qte": int(qte),
+                                "code_qr": p.get('code_qr',''),
+                                "stock_max": qte_max
+                            })
+                            st.success("Ajouté au panier")
                         st.rerun()
 
         with col_droite:
@@ -492,16 +499,11 @@ with tab2:
                 for i, item in enumerate(st.session_state.panier_commerce):
                     col1, col2, col3 = st.columns([4,2,1])
                     col1.write(f"**{item['nom']}**")
-
-                    qte = item.get('qte', 1)
-                    pu = item.get('pu', 0)
-
-                    item['qte'] = col2.number_input("Qte", min_value=1, value=qte, key=f"q_{i}", label_visibility="collapsed")
+                    col2.write(f"Qté: {item['qte']} | {item['pu']:,.0f} FC")
                     if col3.button("❌", key=f"d_{i}"):
                         st.session_state.panier_commerce.pop(i)
                         st.rerun()
-
-                    total_panier += item['qte'] * pu
+                    total_panier += item['qte'] * item['pu']
 
                 st.markdown(f"### Total: {total_panier:,.0f} FC")
                 st.divider()
@@ -515,6 +517,7 @@ with tab2:
                             details_list = []
 
                             for item in st.session_state.panier_commerce:
+                                # === INSERT AVEC BON NOM DE COLONNE ===
                                 supabase.table("ventes").insert({
                                     "numero_facture": num_fact,
                                     "client_nom": st.session_state.client_com_nom,
