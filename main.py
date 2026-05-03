@@ -400,18 +400,28 @@ with tab2:
             st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
 
             st.subheader("📦 Rubrique Produit")
-            recherche = st.text_input("🔍 Scanner QR ou Chercher un produit", placeholder="Scanne QR ou tape le nom/code...", key="search_c").strip()
+            
+            # === SCANNER QR CAMÉRA + RECHERCHE TEXTE ===
+            from streamlit_qrcode_scanner import qrcode_scanner
+            col_scan1, col_scan2 = st.columns([1,3])
+            with col_scan1:
+                qr_code = qrcode_scanner(key='qr_scanner')
+            with col_scan2:
+                recherche_manuelle = st.text_input("🔍 Ou tape le nom/code", placeholder="Tape le nom ou QRA...", key="search_c").strip()
+            
+            recherche = qr_code if qr_code else recherche_manuelle
+            if qr_code:
+                st.success(f"QR Scanné: {qr_code}")
+            # ============================================
 
-            # === CORRECTION FILTRE QR + NOM ===
+            # === FILTRE QR + NOM CORRIGÉ ===
             df_articles_filtre = df_articles.copy()
             if recherche:
-                search_clean = recherche.upper()
-                # Filtre par nom
+                search_clean = recherche.upper().strip()
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                # Filtre par QR si la colonne existe
                 if 'code_qr' in df_articles.columns:
-                    mask = mask | df_articles['code_qr'].str.contains(search_clean, case=False, na=False)
-                df_articles_filtre = df_articles[mask] # <-- CORRECTION ICI
+                    mask = mask | df_articles['code_qr'].str.upper().str.contains(search_clean, case=False, na=False)
+                df_articles_filtre = df_articles # CORRECTION BUG
             # =================================
 
             if not df_articles_filtre.empty:
