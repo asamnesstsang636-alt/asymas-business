@@ -518,15 +518,14 @@ with tab2:
 
                             for item in st.session_state.panier_commerce:
                                 # === INSERT AVEC BON NOM DE COLONNE ===
-                                supabase.table("ventes").insert({
-                                    "numero_facture": num_fact,
-                                    "client_nom": st.session_state.client_com_nom,
-                                    "article_id": item['id'],
-                                    "quantite": item['qte'],
-                                    "prix_unitaire": item['pu'],
-                                    "total": item['qte'] * item['pu']
-                                }).execute()
-
+  supabase.table("ventes").insert({
+    "numero_facture": num_fact,
+    "client_nom": st.session_state.client_com_nom,
+    "article_id": item['id'],  # <-- Cette colonne doit exister
+    "quantite": item['qte'],
+    "prix_unitaire": item['pu'],
+    "total": item['qte'] * item['pu']
+}).execute()
                                 stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
                                 supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
 
