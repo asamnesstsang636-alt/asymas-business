@@ -7,9 +7,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-13  col1, col2, col3 = st.columns([1,2,1])
-14  with col2:
-15      theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed")
+col1, col2, col3 = st.columns([1,2,1])
+  with col2:
+     theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed")
 if theme == "Sombre ASYMAS":
     st.markdown("""
     <style>
