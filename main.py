@@ -490,7 +490,7 @@ with tab2:
                             "montant": float(total_panier),
                             "devise": "FC",
                             "numero_facture": num_fact,
-                            "details": details_json
+                            
                         }).execute()
                         pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
                         st.session_state.pdf_data = pdf_bytes
