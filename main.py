@@ -1135,7 +1135,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
                 pdf_global.ln(3)
 
-                  def clean_pdf_text(txt):
+                def clean_pdf_text(txt):
                     if txt is None:
                         return ""
                     return str(txt).encode('latin-1', 'replace').decode('latin-1').replace('\n', ' ').replace('\r', '')
