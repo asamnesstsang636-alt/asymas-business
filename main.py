@@ -4,15 +4,15 @@ from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
 import base64
-import json
-from streamlit_qrcode_scanner import qrcode_scanner
 import io
 import qrcode
 from PIL import Image
 import tempfile
 import os
+import json
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -41,13 +41,7 @@ button[title="Manage app"] {display: none!important;}
 a[href*="share.streamlit.io"] {display: none!important;}
 </style>
 """, unsafe_allow_html=True)
-df_articles_filtre = df_articles.copy()
-if recherche:
-    search_clean = str(recherche).upper().strip()
-    mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-    if 'code_qr' in df_articles.columns:
-        mask = mask | df_articles['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
-    df_articles_filtre = df_articles[mask] # <-- CORRECTION ICI
+
 # === SYSTÈME DE MOTS DE PASSE ===
 @st.cache_data(ttl=10)
 def load_passwords():
@@ -210,7 +204,8 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
         for item in details_list:
             nom = safe_pdf_txt(item.get('nom', ''))
             qte = item.get('qte', 1)
-            montant_item = item.get('prix', 0) * qte
+            pu = item.get('pu', item.get('prix', 0))
+            montant_item = pu * qte
             pdf.cell(120, 7, nom, 1, 0, 'L')
             pdf.cell(30, 7, str(qte), 1, 0, 'C')
             pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 1, 'R')
@@ -227,8 +222,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
     pdf.cell(40, 10, f"{montant:,.0f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
     pdf.ln(10)
-
-    # === SIGNATURE CLIENT POUR IMMOBILIER ET AUTO ===
     if type_op in ["Loyer", "Vente Voiture"]:
         pdf.set_font("Arial", "B", 10)
         pdf.cell(0, 8, "SIGNATURE CLIENT:", ln=True)
@@ -241,7 +234,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
         pdf.set_xy(10, pdf.get_y())
         pdf.cell(90, 5, "Date: ___________________", ln=True)
         pdf.ln(5)
-
     pdf.set_font("Arial", "I", 10)
     pdf.set_text_color(0, 102, 0)
     pdf.cell(0, 6, "Merci pour votre confiance! ASYMAS BUSINESS - Votre partenaire de croissance", ln=True, align="C")
@@ -267,10 +259,11 @@ Tel: +243 995 105 623"""
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
+
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
-        details_list = [{"nom": details, "qte": 1, "prix": montant}]
+        details_list = [{"nom": details, "qte": 1, "pu": montant}]
     pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode)
     try:
         colonnes_compta = get_table_columns("compta")
@@ -332,6 +325,7 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
             worksheet.column_dimensions[get_column_letter(col)].width = 18
     return output.getvalue()
 
+# === CHARGEMENT DONNÉES ===
 df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
@@ -386,10 +380,25 @@ if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
 with tab2:
     st.markdown("## 🛍️ Commerce - Point de Vente")
 
+    # === INIT SESSION STATE ===
+    if 'panier_commerce' not in st.session_state:
+        st.session_state.panier_commerce = []
+    if 'vente_finie' not in st.session_state:
+        st.session_state.vente_finie = False
+    if 'pdf_data' not in st.session_state:
+        st.session_state.pdf_data = None
+    if 'num_fact' not in st.session_state:
+        st.session_state.num_fact = None
+    if 'client_com_nom' not in st.session_state:
+        st.session_state.client_com_nom = ""
+    if 'client_com_tel' not in st.session_state:
+        st.session_state.client_com_tel = "+243..."
+
     if df_articles.empty:
         st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
     else:
         col_gauche, col_droite = st.columns([2,1])
+
         with col_gauche:
             st.subheader("👤 Client")
             st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
@@ -397,6 +406,7 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
 
+            # === SCANNER QR CAMÉRA + RECHERCHE TEXTE ===
             col_scan1, col_scan2 = st.columns([1,3])
             with col_scan1:
                 qr_code = qrcode_scanner(key='qr_scanner')
@@ -406,14 +416,17 @@ with tab2:
             recherche = qr_code if qr_code else recherche_manuelle
             if qr_code:
                 st.success(f"QR Scanné: {qr_code}")
+            # ============================================
 
+            # === FILTRE QR + NOM CORRIGÉ ===
             df_articles_filtre = df_articles.copy()
             if recherche:
                 search_clean = str(recherche).upper().strip()
                 mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
                 if 'code_qr' in df_articles.columns:
                     mask = mask | df_articles['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
-                df_articles_filtre = df_articles[mask]
+                df_articles_filtre = df_articles
+            # =================================
 
             if len(df_articles_filtre) == 0:
                 st.warning("Aucun produit trouvé")
@@ -633,9 +646,9 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
         if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
                 details_list = [
-                    {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Duree: {duree_contrat}", "qte": 1, "prix": prix},
-                    {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "prix": electricite},
-                    {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "prix": eau}
+                    {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Duree: {duree_contrat}", "qte": 1, "pu": prix},
+                    {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "pu": electricite},
+                    {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "pu": eau}
                 ]
                 details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Duree Contrat: {duree_contrat} | Loyer: {prix} $ | Electricite: {electricite} $ | Eau: {eau} $"
                 periode = date.today().strftime("%B %Y")
@@ -742,7 +755,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 st.session_state.panier_voiture.append({
                                     "id": int(v['id']),
                                     "nom": f"{v['marque']} {v['modele']} {v.get('annee','')}",
-                                    "prix": float(v['prix']),
+                                    "pu": float(v['prix']),
                                     "qte": int(qte),
                                     "plaque": v.get('plaque',''),
                                     "qualite": v.get('qualite',''),
@@ -782,14 +795,13 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         col1, col2, col3, col4 = st.columns([3,1,1,1])
                         col1.write(f"**{item['nom']}** | {item.get('qualite','')} | {item['plaque']}")
                         col2.write(f"Qté: {item['qte']}")
-                        col3.write(f"{item['prix'] * item['qte']:,.2f} $")
+                        col3.write(f"{item['pu'] * item['qte']:,.2f} $")
                         if col4.button("❌", key=f"del_v_{idx}"):
                             st.session_state.panier_voiture.pop(idx)
                             st.rerun()
-                        total_voiture += item['prix'] * item['qte']
+                        total_voiture += item['pu'] * item['qte']
                     st.metric("💰 TOTAL VOITURE", f"{total_voiture:,.2f} $")
 
-                    # AFFICHAGE CLIENT DIRECT - PLUS DE DOUBLE SAISIE
                     st.markdown(f"**Client:** {st.session_state.client_auto_nom}")
                     st.markdown(f"**Tel:** {st.session_state.client_auto_tel}")
 
@@ -797,7 +809,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         if st.session_state.client_auto_nom and st.session_state.panier_voiture:
                             try:
                                 details_list = [{"nom": f"{item['nom']} | {item.get('qualite','')} | {item['plaque']}",
-                                                "qte": item['qte'], "prix": item['prix']} for item in st.session_state.panier_voiture]
+                                                "qte": item['qte'], "pu": item['pu']} for item in st.session_state.panier_voiture]
                                 details_text = " | ".join([f"{item['qte']}x {item['nom']} ({item.get('qualite','')})" for item in st.session_state.panier_voiture])
                                 num_fact, pdf_bytes = creer_facture_auto("Vente Voiture", st.session_state.client_auto_nom, details_text, total_voiture, "$", details_list, st.session_state.client_auto_tel, "")
                                 for item in st.session_state.panier_voiture:
@@ -982,19 +994,15 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.info("Aucune opération")
         else:
             df_compta_sorted = df_compta.sort_values('date', ascending=False)
-            
-            # === FILTRES ===
             col_f1, col_f2, col_f3 = st.columns(3)
             date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_compta")
             date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_compta")
             filtre_nom = col_f3.text_input("👤 Nom Client", placeholder="Tape un nom...", key="filtre_nom_compta")
-            
+
             df_filtre_compta = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-            
-            # TRI PAR NOM CLIENT
             if filtre_nom:
                 df_filtre_compta = df_filtre_compta[df_filtre_compta['description'].str.contains(filtre_nom, case=False, na=False)]
-            
+
             col_t1, col_t2, col_t3 = st.columns(3)
             total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
             total_usd = df_filtre_compta[df_filtre_compta.get('devise','FC')=='$']['montant'].sum()
@@ -1003,7 +1011,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
             col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
             st.divider()
-            
+
             categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
             if len(categories) == 0:
                 st.info("Aucune opération trouvée avec ces filtres")
@@ -1014,14 +1022,13 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     total_cat = total_cat_fc + total_cat_usd + total_cat_eur
-                    
+
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
                         st.dataframe(df_cat[['date', 'type', 'description', 'montant', 'devise']], use_container_width=True, hide_index=True)
-                        
+
                         col_dl1, col_dl2 = st.columns(2)
-                        # EXCEL
                         excel_bytes_cat = generer_excel_pro(
-                            df_cat, 
+                            df_cat,
                             f"Releve {cat} {date_debut}-{date_fin}",
                             df_cat[df_cat['type']=='Revenu']['montant'].sum(),
                             df_cat[df_cat['type']=='Dépense']['montant'].sum(),
@@ -1036,8 +1043,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             width="stretch",
                             key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
-                        
-                        # PDF
+
                         pdf_cat = FPDF()
                         pdf_cat.add_page()
                         pdf_cat.set_fill_color(20, 50, 40)
@@ -1090,6 +1096,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             width="stretch",
                             key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
+
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
         st.markdown("## 📄 Factures - Relevé par Catégorie")
@@ -1098,9 +1105,8 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
         else:
             df_compta_sorted = df_compta.sort_values('date', ascending=False)
             col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30))
-            date_fin = col_f2.date_input("📅 Date fin", value=date.today())
-            col_f3.markdown("### ")
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
             col_f4, col_f5 = st.columns(2)
             categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
@@ -1200,15 +1206,14 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 total_revenu_global = df_filtre_fact[df_filtre_fact['type']=='Revenu']['montant'].sum()
                 total_depense_global = df_filtre_fact[df_filtre_fact['type']=='Dépense']['montant'].sum()
                 solde_global = total_revenu_global - total_depense_global
-                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}",
-                                                      total_revenu_global, total_depense_global, solde_global)
+                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}", total_revenu_global, total_depense_global, solde_global)
                 col_dl_g1.download_button(
-                    label="📥 TÉLÉCHARGER TOUT - EXCEL",
+                    label="📥 Télécharger TOUT - EXCEL",
                     data=excel_bytes_global,
-                    file_name=f"Releve_Filtre_{date_debut}_{date_fin}.xlsx",
+                    file_name=f"Releve_Complet_{date_debut}_{date_fin}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     width="stretch",
-                    key="dl_excel_global_filtre"
+                    key="dl_excel_global"
                 )
                 pdf_global = FPDF()
                 pdf_global.add_page()
@@ -1221,8 +1226,6 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.set_font("Arial", "", 9)
                 pdf_global.set_xy(10, 16)
                 pdf_global.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                pdf_global.set_xy(10, 21)
-                pdf_global.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
                 pdf_global.set_font("Arial", "B", 10)
                 pdf_global.set_xy(150, 8)
                 pdf_global.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
@@ -1230,93 +1233,86 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.set_text_color(0, 0, 0)
                 pdf_global.set_fill_color(255, 204, 0)
                 pdf_global.set_font("Arial", "B", 14)
-                pdf_global.cell(0, 10, "RELEVE GENERAL FILTRE", ln=True, fill=True)
+                pdf_global.cell(0, 10, "RELEVE COMPTABLE COMPLET", ln=True, fill=True)
                 pdf_global.ln(5)
                 pdf_global.set_font("Arial", "B", 11)
-                pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
+                pdf_global.cell(0, 8, f"Total Revenus: {total_revenu_global:,.0f} | Depenses: {total_depense_global:,.0f} | Solde: {solde_global:,.0f}", ln=True)
                 pdf_global.ln(3)
-                for cat in sorted(categories):
-                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    pdf_global.set_font("Arial", "B", 12)
-                    cat_clean = safe_pdf_txt(cat)
-                    pdf_global.cell(0, 8, f"CATEGORIE: {cat_clean} - {len(df_cat)} operations", ln=True)
-                    pdf_global.set_font("Arial", "B", 10)
-                    pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f} | EUR {total_cat_eur:,.0f}", ln=True)
-                    pdf_global.ln(2)
-                    pdf_global.set_font("Arial", "B", 9)
-                    pdf_global.cell(25, 7, "Date", 1)
-                    pdf_global.cell(25, 7, "Type", 1)
-                    pdf_global.cell(90, 7, "Description", 1)
-                    pdf_global.cell(30, 7, "Montant", 1)
-                    pdf_global.cell(20, 7, "Devise", 1, ln=True)
-                    pdf_global.set_font("Arial", "", 8)
-                    for _, row in df_cat.iterrows():
-                        try:
-                            pdf_global.cell(25, 6, safe_pdf_txt(row.get('date','')), 1)
-                            pdf_global.cell(25, 6, safe_pdf_txt(row.get('type','')), 1)
-                            desc = safe_pdf_txt(row.get('description',''))[:45]
-                            pdf_global.cell(90, 6, desc, 1)
-                            pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                            pdf_global.cell(20, 6, safe_pdf_txt(row.get('devise','FC')), 1, ln=True)
-                        except:
-                            continue
-                    pdf_global.ln(5)
+                pdf_global.set_font("Arial", "B", 9)
+                pdf_global.cell(25, 7, "Date", 1)
+                pdf_global.cell(30, 7, "Categorie", 1)
+                pdf_global.cell(25, 7, "Type", 1)
+                pdf_global.cell(80, 7, "Description", 1)
+                pdf_global.cell(30, 7, "Montant", 1, ln=True)
+                pdf_global.set_font("Arial", "", 8)
+                for _, row in df_filtre_fact.iterrows():
+                    try:
+                        pdf_global.cell(25, 6, safe_pdf_txt(row.get('date','')), 1)
+                        pdf_global.cell(30, 6, safe_pdf_txt(row.get('categorie',''))[:20], 1)
+                        pdf_global.cell(25, 6, safe_pdf_txt(row.get('type','')), 1)
+                        desc = safe_pdf_txt(row.get('description',''))[:40]
+                        pdf_global.cell(80, 6, desc, 1)
+                        pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1, ln=True)
+                    except:
+                        continue
                 pdf_bytes_global = bytes(pdf_global.output(dest='S'))
                 col_dl_g2.download_button(
-                    label="📥 TÉLÉCHARGER TOUT - PDF",
+                    label="📥 Télécharger TOUT - PDF",
                     data=pdf_bytes_global,
-                    file_name=f"Releve_Filtre_{date_debut}_{date_fin}.pdf",
+                    file_name=f"Releve_Complet_{date_debut}_{date_fin}.pdf",
                     mime="application/pdf",
                     width="stretch",
-                    key="dl_pdf_global_filtre"
+                    key="dl_pdf_global"
                 )
 
 if tab9 and st.session_state.user_role == "PDG":
     with tab9:
-        st.markdown("## 👥 Gestion Utilisateurs - PDG UNIQUEMENT")
-        if df_utilisateurs.empty:
-            st.warning("Table 'utilisateurs' vide. Crée-la dans Supabase avec colonnes: id, nom, role, password")
-            st.code("""
-CREATE TABLE utilisateurs (
-    id SERIAL PRIMARY KEY,
-    nom TEXT NOT NULL,
-    role TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
-);
-
-INSERT INTO utilisateurs (nom, role, password) VALUES
-('TSANG', 'PDG', 'tsang2024'),
-('ASIYA', 'GERANTE', 'asiya2024'),
-('BASAM', 'UTILISATEUR', 'basam2024');
-""", language="sql")
-        else:
-            st.subheader("🔑 Modifier Mots de Passe")
-            with st.form("form_passwords", clear_on_submit=False):
-                st.markdown("### 🔑 Nouveaux mots de passe")
+        st.markdown("## 👥 Gestion des Utilisateurs")
+        with st.expander("➕ Ajouter Nouvel Utilisateur"):
+            with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
-                new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
-                new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
-                new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
-
-                if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
+                nom = c1.text_input("Nom")
+                role = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
+                password = c3.text_input("Mot de passe", type="password")
+                if st.form_submit_button("💾 Ajouter Utilisateur"):
                     try:
-                        supabase.table("utilisateurs").update({"password": new_pass_pdg}).eq("role", "PDG").execute()
-                        supabase.table("utilisateurs").update({"password": new_pass_gerante}).eq("role", "GERANTE").execute()
-                        supabase.table("utilisateurs").update({"password": new_pass_user}).eq("role", "UTILISATEUR").execute()
-                        st.success("✅ Mots de passe mis à jour")
+                        supabase.table("utilisateurs").insert({"nom": str(nom), "role": str(role), "password": str(password)}).execute()
+                        st.success("Utilisateur ajouté")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
-                        st.error("Erreur mise à jour")
+                        st.error("Erreur ajout")
                         st.code(repr(e))
-
-            st.divider()
-            st.subheader("📋 Liste des Utilisateurs")
-            st.dataframe(df_utilisateurs[['nom', 'role']], use_container_width=True, hide_index=True)
-
-st.markdown("---")
-st.markdown("### 💎 ASYMAS BUSINESS v2.0 - Beni, RDC")
-st.caption(f"Connecté: {st.session_state.user_name} | Dernière synchro: {datetime.now().strftime('%H:%M:%S')}")
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
+        else:
+            for _, row in df_utilisateurs.iterrows():
+                with st.expander(f"{row['nom']} - {row['role']}"):
+                    c1, c2, c3 = st.columns(3)
+                    new_nom = c1.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
+                    new_role = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
+                    new_pwd = c3.text_input("Nouveau mot de passe", type="password", key=f"pwd_u_{row['id']}")
+                    c1, c2 = st.columns(2)
+                    if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
+                        try:
+                            data_update = {"nom": str(new_nom), "role": str(new_role)}
+                            if new_pwd:
+                                data_update["password"] = str(new_pwd)
+                            supabase.table("utilisateurs").update(data_update).eq("id", int(row['id'])).execute()
+                            st.success("Modifié")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur modif")
+                            st.code(repr(e))
+                    if c2.button("🗑️ Supprimer", key=f"del_u_{row['id']}", width="stretch"):
+                        try:
+                            supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
+                            st.success("Supprimé")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur suppression")
+                            st.code(repr(e))
