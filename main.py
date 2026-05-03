@@ -1135,18 +1135,23 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
                 pdf_global.ln(3)
 
-                def clean_pdf_text(txt):
-                    return str(txt).encode('latin-1', 'replace').decode('latin-1')
+                  def clean_pdf_text(txt):
+                    if txt is None:
+                        return ""
+                    return str(txt).encode('latin-1', 'replace').decode('latin-1').replace('\n', ' ').replace('\r', '')
 
                 for cat in sorted(categories):
                     df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
                     total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
 
                     pdf_global.set_font("Arial", "B", 12)
-                    pdf_global.cell(0, 8, f"CATEGORIE: {clean_pdf_text(cat)} - {len(df_cat)} operations", ln=True)
+                    cat_clean = clean_pdf_text(cat)
+                    pdf_global.cell(0, 8, f"CATEGORIE: {cat_clean} - {len(df_cat)} operations", ln=True)
+                    
                     pdf_global.set_font("Arial", "B", 10)
-                    pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
+                    pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f} | EUR {total_cat_eur:,.0f}", ln=True)
                     pdf_global.ln(2)
 
                     pdf_global.set_font("Arial", "B", 9)
@@ -1158,15 +1163,14 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
                     pdf_global.set_font("Arial", "", 8)
                     for _, row in df_cat.iterrows():
-                        pdf_global.cell(25, 6, str(row.get('date','')), 1)
-                        pdf_global.cell(25, 6, str(row.get('type','')), 1)
-                        desc = str(row.get('description',''))[:45]
+                        pdf_global.cell(25, 6, clean_pdf_text(row.get('date','')), 1)
+                        pdf_global.cell(25, 6, clean_pdf_text(row.get('type','')), 1)
+                        desc = clean_pdf_text(row.get('description',''))[:45]
                         pdf_global.cell(90, 6, desc, 1)
                         pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
-                        pdf_global.cell(20, 6, str(row.get('devise','FC')), 1, ln=True)
+                        pdf_global.cell(20, 6, clean_pdf_text(row.get('devise','FC')), 1, ln=True)
 
                     pdf_global.ln(5)
-
                     pdf_bytes_global = bytes(pdf_global.output(dest='S'))
 
                 col_dl_g2.download_button(
