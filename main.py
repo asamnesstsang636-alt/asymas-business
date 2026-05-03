@@ -892,7 +892,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 montant = c3.number_input("Montant", min_value=0.0)
                 data_insert = {"type": str(type_op), "categorie": str(cat), "montant": float(montant)}
                 if "description" in colonnes_compta:
-                    desc = c1.text_input("Description")
+                    desc = c1.text_input("Description", placeholder="Ex: Loyer - Client Jean")
                     data_insert["description"] = str(desc)
                 if "devise" in colonnes_compta:
                     devise = c2.selectbox("Devise", ["FC", "$", "€"])
@@ -914,11 +914,18 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.info("Aucune opération")
         else:
             df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            
+            # === FILTRES ===
             col_f1, col_f2, col_f3 = st.columns(3)
             date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_compta")
             date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_compta")
+            filtre_nom = col_f3.text_input("👤 Nom Client", placeholder="Tape un nom...", key="filtre_nom_compta")
             
             df_filtre_compta = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+            
+            # TRI PAR NOM CLIENT
+            if filtre_nom:
+                df_filtre_compta = df_filtre_compta[df_filtre_compta['description'].str.contains(filtre_nom, case=False, na=False)]
             
             col_t1, col_t2, col_t3 = st.columns(3)
             total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
@@ -931,7 +938,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             
             categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
             if len(categories) == 0:
-                st.info("Aucune catégorie trouvée dans la période")
+                st.info("Aucune opération trouvée avec ces filtres")
             else:
                 for cat in sorted(categories):
                     df_cat = df_filtre_compta[df_filtre_compta.get('categorie', '') == cat]
@@ -959,7 +966,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             width="stretch",
-                            key=f"dl_excel_compta_{safe_cat}_{date_debut}"
+                            key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
                         
                         # PDF
@@ -976,7 +983,10 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
                         pdf_cat.set_font("Arial", "B", 10)
                         pdf_cat.set_xy(150, 8)
+                        filtre_txt = f"Filtre: {filtre_nom}" if filtre_nom else "Tous"
                         pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
+                        pdf_cat.set_xy(150, 14)
+                        pdf_cat.cell(50, 6, filtre_txt, ln=True, align="R")
                         pdf_cat.ln(15)
                         pdf_cat.set_text_color(0, 0, 0)
                         pdf_cat.set_fill_color(255, 204, 0)
