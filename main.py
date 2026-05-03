@@ -706,8 +706,18 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         st.rerun()
                         else:
                             st.warning(f"Aucun véhicule trouvé pour: {search_clean}")
-                      except Exception as e:
+                        if search_qr:
+                    search_clean = search_qr.upper().replace("\r", "").replace("\n", "").strip()
+                    try:
+                        voitures_trouvees = supabase.table("voitures").select("*").or_(
+                            f"code_qr.ilike.%{search_clean}%,plaque.ilike.%{search_clean}%,marque.ilike.%{search_clean}%,modele.ilike.%{search_clean}%"
+                        ).eq("statut", "Disponible").gt("quantite", 0).execute()
+                        df_voitures_filtre = pd.DataFrame(voitures_trouvees.data)
+                    except Exception as e:
                         st.error(f"Erreur recherche: {e}")
+                        df_voitures_filtre = pd.DataFrame()
+                else:
+                    df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
