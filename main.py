@@ -618,10 +618,10 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 st.subheader("👤 Client")
                 nom_client = st.text_input("Nom Client", key="nom_client_v")
                 tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_v")
+                
                 st.subheader("🔍 Scanner / Chercher Voiture")
                 search_qr = st.text_input("QR Code, Plaque, Marque ou Modèle", placeholder="Scanne ici ou tape...", key="search_voiture_qr").strip()
                 
-                # Affiche TOUTES les voitures disponibles par défaut
                 if search_qr:
                     search_clean = search_qr.upper().replace("\r", "").replace("\n", "").strip()
                     try:
@@ -633,7 +633,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         st.error(f"Erreur recherche: {e}")
                         df_voitures_filtre = pd.DataFrame()
                 else:
-                    # Si pas de recherche, affiche toutes les voitures dispo
                     df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
                 
                 if df_voitures_filtre.empty:
@@ -671,55 +670,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                     })
                                     st.success("Ajouté au panier")
                                 st.rerun()
-                        if voiture_trouvee.data:
-                            st.success(f"✅ {len(voiture_trouvee.data)} véhicule(s) trouvé(s)")
-                            for v in voiture_trouvee.data:
-                                with st.container(border=True):
-                                    c1, c2, c3, c4 = st.columns([3,1,1,1])
-                                    c1.markdown(f"**{v['marque']} {v['modele']} {v.get('annee','')}** \n"
-                                               f"Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} \n"
-                                               f"Plaque: {v['plaque']} | QR: {v.get('code_qr','N/A')}")
-                                    qte_max = int(v.get('quantite', 1))
-                                    qte = c2.number_input("Qté", min_value=1, max_value=qte_max, value=1, key=f"qte_{v['id']}")
-                                    c3.metric("Stock", qte_max)
-                                    c4.metric("Prix", f"{v['prix']:,.0f}$")
-                                    if st.button("🛒 Ajouter", key=f"add_{v['id']}", width="stretch"):
-                                        existant = next((item for item in st.session_state.panier_voiture if item['id'] == int(v['id'])), None)
-                                        if existant:
-                                            if existant['qte'] + qte <= qte_max:
-                                                existant['qte'] += qte
-                                                st.success(f"Panier mis à jour: {existant['qte']}x")
-                                            else:
-                                                st.error(f"Stock insuffisant! Max dispo: {qte_max}")
-                                        else:
-                                            st.session_state.panier_voiture.append({
-                                                "id": int(v['id']),
-                                                "nom": f"{v['marque']} {v['modele']} {v.get('annee','')}",
-                                                "prix": float(v['prix']),
-                                                "qte": int(qte),
-                                                "plaque": v.get('plaque',''),
-                                                "qualite": v.get('qualite',''),
-                                                "code_qr": v.get('code_qr',''),
-                                                "stock_max": qte_max
-                                            })
-                                            st.success("Ajouté au panier")
-                                        st.rerun()
-                        else:
-                            st.warning(f"Aucun véhicule trouvé pour: {search_clean}")
-                 if search_qr:
-                    search_clean = search_qr.upper().replace("\r", "").replace("\n", "").strip()
-                    try:
-                        voitures_trouvees = supabase.table("voitures").select("*").or_(
-                            f"code_qr.ilike.%{search_clean}%,plaque.ilike.%{search_clean}%,marque.ilike.%{search_clean}%,modele.ilike.%{search_clean}%"
-                        ).eq("statut", "Disponible").gt("quantite", 0).execute()
-                        df_voitures_filtre = pd.DataFrame(voitures_trouvees.data)
-                    except Exception as e:
-                        st.error(f"Erreur recherche: {e}")
-                        df_voitures_filtre = pd.DataFrame()
-                else:
-                    df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
-                else:
-                    df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
+            
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
@@ -1171,7 +1122,6 @@ CREATE TABLE utilisateurs (
     nom TEXT NOT NULL,
     role TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
-            password TEXT NOT NULL
 );
 
 INSERT INTO utilisateurs (nom, role, password) VALUES
