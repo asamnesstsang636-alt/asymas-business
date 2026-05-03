@@ -166,6 +166,22 @@ if st.session_state.user_role is None:
     st.stop()
 
 # === CSS ===
+if st.session_state.user_role is not None:
+    # === SÉLECTEUR DE THÈME APRÈS CONNEXION ===
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed", key="theme_choisi")
+    
+    if theme == "Sombre ASYMAS":
+        st.markdown("""<style>.stApp {background-color: #0E1117; color: #E0E0E0;} h1,h2,h3{color: #14B814 !important;} .stButton>button{background-color: #14B814; color: white; border: none;}</style>""", unsafe_allow_html=True)
+    elif theme == "Bleu Pro":
+        st.markdown("""<style>.stApp {background-color: #0A1929; color: #E3F2FD;} h1,h2,h3{color: #2196F3 !important;} .stButton>button{background-color: #2196F3; color: white; border: none;}</style>""", unsafe_allow_html=True)
+    elif theme == "Vert Agri":
+        st.markdown("""<style>.stApp {background-color: #1B2A1B; color: #E8F5E9;} h1,h2,h3{color: #4CAF50 !important;} .stButton>button{background-color: #4CAF50; color: white; border: none;}</style>""", unsafe_allow_html=True)
+    elif theme == "Noir Luxe":
+        st.markdown("""<style>.stApp {background-color: #000000; color: #FFFFFF;} h1,h2,h3{color: #FFD700 !important;} .stButton>button{background: linear-gradient(90deg, #FFD700, #FFA500); color: black; border: none;}</style>""", unsafe_allow_html=True)
+    
+    st.markdown("""<style>#MainMenu{visibility: hidden;} footer{visibility: hidden;} header{visibility: hidden;}</style>""", unsafe_allow_html=True)
 st.markdown("""
 <style>
 h1, h2, h3 {
