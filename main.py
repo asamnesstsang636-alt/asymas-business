@@ -880,7 +880,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     else:
                         c2.info("🔒 Suppression réservée au PDG")
 
-if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
+ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab7:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
         colonnes_compta = get_table_columns("compta")
@@ -888,7 +888,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
             with st.form("form_compta", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 type_op = c1.selectbox("Type", ["Revenu", "Dépense"])
-                cat = c2.text_input("Catégorie", placeholder="Ex: Loyer, Vente, Salaire")
+                cat = c2.text_input("Catégorie", placeholder="Ex: Loyer, Vente Auto, Carburant")
                 montant = c3.number_input("Montant", min_value=0.0)
                 data_insert = {"type": str(type_op), "categorie": str(cat), "montant": float(montant)}
                 if "description" in colonnes_compta:
@@ -913,23 +913,105 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
         if df_compta.empty:
             st.info("Aucune opération")
         else:
-            col1, col2, col3 = st.columns(3)
-            total_revenu = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            total_depense = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-            solde = total_revenu - total_depense
-            col1.metric("💰 Total Revenus", f"{total_revenu:,.0f}")
-            col2.metric("💸 Total Dépenses", f"{total_depense:,.0f}")
-            col3.metric("💎 Solde", f"{solde:,.0f}")
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_compta")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_compta")
+            
+            df_filtre_compta = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+            
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_compta[df_filtre_compta.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_compta[df_filtre_compta.get('devise','FC')=='€']['montant'].sum()
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
             st.divider()
-            categories = df_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) > 0:
-                st.subheader("📂 Relevé par Catégorie")
+            
+            categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période")
+            else:
                 for cat in sorted(categories):
-                    df_cat = df_compta[df_compta.get('categorie', '') == cat]
-                    total_cat = df_cat['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}"):
-                        st.dataframe(df_cat, use_container_width=True, hide_index=True)
-
+                    df_cat = df_filtre_compta[df_filtre_compta.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                    total_cat = total_cat_fc + total_cat_usd + total_cat_eur
+                    
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
+                        st.dataframe(df_cat[['date', 'type', 'description', 'montant', 'devise']], use_container_width=True, hide_index=True)
+                        
+                        col_dl1, col_dl2 = st.columns(2)
+                        # EXCEL
+                        excel_bytes_cat = generer_excel_pro(
+                            df_cat, 
+                            f"Releve {cat} {date_debut}-{date_fin}",
+                            df_cat[df_cat['type']=='Revenu']['montant'].sum(),
+                            df_cat[df_cat['type']=='Dépense']['montant'].sum(),
+                            df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum()
+                        )
+                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
+                        col_dl1.download_button(
+                            label=f"📥 {cat} - EXCEL",
+                            data=excel_bytes_cat,
+                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            width="stretch",
+                            key=f"dl_excel_compta_{safe_cat}_{date_debut}"
+                        )
+                        
+                        # PDF
+                        pdf_cat = FPDF()
+                        pdf_cat.add_page()
+                        pdf_cat.set_fill_color(20, 50, 40)
+                        pdf_cat.rect(0, 0, 210, 35, 'F')
+                        pdf_cat.set_text_color(255, 255, 255)
+                        pdf_cat.set_font("Arial", "B", 20)
+                        pdf_cat.set_xy(10, 8)
+                        pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+                        pdf_cat.set_font("Arial", "", 9)
+                        pdf_cat.set_xy(10, 16)
+                        pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+                        pdf_cat.set_font("Arial", "B", 10)
+                        pdf_cat.set_xy(150, 8)
+                        pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
+                        pdf_cat.ln(15)
+                        pdf_cat.set_text_color(0, 0, 0)
+                        pdf_cat.set_fill_color(255, 204, 0)
+                        pdf_cat.set_font("Arial", "B", 14)
+                        pdf_cat.cell(0, 10, f"RELEVE COMPTABLE - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
+                        pdf_cat.ln(5)
+                        pdf_cat.set_font("Arial", "B", 11)
+                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | USD: {total_cat_usd:,.0f} | EUR: {total_cat_eur:,.0f}", ln=True)
+                        pdf_cat.ln(3)
+                        pdf_cat.set_font("Arial", "B", 9)
+                        pdf_cat.cell(25, 7, "Date", 1)
+                        pdf_cat.cell(25, 7, "Type", 1)
+                        pdf_cat.cell(90, 7, "Description", 1)
+                        pdf_cat.cell(30, 7, "Montant", 1)
+                        pdf_cat.cell(20, 7, "Devise", 1, ln=True)
+                        pdf_cat.set_font("Arial", "", 8)
+                        for _, row in df_cat.iterrows():
+                            try:
+                                pdf_cat.cell(25, 6, safe_pdf_txt(row.get('date','')), 1)
+                                pdf_cat.cell(25, 6, safe_pdf_txt(row.get('type','')), 1)
+                                desc = safe_pdf_txt(row.get('description',''))[:45]
+                                pdf_cat.cell(90, 6, desc, 1)
+                                pdf_cat.cell(30, 6, f"{row.get('montant',0):,.0f}", 1)
+                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('devise','FC')), 1, ln=True)
+                            except:
+                                continue
+                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
+                        col_dl2.download_button(
+                            label=f"📥 {cat} - PDF",
+                            data=pdf_bytes_cat,
+                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.pdf",
+                            mime="application/pdf",
+                            width="stretch",
+                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}"
+                        )
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
         st.markdown("## 📄 Factures - Relevé par Catégorie")
