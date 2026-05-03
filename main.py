@@ -609,6 +609,10 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
             st.session_state.pdf_auto = None
         if 'num_fact_auto' not in st.session_state:
             st.session_state.num_fact_auto = None
+        if 'client_auto_nom' not in st.session_state:
+            st.session_state.client_auto_nom = ""
+        if 'client_auto_tel' not in st.session_state:
+            st.session_state.client_auto_tel = "+243..."
 
         if df_voitures.empty:
             st.error("Aucune voiture disponible - Ajoute des voitures dans Gestion Parc")
@@ -616,8 +620,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
             col_gauche, col_droite = st.columns([2,1])
             with col_gauche:
                 st.subheader("👤 Client")
-                nom_client = st.text_input("Nom Client", key="nom_client_v")
-                tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_v")
+                st.session_state.client_auto_nom = st.text_input("Nom Client", value=st.session_state.client_auto_nom, key="nom_client_v")
+                st.session_state.client_auto_tel = st.text_input("Téléphone Client", value=st.session_state.client_auto_tel, key="tel_client_v")
 
                 st.subheader("🔍 Choisir Voiture")
                 search_qr = st.text_input("QR Code, Plaque, Marque ou Modèle", placeholder="Filtre la liste...", key="search_voiture_qr").strip()
@@ -638,7 +642,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 else:
                     st.success(f"✅ {len(df_voitures_dispo)} véhicule(s) disponible(s)")
 
-                    # LISTE DÉROULANTE + 1 SEUL BOUTON
                     options_voitures = []
                     for _, v in df_voitures_dispo.iterrows():
                         options_voitures.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v.get('couleur','')} | {v['plaque']} | Stock:{int(v.get('quantite',1))} | {v['prix']:,.0f}$ | ID:{v['id']}")
@@ -699,6 +702,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         st.session_state.vente_auto_finie = False
                         st.session_state.pdf_auto = None
                         st.session_state.num_fact_auto = None
+                        st.session_state.client_auto_nom = ""
+                        st.session_state.client_auto_tel = "+243..."
                         st.rerun()
                 elif not st.session_state.panier_voiture:
                     st.info("Panier vide")
@@ -713,15 +718,18 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.rerun()
                         total_voiture += item['prix'] * item['qte']
                     st.metric("💰 TOTAL VOITURE", f"{total_voiture:,.2f} $")
-                    client_voiture = st.text_input("👤 Nom Client", key="client_voiture_final")
-                    tel_voiture = st.text_input("Téléphone Client", value="+243...", key="tel_voiture_final")
+
+                    # AFFICHAGE CLIENT DIRECT - PLUS DE DOUBLE SAISIE
+                    st.markdown(f"**Client:** {st.session_state.client_auto_nom}")
+                    st.markdown(f"**Tel:** {st.session_state.client_auto_tel}")
+
                     if st.button("✅ FINALISER VENTE VOITURE", type="primary", width="stretch"):
-                        if client_voiture and st.session_state.panier_voiture:
+                        if st.session_state.client_auto_nom and st.session_state.panier_voiture:
                             try:
                                 details_list = [{"nom": f"{item['nom']} | {item.get('qualite','')} | {item['plaque']}",
                                                 "qte": item['qte'], "prix": item['prix']} for item in st.session_state.panier_voiture]
                                 details_text = " | ".join([f"{item['qte']}x {item['nom']} ({item.get('qualite','')})" for item in st.session_state.panier_voiture])
-                                num_fact, pdf_bytes = creer_facture_auto("Vente Voiture", client_voiture, details_text, total_voiture, "$", details_list, tel_voiture, "")
+                                num_fact, pdf_bytes = creer_facture_auto("Vente Voiture", st.session_state.client_auto_nom, details_text, total_voiture, "$", details_list, st.session_state.client_auto_tel, "")
                                 for item in st.session_state.panier_voiture:
                                     supabase.table("voitures").update({
                                         "quantite": item['stock_max'] - item['qte'],
@@ -737,7 +745,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             except Exception as e:
                                 st.error(f"Erreur finalisation: {e}")
                         else:
-                            st.error("Nom client obligatoire")
+                            st.error("Nom client obligatoire - Remplis à gauche")
 
 if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab6:
