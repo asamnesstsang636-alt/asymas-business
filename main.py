@@ -514,7 +514,7 @@ with tab2:
                         st.session_state.vente_finie = False
                         st.session_state.pdf_data = None
                         st.rerun()
-            else:
+             else:
                 st.info("Panier vide")
 if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab3:
