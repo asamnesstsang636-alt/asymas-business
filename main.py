@@ -618,59 +618,67 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 st.subheader("👤 Client")
                 nom_client = st.text_input("Nom Client", key="nom_client_v")
                 tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_v")
-                
-                st.subheader("🔍 Scanner / Chercher Voiture")
-                search_qr = st.text_input("QR Code, Plaque, Marque ou Modèle", placeholder="Scanne ici ou tape...", key="search_voiture_qr").strip()
-                
+
+                st.subheader("🔍 Choisir Voiture")
+                search_qr = st.text_input("QR Code, Plaque, Marque ou Modèle", placeholder="Filtre la liste...", key="search_voiture_qr").strip()
+
+                df_voitures_dispo = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
+
                 if search_qr:
-                    search_clean = search_qr.upper().replace("\r", "").replace("\n", "").strip()
-                    try:
-                        voitures_trouvees = supabase.table("voitures").select("*").or_(
-                            f"code_qr.ilike.%{search_clean}%,plaque.ilike.%{search_clean}%,marque.ilike.%{search_clean}%,modele.ilike.%{search_clean}%"
-                        ).eq("statut", "Disponible").gt("quantite", 0).execute()
-                        df_voitures_filtre = pd.DataFrame(voitures_trouvees.data)
-                    except Exception as e:
-                        st.error(f"Erreur recherche: {e}")
-                        df_voitures_filtre = pd.DataFrame()
+                    search_clean = search_qr.upper()
+                    df_voitures_dispo = df_voitures_dispo[
+                        df_voitures_dispo['code_qr'].str.contains(search_clean, case=False, na=False) |
+                        df_voitures_dispo['plaque'].str.contains(search_clean, case=False, na=False) |
+                        df_voitures_dispo['marque'].str.contains(search_clean, case=False, na=False) |
+                        df_voitures_dispo['modele'].str.contains(search_clean, case=False, na=False)
+                    ]
+
+                if df_voitures_dispo.empty:
+                    st.warning("⚠️ Aucune voiture disponible")
                 else:
-                    df_voitures_filtre = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
-                
-                if df_voitures_filtre.empty:
-                    st.warning("⚠️ Aucune voiture disponible en stock")
-                else:
-                    st.success(f"✅ {len(df_voitures_filtre)} véhicule(s) disponible(s)")
-                    for _, v in df_voitures_filtre.iterrows():
-                        with st.container(border=True):
-                            c1, c2, c3, c4 = st.columns([3,1,1,1])
-                            c1.markdown(f"**{v['marque']} {v['modele']} {v.get('annee','')}** \n"
-                                       f"Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} \n"
-                                       f"Plaque: {v['plaque']} | QR: {v.get('code_qr','N/A')}")
-                            qte_max = int(v.get('quantite', 1))
-                            qte = c2.number_input("Qté", min_value=1, max_value=qte_max, value=1, key=f"qte_v_{v['id']}")
-                            c3.metric("Stock", qte_max)
-                            c4.metric("Prix", f"{v['prix']:,.0f}$")
-                            if st.button("🛒 Ajouter", key=f"add_v_{v['id']}", width="stretch"):
-                                existant = next((item for item in st.session_state.panier_voiture if item['id'] == int(v['id'])), None)
-                                if existant:
-                                    if existant['qte'] + qte <= qte_max:
-                                        existant['qte'] += qte
-                                        st.success(f"Panier mis à jour: {existant['qte']}x")
-                                    else:
-                                        st.error(f"Stock insuffisant! Max dispo: {qte_max}")
+                    st.success(f"✅ {len(df_voitures_dispo)} véhicule(s) disponible(s)")
+
+                    # LISTE DÉROULANTE + 1 SEUL BOUTON
+                    options_voitures = []
+                    for _, v in df_voitures_dispo.iterrows():
+                        options_voitures.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v.get('couleur','')} | {v['plaque']} | Stock:{int(v.get('quantite',1))} | {v['prix']:,.0f}$ | ID:{v['id']}")
+
+                    voiture_choisie = st.selectbox("Sélectionne le véhicule", options_voitures, key="select_voiture_unique")
+
+                    if voiture_choisie:
+                        id_choisi = int(voiture_choisie.split("ID:")[1])
+                        v = df_voitures_dispo[df_voitures_dispo['id'] == id_choisi].iloc[0]
+
+                        c1, c2, c3 = st.columns(3)
+                        qte_max = int(v.get('quantite', 1))
+                        qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key=f"qte_v_unique")
+                        c2.metric("Stock dispo", qte_max)
+                        c3.metric("Prix unitaire", f"{v['prix']:,.0f}$")
+
+                        st.info(f"**{v['marque']} {v['modele']}** | Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} | QR: {v.get('code_qr','N/A')}")
+
+                        if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_voiture_unique"):
+                            existant = next((item for item in st.session_state.panier_voiture if item['id'] == int(v['id'])), None)
+                            if existant:
+                                if existant['qte'] + qte <= qte_max:
+                                    existant['qte'] += qte
+                                    st.success(f"Panier mis à jour: {existant['qte']}x")
                                 else:
-                                    st.session_state.panier_voiture.append({
-                                        "id": int(v['id']),
-                                        "nom": f"{v['marque']} {v['modele']} {v.get('annee','')}",
-                                        "prix": float(v['prix']),
-                                        "qte": int(qte),
-                                        "plaque": v.get('plaque',''),
-                                        "qualite": v.get('qualite',''),
-                                        "code_qr": v.get('code_qr',''),
-                                        "stock_max": qte_max
-                                    })
-                                    st.success("Ajouté au panier")
-                                st.rerun()
-            
+                                    st.error(f"Stock insuffisant! Max dispo: {qte_max}")
+                            else:
+                                st.session_state.panier_voiture.append({
+                                    "id": int(v['id']),
+                                    "nom": f"{v['marque']} {v['modele']} {v.get('annee','')}",
+                                    "prix": float(v['prix']),
+                                    "qte": int(qte),
+                                    "plaque": v.get('plaque',''),
+                                    "qualite": v.get('qualite',''),
+                                    "code_qr": v.get('code_qr',''),
+                                    "stock_max": qte_max
+                                })
+                                st.success("Ajouté au panier")
+                            st.rerun()
+
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
@@ -679,28 +687,13 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.info(f"📄 Facture: {st.session_state.num_fact_auto}")
                     if st.session_state.pdf_auto:
                         st.download_button(
-                            label="📥 TÉLÉCHARGER LE PDF MAINTENANT",
+                            label="📥 TÉLÉCHARGER LE PDF",
                             data=bytes(st.session_state.pdf_auto),
                             file_name=f"{st.session_state.num_fact_auto}.pdf",
                             mime="application/pdf",
                             width="stretch",
                             key="dl_facture_auto"
                         )
-                    pdf_b64 = base64.b64encode(st.session_state.pdf_auto).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LA FACTURE
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
                     if st.button("Nouvelle Vente", width="stretch", key="new_vente_auto"):
                         st.session_state.panier_voiture = []
                         st.session_state.vente_auto_finie = False
