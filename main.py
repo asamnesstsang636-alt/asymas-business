@@ -403,7 +403,7 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
             
-          with col_droite:
+        with col_droite:
     st.subheader("🛒 Panier")
 
     # === BLOC 1 : SUCCÈS EN PREMIER ===
