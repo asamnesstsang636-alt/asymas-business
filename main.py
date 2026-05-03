@@ -41,7 +41,13 @@ button[title="Manage app"] {display: none!important;}
 a[href*="share.streamlit.io"] {display: none!important;}
 </style>
 """, unsafe_allow_html=True)
-
+df_articles_filtre = df_articles.copy()
+if recherche:
+    search_clean = str(recherche).upper().strip()
+    mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
+    if 'code_qr' in df_articles.columns:
+        mask = mask | df_articles['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
+    df_articles_filtre = df_articles[mask] # <-- CORRECTION ICI
 # === SYSTÈME DE MOTS DE PASSE ===
 @st.cache_data(ttl=10)
 def load_passwords():
