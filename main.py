@@ -1,5 +1,61 @@
 import streamlit as st
 import pandas as pd
+st.set_page_config(
+    page_title="ASYMAS BUSINESS",
+    page_icon="🌾",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+theme = st.sidebar.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"])
+
+if theme == "Sombre ASYMAS":
+    st.markdown("""
+    <style>
+       .stApp {background-color: #0E1117; color: #E0E0E0;}
+        h1, h2, h3 {color: #14B814 !important;}
+       .stButton > button {background-color: #14B814; color: white; border: none;}
+       .stTextInput > div > div > input {background-color: #262730; color: #E0E0E0; border: 1px solid #2D303E;}
+    </style>
+    """, unsafe_allow_html=True)
+
+elif theme == "Bleu Pro":
+    st.markdown("""
+    <style>
+       .stApp {background-color: #0A1929; color: #E3F2FD;}
+        h1, h2, h3 {color: #2196F3 !important;}
+       .stButton > button {background-color: #2196F3; color: white; border: none;}
+       .stTextInput > div > div > input {background-color: #132F4C; color: #E3F2FD; border: 1px solid #1E4976;}
+    </style>
+    """, unsafe_allow_html=True)
+
+elif theme == "Vert Agri":
+    st.markdown("""
+    <style>
+       .stApp {background-color: #1B2A1B; color: #E8F5E9;}
+        h1, h2, h3 {color: #4CAF50 !important;}
+       .stButton > button {background-color: #4CAF50; color: white; border: none;}
+       .stTextInput > div > div > input {background-color: #2E3B2E; color: #E8F5E9; border: 1px solid #3E4E3E;}
+    </style>
+    """, unsafe_allow_html=True)
+
+elif theme == "Noir Luxe":
+    st.markdown("""
+    <style>
+       .stApp {background-color: #000000; color: #FFFFFF;}
+        h1, h2, h3 {color: #FFD700 !important;}
+       .stButton > button {background: linear-gradient(90deg, #FFD700, #FFA500); color: black; border: none; font-weight: 700;}
+       .stTextInput > div > div > input {background-color: #1A1A1A; color: #FFFFFF; border: 1px solid #FFD700;}
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
