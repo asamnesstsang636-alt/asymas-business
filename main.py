@@ -4,7 +4,7 @@ st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="auto")
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
