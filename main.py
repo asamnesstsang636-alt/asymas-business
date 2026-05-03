@@ -880,7 +880,7 @@ if tab6 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     else:
                         c2.info("🔒 Suppression réservée au PDG")
 
- if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
+if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab7:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
         colonnes_compta = get_table_columns("compta")
