@@ -403,106 +403,110 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
             
-            # === SCANNER QR CAMÉRA + RECHERCHE TEXTE ===
-            from streamlit_qrcode_scanner import qrcode_scanner
-            col_scan1, col_scan2 = st.columns([1,3])
-            with col_scan1:
-                qr_code = qrcode_scanner(key='qr_scanner')
-            with col_scan2:
-                recherche_manuelle = st.text_input("🔍 Ou tape le nom/code", placeholder="Tape le nom ou QRA...", key="search_c").strip()
-            
-            recherche = qr_code if qr_code else recherche_manuelle
-            if qr_code:
-                st.success(f"QR Scanné: {qr_code}")
-            # ============================================
+          with col_droite:
+    st.subheader("🛒 Panier")
 
-            # === FILTRE QR + NOM CORRIGÉ ===
-            df_articles_filtre = df_articles.copy()
-            if recherche:
-                search_clean = recherche.upper().strip()
-                mask = df_articles['nom_article'].str.contains(recherche, case=False, na=False)
-                if 'code_qr' in df_articles.columns:
-                    mask = mask | df_articles['code_qr'].str.upper().str.contains(search_clean, case=False, na=False)
-                df_articles_filtre = df_articles # CORRECTION BUG
-            # =================================
+    # === BLOC 1 : SUCCÈS EN PREMIER ===
+    if st.session_state.vente_finie and st.session_state.pdf_data:
+        st.success("✅ Vente enregistrée!")
+        st.download_button(
+            "📥 Télécharger Facture PDF",
+            data=st.session_state.pdf_data,
+            file_name=f"{st.session_state.num_fact}.pdf",
+            mime="application/pdf",
+            width="stretch"
+        )
+        if st.button("NOUVELLE VENTE", width="stretch"):
+            st.session_state.vente_finie = False
+            st.session_state.pdf_data = None
+            st.session_state.num_fact = None
+            st.session_state.client_com_nom = ""
+            st.rerun()
 
-            if not df_articles_filtre.empty:
-                options = []
-                for _, row in df_articles_filtre.iterrows():
-                    qr_txt = f" | QR:{row.get('code_qr','')}" if 'code_qr' in df_articles.columns and row.get('code_qr') else ""
-                    options.append(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock','?')}{qr_txt}")
+    # === BLOC 2 : PANIER VIDE ===
+    elif not st.session_state.panier_commerce:
+        st.info("Panier vide")
 
-                choix = st.selectbox("Choisir le produit", options, key="choix_prod_c")
-                idx_choisi = options.index(choix)
-                produit_choisi = df_articles_filtre.iloc[idx_choisi]
+    # === BLOC 3 : PANIER REMPLI ===
+    else:
+        total_panier = 0
+        for i, item in enumerate(st.session_state.panier_commerce):
+            col1, col2, col3 = st.columns([4,2,1])
+            col1.write(f"**{item['nom']}**")
 
-                c1, c2, c3 = st.columns([1,1,1])
-                qte = c1.number_input("QTE", min_value=1, value=1, key="qte_c")
-                c2.markdown(f"### Prix: **{produit_choisi.get('prix_vente',0):,.0f} FC**")
-                if 'code_qr' in df_articles.columns and produit_choisi.get('code_qr'):
-                    c2.caption(f"QR: {produit_choisi.get('code_qr')}")
+            qte = item.get('qte', 1)
+            pu = item.get('pu', 0)
 
-                if c3.button("➕ Ajouter au Panier", width="stretch", key="add_panier_c"):
-                    stock_dispo = int(produit_choisi.get('stock', 0))
-                    if stock_dispo < qte:
-                        st.error(f"Stock insuffisant! Disponible: {stock_dispo}")
-                        st.stop()
-                    st.session_state.panier_commerce.append({
-                        "id": int(produit_choisi['id']),
-                        "nom": str(produit_choisi['nom_article']),
-                        "prix": float(produit_choisi.get('prix_vente',0)),
-                        "qte": int(qte),
-                        "stock_dispo": stock_dispo,
-                        "code_qr": produit_choisi.get('code_qr','')
-                    })
-                    st.session_state.vente_finie = False
-                    st.rerun()
+            item['qte'] = col2.number_input("Qte", min_value=1, value=qte, key=f"q_{i}", label_visibility="collapsed")
+            if col3.button("❌", key=f"d_{i}"):
+                st.session_state.panier_commerce.pop(i)
+                st.rerun()
+
+            total_panier += item['qte'] * pu
+
+        st.markdown(f"### Total: {total_panier:,.0f} FC")
+        st.divider()
+
+        if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
+            if not st.session_state.client_com_nom:
+                st.error("Nom du client obligatoire!")
             else:
-                st.info("Aucun produit trouvé")
+                try:
+                    num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}" # <-- LIGNE 52
+                    details_list = []
 
-        with col_droite:
-            st.subheader("🧺 Panier")
-            if st.session_state.panier_commerce:
-                total_panier = 0
-                for i, item in enumerate(st.session_state.panier_commerce):
-                    col_a, col_b = st.columns([3,1])
-                    sous_total = item['prix'] * item['qte']
-                    total_panier += sous_total
-                    col_a.write(f"**{item['nom']}** x{item['qte']} = {sous_total:,.0f} FC")
-                    if col_b.button("🗑️", key=f"del_c_{i}"):
-                        st.session_state.panier_commerce.pop(i)
-                        st.rerun()
-                st.divider()
-                st.markdown(f"### Total: **{total_panier:,.0f} FC**")
-                st.divider()
-                if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
-                    try:
-                        for item in st.session_state.panier_commerce:
-                            nouveau_stock = item['stock_dispo'] - item['qte']
-                            supabase.table("articles").update({"stock": int(nouveau_stock)}).eq("id", item['id']).execute()
-                        details_list = [{"nom": str(item['nom']), "prix": float(item['prix']), "qte": int(item['qte'])} for item in st.session_state.panier_commerce]
-                        details_json = json.dumps(details_list)
-                        num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        supabase.table("compta").insert({
-                            "date": str(date.today()),
-                            "type": "Revenu",
-                            "categorie": "Vente Commerce",
-                            "description": f"Vente - {st.session_state.client_com_nom}",
-                            "montant": float(total_panier),
-                            "devise": "FC",
+                    for item in st.session_state.panier_commerce:
+                        supabase.table("ventes").insert({
                             "numero_facture": num_fact,
-                            "details": details_json
+                            "client_nom": st.session_state.client_com_nom,
+                            "article_id": item['id'],
+                            "quantite": item['qte'],
+                            "prix_unitaire": item['pu'],
+                            "total": item['qte'] * item['pu']
                         }).execute()
-                        pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
-                        st.session_state.pdf_data = pdf_bytes
-                        st.session_state.num_fact = num_fact
-                        st.session_state.vente_finie = True
-                        st.session_state.panier_commerce = []
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur finalisation vente")
-                        st.code(repr(e))
+
+                        stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
+                        supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
+
+                        details_list.append({
+                            "nom": item['nom'],
+                            "qte": item['qte'],
+                            "pu": item['pu'],
+                            "total": item['qte'] * item['pu']
+                        })
+
+                    details_json = json.dumps(details_list)
+                    supabase.table("compta").insert({
+                        "date": str(date.today()),
+                        "type": "Revenu",
+                        "categorie": "Vente Commerce",
+                        "description": f"Vente - {st.session_state.client_com_nom}",
+                        "montant": float(total_panier),
+                        "devise": "FC",
+                        "numero_facture": num_fact,
+                        "details": details_json
+                    }).execute()
+
+                    pdf_bytes = generer_pdf_facture(
+                        num_fact,
+                        "Vente Commerce",
+                        st.session_state.client_com_nom,
+                        details_list,
+                        total_panier,
+                        "FC",
+                        st.session_state.client_com_tel
+                    )
+
+                    st.session_state.pdf_data = pdf_bytes
+                    st.session_state.num_fact = num_fact
+                    st.session_state.vente_finie = True
+                    st.session_state.panier_commerce = []
+                    st.cache_data.clear()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error("Erreur finalisation vente")
+                    st.code(repr(e))
                 if st.session_state.vente_finie and st.session_state.pdf_data:
                     st.success("✅ Vente enregistrée!")
                     st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_data, file_name=f"{st.session_state.num_fact}.pdf", mime="application/pdf", width="stretch")
