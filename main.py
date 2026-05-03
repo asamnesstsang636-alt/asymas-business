@@ -365,7 +365,7 @@ else:
 
 if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab1:
-       for i, item in enumerate(st.session_state.panier_commerce):
+for i, item in enumerate(st.session_state.panier_commerce):
     col1, col2, col3 = st.columns([4,2,1])
     col1.write(f"**{item['nom']}**")
     
