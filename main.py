@@ -365,18 +365,20 @@ else:
 
 if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab1:
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🏠 Biens", len(df_biens))
-        col2.metric("📦 Articles", len(df_articles))
-        col3.metric("🚗 Voitures", len(df_voitures))
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        elif not df_compta.empty:
-            col4.metric("💰 Écritures", len(df_compta))
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-
+       for i, item in enumerate(st.session_state.panier_commerce):
+    col1, col2, col3 = st.columns([4,2,1])
+    col1.write(f"**{item['nom']}**")
+    
+    # Sécurise les clés manquantes
+    qte = item.get('qte', 1)
+    prix = item.get('pu', item.get('prix', 0))  # Prend 'pu' ou 'prix'
+    
+    item['qte'] = col2.number_input("Qte", min_value=1, value=qte, key=f"q_{i}", label_visibility="collapsed")
+    if col3.button("❌", key=f"d_{i}"):
+        st.session_state.panier_commerce.pop(i)
+        st.rerun()
+    
+    total_panier += item['qte'] * prix  # <-- SÉCURISÉ
 with tab2:
     st.markdown("## 🛍️ Commerce - Point de Vente")
 
