@@ -8,8 +8,8 @@ st.set_page_config(
 )
 
 col1, col2, col3 = st.columns([1,2,1])
-  with col2:
-     theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed")
+with col2:
+    theme = st.selectbox("🎨 Choisir le thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed")
 if theme == "Sombre ASYMAS":
     st.markdown("""
     <style>
