@@ -1190,8 +1190,7 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
                 c1, c2, c3 = st.columns(3)
                 new_pass_pdg = c1.text_input("PDG", value=passwords_db.get("PDG", ""), type="password", key="pass_pdg")
                 new_pass_gerante = c2.text_input("GÉRANTE", value=passwords_db.get("GERANTE", ""), type="password", key="pass_ger")
-                new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user)
-             
+                new_pass_user = c3.text_input("UTILISATEUR", value=passwords_db.get("UTILISATEUR", ""), type="password", key="pass_user")
 
                 if st.form_submit_button("💾 ENREGISTRER LES MOTS DE PASSE", width="stretch", type="primary"):
                     try:
@@ -1204,7 +1203,6 @@ INSERT INTO utilisateurs (nom, role, password) VALUES
                     except Exception as e:
                         st.error("Erreur mise à jour")
                         st.code(repr(e))
-
             st.divider()
             st.subheader("📋 Liste des Utilisateurs")
             st.dataframe(df_utilisateurs[['nom', 'role']], use_container_width=True, hide_index=True)
