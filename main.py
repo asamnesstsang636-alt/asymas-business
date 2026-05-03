@@ -1054,7 +1054,10 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.set_text_color(0, 0, 0)
                         pdf_cat.set_fill_color(255, 204, 0)
                         pdf_cat.set_font("Arial", "B", 14)
-                        pdf_cat.cell(0, 10, f"RELEVE - {cat.upper()}", ln=True, fill=True)
+                        def clean_pdf_text(txt):
+                            return str(txt).encode('latin-1', 'replace').decode('latin-1')
+                        
+                        pdf_cat.cell(0, 10, f"RELEVE - {clean_pdf_text(cat).upper()}", ln=True, fill=True)
                         pdf_cat.ln(5)
                         pdf_cat.set_font("Arial", "B", 11)
                         pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
@@ -1132,13 +1135,16 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 pdf_global.cell(0, 8, f"Total FC: {total_fc:,.0f} | Total USD: {total_usd:,.0f} | Total EUR: {total_eur:,.0f}", ln=True)
                 pdf_global.ln(3)
 
+                def clean_pdf_text(txt):
+                    return str(txt).encode('latin-1', 'replace').decode('latin-1')
+
                 for cat in sorted(categories):
                     df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
                     total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
 
                     pdf_global.set_font("Arial", "B", 12)
-                    pdf_global.cell(0, 8, f"CATEGORIE: {cat} - {len(df_cat)} operations", ln=True)
+                    pdf_global.cell(0, 8, f"CATEGORIE: {clean_pdf_text(cat)} - {len(df_cat)} operations", ln=True)
                     pdf_global.set_font("Arial", "B", 10)
                     pdf_global.cell(0, 6, f"Total: FC {total_cat_fc:,.0f} | USD {total_cat_usd:,.0f}", ln=True)
                     pdf_global.ln(2)
