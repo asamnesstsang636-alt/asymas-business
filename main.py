@@ -706,7 +706,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                         st.rerun()
                         else:
                             st.warning(f"Aucun véhicule trouvé pour: {search_clean}")
-                        if search_qr:
+                 if search_qr:
                     search_clean = search_qr.upper().replace("\r", "").replace("\n", "").strip()
                     try:
                         voitures_trouvees = supabase.table("voitures").select("*").or_(
