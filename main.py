@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+st.markdown("""
+<meta name="mobile-web-app-capable" content="yes">
+""", unsafe_allow_html=True)
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
@@ -19,7 +22,24 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
-
+st.markdown("""
+<link rel="manifest" href="data:application/manifest+json,{
+  \\"name\\": \\"ASYMAS BUSINESS\\",
+  \\"short_name\\": \\"ASYMAS\\",
+  \\"start_url\\": \\".\\",
+  \\"display\\": \\"standalone\\",
+  \\"background_color\\": \\"#000000\\",
+  \\"theme_color\\": \\"#00ff41\\",
+  \\"description\\": \\"Agriculture Commerce Immobilier Automobile\\",
+  \\"icons\\": [{
+    \\"src\\": \\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f48e.png\\",
+    \\"sizes\\": \\"192x192\\",
+    \\"type\\": \\"image/png\\"
+  }]
+}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+""", unsafe_allow_html=True)
 # === CACHE TOUT STREAMLIT ===
 st.markdown("""
 <style>
