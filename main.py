@@ -4,8 +4,7 @@ st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="collapsed"
-)
+    initial_sidebar_state="auto"
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
@@ -27,7 +26,7 @@ from streamlit_qrcode_scanner import qrcode_scanner
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="💎")
+
 st.markdown("""
 <link rel="manifest" href="data:application/manifest+json,{
   \\"name\\": \\"ASYMAS BUSINESS\\",
@@ -115,20 +114,18 @@ if st.session_state.user_role is None:
     st.stop()
 
 # === CSS ===
-if st.session_state.user_role is not None:
-    # === SÉLECTEUR DE THÈME APRÈS CONNEXION ===
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS", "Bleu Pro", "Vert Agri", "Noir Luxe"], label_visibility="collapsed", key="theme_choisi")
+if 'user_role' in st.session_state and st.session_state.user_role is not None:
+    with st.sidebar:
+        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
+        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
+        if st.button("🚪 Déconnexion", use_container_width=True): st.session_state.user_role=None; st.session_state.username=None; st.rerun()
     
-    if theme == "Sombre ASYMAS":
-        st.markdown("""<style>.stApp {background-color: #0E1117; color: #E0E0E0;} h1,h2,h3{color: #14B814 !important;} .stButton>button{background-color: #14B814; color: white; border: none;}</style>""", unsafe_allow_html=True)
-    elif theme == "Bleu Pro":
-        st.markdown("""<style>.stApp {background-color: #0A1929; color: #E3F2FD;} h1,h2,h3{color: #2196F3 !important;} .stButton>button{background-color: #2196F3; color: white; border: none;}</style>""", unsafe_allow_html=True)
-    elif theme == "Vert Agri":
-        st.markdown("""<style>.stApp {background-color: #1B2A1B; color: #E8F5E9;} h1,h2,h3{color: #4CAF50 !important;} .stButton>button{background-color: #4CAF50; color: white; border: none;}</style>""", unsafe_allow_html=True)
-    elif theme == "Noir Luxe":
-        st.markdown("""<style>.stApp {background-color: #000000; color: #FFFFFF;} h1,h2,h3{color: #FFD700 !important;} .stButton>button{background: linear-gradient(90deg, #FFD700, #FFA500); color: black; border: none;}</style>""", unsafe_allow_html=True)
+    if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+    
+    st.markdown("""<style>#MainMenu,header,footer{visibility:hidden!important}</style>""",unsafe_allow_html=True)
     
     st.markdown("""<style>#MainMenu{visibility: hidden;} footer{visibility: hidden;} header{visibility: hidden;}</style>""", unsafe_allow_html=True)
 st.markdown("""
