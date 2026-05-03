@@ -4,6 +4,7 @@ from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
 import base64
+import json
 import io
 import qrcode
 from PIL import Image
