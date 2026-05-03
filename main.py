@@ -1010,7 +1010,7 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.pdf",
                             mime="application/pdf",
                             width="stretch",
-                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}"
+                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
