@@ -406,7 +406,7 @@ with tab2:
 
             st.subheader("📦 Rubrique Produit")
 
-            # === SCANNER QR + RECHERCHE COMME AUTO ===
+            # === SCANNER QR + RECHERCHE ===
             col_scan1, col_scan2 = st.columns([1,3])
             with col_scan1:
                 qr_code = qrcode_scanner(key='qr_scanner_c')
@@ -417,7 +417,7 @@ with tab2:
             if qr_code:
                 st.success(f"QR Scanné: {qr_code}")
 
-            # === FILTRE CORRIGÉ ===
+            # === FILTRE CORRIGÉ - APPLIQUE LE MASK ===
             df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
             if recherche:
                 search_clean = str(recherche).upper().strip()
@@ -425,14 +425,14 @@ with tab2:
                 if 'code_qr' in df_articles_filtre.columns:
                     mask = mask | df_articles_filtre['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
                 df_articles_filtre = df_articles_filtre
-            # ======================
+            # ========================================
 
             if df_articles_filtre.empty:
                 st.warning("⚠️ Aucun produit disponible")
             else:
                 st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
 
-                # === SELECTBOX COMME AUTO - 1 SEUL AJOUTER ===
+                # === SELECTBOX COMME AUTO - 1 SEUL BOUTON AJOUTER ===
                 options_articles = []
                 for _, p in df_articles_filtre.iterrows():
                     qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
@@ -517,15 +517,16 @@ with tab2:
                             details_list = []
 
                             for item in st.session_state.panier_commerce:
-                                # === INSERT AVEC BON NOM DE COLONNE ===
-  supabase.table("ventes").insert({
-    "numero_facture": num_fact,
-    "client_nom": st.session_state.client_com_nom,
-    "article_id": item['id'],  # <-- Cette colonne doit exister
-    "quantite": item['qte'],
-    "prix_unitaire": item['pu'],
-    "total": item['qte'] * item['pu']
-}).execute()
+                                # === INSERT CORRIGÉ - COLONNES SUPABASE ===
+                                supabase.table("ventes").insert({
+                                    "numero_facture": num_fact,
+                                    "client_nom": st.session_state.client_com_nom,
+                                    "article_id": item['id'],
+                                    "quantite": item['qte'],
+                                    "prix_unitaire": item['pu'],
+                                    "total": item['qte'] * item['pu']
+                                }).execute()
+
                                 stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
                                 supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
 
