@@ -1319,39 +1319,110 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
 # === TAB 9 : UTILISATEURS - PDG SEULEMENT ===
 if tab9 and st.session_state.user_role == "PDG":
     with tab9:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        with st.expander("➕ Ajouter Nouvel Utilisateur"):
+        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
             with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
-                nom_user = c1.text_input("Nom")
-                role_user = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
-                pwd_user = c3.text_input("Mot de passe", type="password")
-                if st.form_submit_button("💾 Ajouter Utilisateur"):
-                    try:
-                        supabase.table("utilisateurs").insert({"nom": str(nom_user), "role": str(role_user), "password": str(pwd_user)}).execute()
-                        st.success("Utilisateur ajouté")
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur ajout")
-                        st.code(repr(e))
+                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                pwd_user = c3.text_input("Mot de passe *", type="password")
+                
+                st.markdown("**🔐 Autorisations :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock", value=(role_user in ["PDG","GERANTE"]))
+                perm_immo = col4.checkbox("Immobilier", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2, col3, col4 = st.columns(4)
+                perm_auto = col1.checkbox("Automobile", value=(role_user in ["PDG","GERANTE"]))
+                perm_parc = col2.checkbox("Gestion Parc", value=(role_user in ["PDG","GERANTE"]))
+                perm_compta = col3.checkbox("Comptabilité", value=(role_user in ["PDG","GERANTE"]))
+                perm_factures = col4.checkbox("Factures", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2 = st.columns(2)
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
+                
+                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
+                    if not nom_user or not pwd_user:
+                        st.error("Nom et mot de passe obligatoires")
+                    else:
+                        try:
+                            permissions = {
+                                "dashboard": perm_dashboard,
+                                "commerce": perm_commerce,
+                                "stock": perm_stock,
+                                "immobilier": perm_immo,
+                                "automobile": perm_auto,
+                                "parc": perm_parc,
+                                "comptabilite": perm_compta,
+                                "factures": perm_factures,
+                                "supprimer": perm_supprimer,
+                                "users": perm_users
+                            }
+                            supabase.table("utilisateurs").insert({
+                                "nom": str(nom_user), 
+                                "role": str(role_user), 
+                                "password": str(pwd_user),
+                                "permissions": permissions
+                            }).execute()
+                            st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("❌ ERREUR AJOUT UTILISATEUR")
+                            st.code(repr(e))
+        
         st.divider()
         st.subheader("📋 Liste des Utilisateurs")
         if df_utilisateurs.empty:
             st.info("Aucun utilisateur")
         else:
             for _, row in df_utilisateurs.iterrows():
-                with st.expander(f"{row['nom']} - {row['role']}"):
+                perms = row.get('permissions', {})
+                if isinstance(perms, str):
+                    try:
+                        perms = json.loads(perms)
+                    except:
+                        perms = {}
+                
+                with st.expander(f"{row['nom']} - {row['role']}", expanded=False):
                     c1, c2 = st.columns(2)
                     with c1:
                         new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
-                        new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
+                        new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"], 
+                                               index=["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"].index(row['role']) if row['role'] in ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"] else 2, 
+                                               key=f"role_u_{row['id']}")
                     with c2:
-                        new_pwd = st.text_input("Nouveau mot de passe", type="password", key=f"pwd_u_{row['id']}")
+                        new_pwd = st.text_input("Nouveau mot de passe", type="password", placeholder="Laisser vide pour garder l'ancien", key=f"pwd_u_{row['id']}")
+                    
+                    st.markdown("**🔐 Autorisations :**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_dashboard = col1.checkbox("Dashboard", value=perms.get('dashboard',True), key=f"p1_{row['id']}")
+                    p_commerce = col2.checkbox("Commerce", value=perms.get('commerce',True), key=f"p2_{row['id']}")
+                    p_stock = col3.checkbox("Stock", value=perms.get('stock',False), key=f"p3_{row['id']}")
+                    p_immo = col4.checkbox("Immobilier", value=perms.get('immobilier',False), key=f"p4_{row['id']}")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_auto = col1.checkbox("Auto", value=perms.get('automobile',False), key=f"p5_{row['id']}")
+                    p_parc = col2.checkbox("Parc", value=perms.get('parc',False), key=f"p6_{row['id']}")
+                    p_compta = col3.checkbox("Compta", value=perms.get('comptabilite',False), key=f"p7_{row['id']}")
+                    p_fact = col4.checkbox("Factures", value=perms.get('factures',False), key=f"p8_{row['id']}")
+                    col1, col2 = st.columns(2)
+                    p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms.get('supprimer',False), key=f"p9_{row['id']}")
+                    p_users = col2.checkbox("👥 Gérer Users", value=perms.get('users',False), key=f"p10_{row['id']}")
+                    
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
                         try:
-                            update_data = {"nom": str(new_nom), "role": str(new_role)}
+                            update_data = {
+                                "nom": str(new_nom), 
+                                "role": str(new_role),
+                                "permissions": {
+                                    "dashboard": p_dashboard, "commerce": p_commerce, "stock": p_stock,
+                                    "immobilier": p_immo, "automobile": p_auto, "parc": p_parc,
+                                    "comptabilite": p_compta, "factures": p_fact, 
+                                    "supprimer": p_del, "users": p_users
+                                }
+                            }
                             if new_pwd:
                                 update_data["password"] = str(new_pwd)
                             supabase.table("utilisateurs").update(update_data).eq("id", int(row['id'])).execute()
