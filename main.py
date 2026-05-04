@@ -1247,7 +1247,7 @@ if "📄 Factures" in tab_map:
                                 st.cache_data.clear()
                                 st.rerun()
                            else:
-                              col_g.write("")
+                             col_g.write("")
                             # === BOUTON TÉLÉCHARGER PDF ===
                             try:
                                 details_list = []
