@@ -28,45 +28,27 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-st.markdown("""
-<link rel="manifest" href="data:application/manifest+json,{
-  \\"name\\": \\"ASYMAS BUSINESS\\",
-  \\"short_name\\": \\"ASYMAS\\",
-  \\"start_url\\": \\".\\",
-  \\"display\\": \\"standalone\\",
-  \\"background_color\\": \\"#000000\\",
-  \\"theme_color\\": \\"#00ff41\\",
-  \\"description\\": \\"Agriculture Commerce Immobilier Automobile\\",
-  \\"icons\\": [{
-    \\"src\\": \\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f48e.png\\",
-    \\"sizes\\": \\"192x192\\",
-    \\"type\\": \\"image/png\\"
-  }]
-}">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-""", unsafe_allow_html=True)
+# === TOUTES LES FONCTIONS D'ABORD ===
+@st.cache_data(ttl=60)
+def load_table(table_name):
+    try:
+        with st.spinner(f"Chargement {table_name}..."):
+            data = supabase.table(table_name).select("*").order("id", desc=True).execute()
+        return pd.DataFrame(data.data)
+    except Exception as e:
+        st.error(f"Erreur chargement {table_name}")
+        st.code(repr(e))
+        return pd.DataFrame()
 
-st.markdown("""
-<style>
-#MainMenu {visibility: hidden!important;}
-header {visibility: hidden!important;}
-.stAppToolbar {display: none!important;}
-[data-testid="stToolbar"] {display: none!important;}
-[data-testid="stDecoration"] {display: none!important;}
-[data-testid="stHeader"] {display: none!important;}
-footer {visibility: hidden!important;}
-.stDeployButton {display:none!important;}
-[data-testid="stStatusWidget"] {display: none!important;}
-[data-testid="manage-app-button"] {display: none!important;}
-iframe[src*="streamlit.io"] {display: none!important;}
-button[kind="header"] {display: none!important;}
-div[data-testid="stBottomBlockContainer"] {display: none!important;}
-.st-emotion-cache-1wbqy5l {display: none!important;}
-button[title="Manage app"] {display: none!important;}
-a[href*="share.streamlit.io"] {display: none!important;}
-</style>
-""", unsafe_allow_html=True)
+@st.cache_data(ttl=300)
+def get_table_columns(table_name):
+    try:
+        test = supabase.table(table_name).select("*").limit(1).execute()
+        if test.data:
+            return list(test.data[0].keys())
+        return []
+    except:
+        return []
 
 @st.cache_data(ttl=10)
 def load_passwords():
@@ -87,6 +69,25 @@ def load_passwords():
             "UTILISATEUR": "basam2024"
         }
 
+def generer_qrcode(data_text):
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=3, border=1)
+    qr.add_data(data_text)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    img.save(temp_file.name)
+    return temp_file.name
+
+def safe_pdf_txt(txt):
+    if txt is None or pd.isna(txt):
+        return ""
+    txt = str(txt)
+    txt = txt.replace('—', '-').replace('–', '-').replace('’', "'").replace('“', '"').replace('”', '"')
+    txt = txt.replace('•', '-').replace('…', '...')
+    txt = ''.join(c if ord(c) < 128 else '?' for c in txt)
+    return txt.replace('\n', ' ').replace('\r', '').strip()
+
+# === ENSUITE LE CODE DE CONNEXION ===
 passwords_db = load_passwords()
 
 if 'user_role' not in st.session_state:
@@ -99,7 +100,7 @@ if st.session_state.user_role is None:
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
-        df_users_login = load_table("utilisateurs")
+        df_users_login = load_table("utilisateurs") # Maintenant ça marche
         if not df_users_login.empty:
             options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
         else:
@@ -119,7 +120,6 @@ if st.session_state.user_role is None:
                 else:
                     st.error("Profil ou mot de passe incorrect")
     st.stop()
-
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
         if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
