@@ -188,7 +188,7 @@ def safe_pdf_txt(txt):
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=10)  # Marge réduite de 15 à 10
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
     pdf.set_text_color(255, 255, 255)
@@ -217,25 +217,26 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.ln(5)
     pdf.set_font("Arial", "B", 10)
     pdf.set_draw_color(0, 0, 0)
-    pdf.cell(90, 7, "FACTURE A:", 1, 0, 'L')
+    pdf.cell(85, 7, "FACTURE A:", 1, 0, 'L')  # 90->85
     pdf.cell(10, 7, "", 0, 0)
-    pdf.cell(90, 7, "DETAILS PAIEMENT:", 1, 1, 'L')
+    pdf.cell(85, 7, "DETAILS PAIEMENT:", 1, 1, 'L')  # 90->85
     pdf.set_font("Arial", "", 9)
-    pdf.cell(90, 6, f"Client: {safe_pdf_txt(client)}", 'LR', 0, 'L')
+    pdf.cell(85, 6, f"Client: {safe_pdf_txt(client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
-    pdf.cell(90, 6, "M-Pesa: +243817264448", 'LR', 1, 'L')
-    pdf.cell(90, 6, f"Tel: {safe_pdf_txt(tel_client)}", 'LR', 0, 'L')
+    pdf.cell(85, 6, "M-Pesa: +243817264448", 'LR', 1, 'L')
+    pdf.cell(85, 6, f"Tel: {safe_pdf_txt(tel_client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
-    pdf.cell(90, 6, "Echeance: Immediate", 'LR', 1, 'L')
-    pdf.cell(90, 6, f"Date emission: {date.today().strftime('%d/%m/%Y')}", 'LRB', 0, 'L')
+    pdf.cell(85, 6, "Echeance: Immediate", 'LR', 1, 'L')
+    pdf.cell(85, 6, f"Date emission: {date.today().strftime('%d/%m/%Y')}", 'LRB', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
-    pdf.cell(90, 6, "", 'LRB', 1, 'L')
+    pdf.cell(85, 6, "", 'LRB', 1, 'L')
     pdf.ln(8)
     pdf.set_fill_color(0, 102, 0)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(120, 8, "DESIGNATION", 1, 0, 'C', True)
-    pdf.cell(30, 8, "QTE", 1, 0, 'C', True)
+    # LARGEURS CORRIGÉES : 115 + 25 + 40 = 180 au lieu de 190
+    pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)  # 120->115
+    pdf.cell(25, 8, "QTE", 1, 0, 'C', True)  # 30->25
     pdf.cell(40, 8, f"MONTANT ({safe_pdf_txt(devise)})", 1, 1, 'C', True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "", 9)
@@ -245,20 +246,20 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
             qte = item.get('qte', 1)
             pu = item.get('pu', item.get('prix', 0))
             montant_item = pu * qte
-            pdf.cell(120, 7, nom, 1, 0, 'L')
-            pdf.cell(30, 7, str(qte), 1, 0, 'C')
+            pdf.cell(115, 7, nom, 1, 0, 'L')  # 120->115
+            pdf.cell(25, 7, str(qte), 1, 0, 'C')  # 30->25
             pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 1, 'R')
     else:
-        pdf.cell(120, 7, safe_pdf_txt(details_list), 1, 0, 'L')
-        pdf.cell(30, 7, "1", 1, 0, 'C')
+        pdf.cell(115, 7, safe_pdf_txt(details_list), 1, 0, 'L')
+        pdf.cell(25, 7, "1", 1, 0, 'C')
         pdf.cell(40, 7, f"{montant:,.0f}", 1, 1, 'R')
     if periode:
-        pdf.cell(120, 7, f"Periode: {safe_pdf_txt(periode)}", 1, 0, 'L')
-        pdf.cell(30, 7, "", 1, 0, 'C')
+        pdf.cell(115, 7, f"Periode: {safe_pdf_txt(periode)}", 1, 0, 'L')
+        pdf.cell(25, 7, "", 1, 0, 'C')
         pdf.cell(40, 7, "", 1, 1, 'R')
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 11)
-    pdf.cell(150, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)
+    pdf.cell(140, 10, "MONTANT TOTAL A PAYER", 1, 0, 'R', True)  # 150->140
     pdf.cell(40, 10, f"{montant:,.0f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
     pdf.ln(10)
     if type_op in ["Loyer", "Vente Voiture"]:
@@ -290,7 +291,8 @@ Tel: +243 995 105 623"""
     if y_position > 250:
         pdf.add_page()
         y_position = 30
-    pdf.image(qr_path, x=160, y=y_position, w=30)
+    # QR PLUS PETIT ET DÉCALÉ À GAUCHE : x=155 au lieu de 160, w=25 au lieu de 30
+    pdf.image(qr_path, x=155, y=y_position, w=25)
     os.unlink(qr_path)
     pdf.set_xy(10, y_position + 5)
     pdf.set_font("Arial", "", 8)
@@ -298,7 +300,6 @@ Tel: +243 995 105 623"""
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
-
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
