@@ -1239,6 +1239,21 @@ if "📄 Factures" in tab_map:
                             col_c.write(f"{row.get('description','')}")
                             col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
                             col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            if st.session_state.user_role == "PDG":
+                                 if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
+                                      supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                      st.success("Facture supprimée")
+                                      st.cache_data.clear()
+                                      st.rerun()
+                                 else:
+                                    col_g.write("")
+    
+            
+           
+                                     
+            
+           
+       
 
                             # === BOUTON TÉLÉCHARGER PDF ===
                             try:
