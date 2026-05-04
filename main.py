@@ -53,12 +53,15 @@ def get_table_columns(table_name):
 @st.cache_data(ttl=10)
 def load_passwords():
     try:
-        data = supabase.table("utilisateurs").select("nom,role,password,permissions").execute()
+        data = supabase.table("utilisateurs").select("nom,role,password,permissions,categories_autorisees").execute()
         passwords = {}
         perms = {}
         for user in data.data:
             passwords[user['role']] = user['password']
-            perms[user['role']] = user.get('permissions', {})
+            perms[user['role']] = {
+                'permissions': user.get('permissions', {}),
+                'categories_autorisees': user.get('categories_autorisees', [])
+            }
         st.session_state.permissions_db = perms
         return passwords
     except:
@@ -221,6 +224,8 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
             data_compta["devise"] = str(devise)
         if "numero_facture" in colonnes_compta:
             data_compta["numero_facture"] = str(numero_facture)
+        if "details" in colonnes_compta:
+            data_compta["details"] = json.dumps(details_list)
         supabase.table("compta").insert(data_compta).execute()
         st.toast(f"✅ Enregistré par {st.session_state.user_name}", icon="✅")
     except Exception as e:
@@ -314,6 +319,7 @@ if 'user_role' not in st.session_state:
     st.session_state.user_role = None
     st.session_state.user_name = None
     st.session_state.user_perms = {}
+    st.session_state.user_cats = []
 
 if st.session_state.user_role is None:
     st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
@@ -336,6 +342,7 @@ if st.session_state.user_role is None:
                     st.session_state.user_role = user_data.iloc[0]['role']
                     st.session_state.user_name = user_data.iloc[0]['nom']
                     st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
+                    st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
                     st.rerun()
                 else:
                     st.error("Profil ou mot de passe incorrect")
@@ -349,6 +356,7 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
             st.session_state.user_role=None
             st.session_state.user_name=None
             st.session_state.user_perms={}
+            st.session_state.user_cats=[]
             st.rerun()
 
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
@@ -475,7 +483,7 @@ if "🛍️ Commerce" in tab_map:
                     mask = df_articles_filtre['nom_article'].str.contains(recherche, case=False, na=False)
                     if 'code_qr' in df_articles_filtre.columns:
                         mask = mask | df_articles_filtre['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
-                    df_articles_filtre = df_articles_filtre[mask]
+                    df_articles_filtre = df_articles_filtre
                 if df_articles_filtre.empty:
                     st.warning("⚠️ Aucun produit disponible")
                 else:
@@ -1182,10 +1190,18 @@ if "📄 Factures" in tab_map:
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
             df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+
+            # === FILTRE PAR CATÉGORIE AUTORISÉE PAR LE PDG ===
+            if st.session_state.user_role!= "PDG":
+                cats_user = st.session_state.get('user_cats', [])
+                if cats_user and "Toutes" not in cats_user:
+                    df_filtre_fact = df_filtre_fact[df_filtre_fact['categorie'].isin(cats_user)]
+
             if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
             if filtre_client_fact:
                 df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
+
             col_t1, col_t2, col_t3 = st.columns(3)
             total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
             total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
@@ -1194,6 +1210,7 @@ if "📄 Factures" in tab_map:
             col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
             col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
             st.divider()
+
             categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
             if len(categories) == 0:
                 st.info("Aucune catégorie trouvée dans la période sélectionnée")
@@ -1204,19 +1221,68 @@ if "📄 Factures" in tab_map:
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                        # === CORRECTION : 6 COLONNES ===
                         for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.2,0.8,3,1.2,0.8,0.8])
+                            # 8 COLONNES : Date, Type, Description, Montant, User, PDF, Imprimer, Supprimer
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
                             col_a.write(f"**{row.get('date','')}**")
                             col_b.write(f"{row.get('type','')}")
                             col_c.write(f"{row.get('description','')}")
                             col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
                             col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+
+                            # === BOUTON TÉLÉCHARGER PDF ===
+                            try:
+                                details_list = []
+                                if row.get('details') and row.get('details')!= 'nan':
+                                    details_list = json.loads(row['details'])
+                                else:
+                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
+
+                                pdf_bytes = generer_pdf_facture(
+                                    row.get('numero_facture', f"FACT-{row['id']}"),
+                                    row.get('categorie', 'Facture'),
+                                    row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client',
+                                    details_list,
+                                    row.get('montant',0),
+                                    row.get('devise','FC'),
+                                    "+243...",
+                                    ""
+                                )
+                                col_f.download_button(
+                                    "📥",
+                                    data=pdf_bytes,
+                                    file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_fact_{row['id']}",
+                                    help="Télécharger PDF"
+                                )
+
+                                # === BOUTON IMPRIMER ===
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                col_g.markdown(f"""
+                                    <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                                        🖨️
+                                    </button>
+                                    <script>
+                                    function printPDF_{row['id']}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, unsafe_allow_html=True)
+                            except:
+                                col_f.write("❌")
+                                col_g.write("❌")
+
+                            # === BOUTON SUPPRIMER PDG ===
                             if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                                if col_f.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
+                                if col_h.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer"):
                                     try:
                                         supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
+                                        st.success(f"Facture supprimée")
                                         st.cache_data.clear()
                                         st.rerun()
                                     except Exception as e:
@@ -1232,7 +1298,7 @@ if "👥 Utilisateurs" in tab_map:
                 nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
                 role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
                 pwd_user = c3.text_input("Mot de passe *", type="password")
-                st.markdown("**🔐 Autorisations :**")
+                st.markdown("**🔐 Autorisations d'onglets :**")
                 col1, col2, col3, col4 = st.columns(4)
                 perm_dashboard = col1.checkbox("Dashboard", value=True)
                 perm_commerce = col2.checkbox("Commerce", value=True)
@@ -1246,6 +1312,16 @@ if "👥 Utilisateurs" in tab_map:
                 col1, col2 = st.columns(2)
                 perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
                 perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
+
+                st.markdown("**📂 Catégories de Factures Visibles :**")
+                categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                cats_autorisees = st.multiselect(
+                    "Sélectionne les catégories que cet utilisateur peut voir dans Factures",
+                    categories_dispo,
+                    default=["Toutes"],
+                    key="cats_user_new"
+                )
+
                 if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
                     if not nom_user or not pwd_user:
                         st.error("Nom et mot de passe obligatoires")
@@ -1258,8 +1334,11 @@ if "👥 Utilisateurs" in tab_map:
                                 "supprimer": perm_supprimer, "users": perm_users
                             }
                             supabase.table("utilisateurs").insert({
-                                "nom": str(nom_user), "role": str(role_user), "password": str(pwd_user),
-                                "permissions": permissions
+                                "nom": str(nom_user),
+                                "role": str(role_user),
+                                "password": str(pwd_user),
+                                "permissions": permissions,
+                                "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
                             }).execute()
                             st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
                             st.cache_data.clear()
@@ -1274,12 +1353,15 @@ if "👥 Utilisateurs" in tab_map:
             st.info("Aucun utilisateur")
         else:
             for _, row in df_utilisateurs.iterrows():
-                perms = row.get('permissions', {})
-                if isinstance(perms, str):
+                perms_user = row.get('permissions', {})
+                if isinstance(perms_user, str):
                     try:
-                        perms = json.loads(perms)
+                        perms_user = json.loads(perms_user)
                     except:
-                        perms = {}
+                        perms_user = {}
+                cats_user = row.get('categories_autorisees', [])
+                if cats_user is None:
+                    cats_user = []
                 with st.expander(f"{row['nom']} - {row['role']}", expanded=False):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -1289,20 +1371,30 @@ if "👥 Utilisateurs" in tab_map:
                                                key=f"role_u_{row['id']}")
                     with c2:
                         new_pwd = st.text_input("Nouveau mot de passe", type="password", placeholder="Laisser vide pour garder l'ancien", key=f"pwd_u_{row['id']}")
-                    st.markdown("**🔐 Autorisations :**")
+                    st.markdown("**🔐 Autorisations d'onglets :**")
                     col1, col2, col3, col4 = st.columns(4)
-                    p_dashboard = col1.checkbox("Dashboard", value=perms.get('dashboard',True), key=f"p1_{row['id']}")
-                    p_commerce = col2.checkbox("Commerce", value=perms.get('commerce',True), key=f"p2_{row['id']}")
-                    p_stock = col3.checkbox("Stock", value=perms.get('stock',False), key=f"p3_{row['id']}")
-                    p_immo = col4.checkbox("Immobilier", value=perms.get('immobilier',False), key=f"p4_{row['id']}")
+                    p_dashboard = col1.checkbox("Dashboard", value=perms_user.get('dashboard',True), key=f"p1_{row['id']}")
+                    p_commerce = col2.checkbox("Commerce", value=perms_user.get('commerce',True), key=f"p2_{row['id']}")
+                    p_stock = col3.checkbox("Stock", value=perms_user.get('stock',False), key=f"p3_{row['id']}")
+                    p_immo = col4.checkbox("Immobilier", value=perms_user.get('immobilier',False), key=f"p4_{row['id']}")
                     col1, col2, col3, col4 = st.columns(4)
-                    p_auto = col1.checkbox("Auto", value=perms.get('automobile',False), key=f"p5_{row['id']}")
-                    p_parc = col2.checkbox("Parc", value=perms.get('parc',False), key=f"p6_{row['id']}")
-                    p_compta = col3.checkbox("Compta", value=perms.get('comptabilite',False), key=f"p7_{row['id']}")
-                    p_fact = col4.checkbox("Factures", value=perms.get('factures',False), key=f"p8_{row['id']}")
+                    p_auto = col1.checkbox("Auto", value=perms_user.get('automobile',False), key=f"p5_{row['id']}")
+                    p_parc = col2.checkbox("Parc", value=perms_user.get('parc',False), key=f"p6_{row['id']}")
+                    p_compta = col3.checkbox("Compta", value=perms_user.get('comptabilite',False), key=f"p7_{row['id']}")
+                    p_fact = col4.checkbox("Factures", value=perms_user.get('factures',False), key=f"p8_{row['id']}")
                     col1, col2 = st.columns(2)
-                    p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms.get('supprimer',False), key=f"p9_{row['id']}")
-                    p_users = col2.checkbox("👥 Gérer Users", value=perms.get('users',False), key=f"p10_{row['id']}")
+                    p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms_user.get('supprimer',False), key=f"p9_{row['id']}")
+                    p_users = col2.checkbox("👥 Gérer Users", value=perms_user.get('users',False), key=f"p10_{row['id']}")
+
+                    st.markdown("**📂 Catégories de Factures Visibles :**")
+                    categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                    cats_modif = st.multiselect(
+                        "Catégories autorisées",
+                        categories_dispo,
+                        default=cats_user if cats_user else ["Toutes"],
+                        key=f"cats_u_{row['id']}"
+                    )
+
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
                         try:
@@ -1314,7 +1406,8 @@ if "👥 Utilisateurs" in tab_map:
                                     "immobilier": p_immo, "automobile": p_auto, "parc": p_parc,
                                     "comptabilite": p_compta, "factures": p_fact,
                                     "supprimer": p_del, "users": p_users
-                                }
+                                },
+                                "categories_autorisees": cats_modif if "Toutes" not in cats_modif else []
                             }
                             if new_pwd:
                                 update_data["password"] = str(new_pwd)
