@@ -115,7 +115,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.set_xy(150, 20)
     pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
     pdf.ln(15)
-    pdf.set_text_color(0, 0, 0)
+    pdf.set_text_color(0, 0)
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, f"FACTURE {safe_pdf_txt(type_op.upper())}", ln=True, fill=True)
@@ -407,6 +407,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 
+# === GESTION DES TABS AVEC PERMISSIONS - TOUT LE MONDE VOIT LES TABS DE BASE ===
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
@@ -426,6 +427,10 @@ if st.session_state.user_role == "PDG" or perms.get('factures', False):
     tabs_dispo.append("📄 Factures")
 if st.session_state.user_role == "PDG" or perms.get('users', False):
     tabs_dispo.append("👥 Utilisateurs")
+
+# Si aucun tab, afficher au moins Dashboard et Commerce
+if not tabs_dispo:
+    tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
 
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
@@ -1222,8 +1227,8 @@ if "📄 Factures" in tab_map:
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
                         for idx, row in df_cat.iterrows():
-                            # 8 COLONNES : Date, Type, Description, Montant, User, PDF, Imprimer, Supprimer
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            # === CORRIGÉ : 7 COLONNES = 7 VARIABLES ===
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
                             col_a.write(f"**{row.get('date','')}**")
                             col_b.write(f"{row.get('type','')}")
                             col_c.write(f"{row.get('description','')}")
@@ -1233,15 +1238,16 @@ if "📄 Factures" in tab_map:
                             # === BOUTON TÉLÉCHARGER PDF ===
                             try:
                                 details_list = []
-                                if row.get('details') and row.get('details')!= 'nan':
+                                if row.get('details') and str(row.get('details'))!= 'nan':
                                     details_list = json.loads(row['details'])
                                 else:
                                     details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
 
+                                client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
                                 pdf_bytes = generer_pdf_facture(
                                     row.get('numero_facture', f"FACT-{row['id']}"),
                                     row.get('categorie', 'Facture'),
-                                    row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client',
+                                    client_nom,
                                     details_list,
                                     row.get('montant',0),
                                     row.get('devise','FC'),
@@ -1273,21 +1279,9 @@ if "📄 Factures" in tab_map:
                                     }}
                                     </script>
                                 """, unsafe_allow_html=True)
-                            except:
+                            except Exception as e:
                                 col_f.write("❌")
                                 col_g.write("❌")
-
-                            # === BOUTON SUPPRIMER PDG ===
-                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                                if col_h.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer"):
-                                    try:
-                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                        st.success(f"Facture supprimée")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error("Erreur suppression")
-                                        st.code(repr(e))
 
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
