@@ -536,7 +536,7 @@ if "👥 Utilisateurs" in tab_map:
                         except Exception as e:
                             st.error("❌ ERREUR AJOUT UTILISATEUR")
                             st.code(f"ERREUR COMPLÈTE : {repr(e)}")
-                            if "🛍️ Commerce" in tab_map:
+ if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
         if 'panier_commerce' not in st.session_state:
