@@ -643,7 +643,7 @@ if "📦 Gestion Stock" in tab_map:
                 with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)}"):
                     c1, c2 = st.columns(2)
                     with c1:
-                                                new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
+                        new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
                         new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_{row['id']}")
                         new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
                     with c2:
