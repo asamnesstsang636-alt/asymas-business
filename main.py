@@ -1088,19 +1088,17 @@ if "💰 Comptabilité" in tab_map:
 
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
                         for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5])
-                            try:
-                                col_a.write(f"**{row.get('date','')}**")
-                                col_b.write(f"{row.get('type','')}")
-                                col_c.write(f"{row.get('description','')}")
-                                col_d.write(f"{row.get('montant',0):,.0f}")
-                                col_e.write(f"{row.get('devise','FC')}")
-                                col_f.write(f"{row.get('utilisateur','N/A')}")
-                                col_g.write(f"ID:{row['id']}")
-                            except Exception as e:
-                                col_f.write("❌")
-                                col_g.write("❌")
-
+    col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.2,0.8,2.5,1,0.8,0.5])
+    try:
+        col_a.write(f"**{row.get('date','')}**")
+        col_b.write(f"{row.get('type','')}")
+        col_c.write(f"{row.get('description','')}")
+        col_d.write(f"{row.get('montant',0):,.0f}")
+        col_e.write(f"{row.get('devise','FC')}")
+        col_f.write(f"{row.get('utilisateur','N/A')}")
+    except Exception as e:
+        col_e.write("❌")
+        col_f.write("❌")
                         col_dl1, col_dl2 = st.columns(2)
                         excel_bytes_cat = generer_excel_pro(
                             df_cat,
