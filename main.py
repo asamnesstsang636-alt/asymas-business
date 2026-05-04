@@ -28,7 +28,7 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === FONCTIONS - DÉFINIES AVANT UTILISATION ===
+# === FONCTIONS ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -436,107 +436,7 @@ if "📊 Dashboard" in tab_map:
         else:
             col4.metric("💰 Revenus", "0 FC")
 
-if "📄 Factures" in tab_map:
-    with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures - Relevé par Catégorie")
-        if df_compta.empty:
-            st.info("Aucune opération")
-        else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
-            col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
-            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
-            col_f4, col_f5 = st.columns(2)
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
-            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
-            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
-            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-            if filtre_cat_fact!= "Toutes":
-                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
-            if filtre_client_fact:
-                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
-            col_t1, col_t2, col_t3 = st.columns(3)
-            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
-            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
-            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
-            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
-            st.divider()
-            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) == 0:
-                st.info("Aucune catégorie trouvée dans la période sélectionnée")
-            else:
-                for cat in sorted(categories):
-                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                        # === CORRECTION ICI : 6 COLONNES ===
-                        for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.2,0.8,3,1.2,0.8,0.8])
-                            col_a.write(f"**{row.get('date','')}**")
-                            col_b.write(f"{row.get('type','')}")
-                            col_c.write(f"{row.get('description','')}")
-                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
-                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
-                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                                if col_f.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
-                                    try:
-                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error("Erreur suppression")
-                                        st.code(repr(e))
-
-if "👥 Utilisateurs" in tab_map:
-    with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
-        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
-            with st.form("form_user", clear_on_submit=True):
-                c1, c2, c3 = st.columns(3)
-                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
-                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
-                pwd_user = c3.text_input("Mot de passe *", type="password")
-                st.markdown("**🔐 Autorisations :**")
-                col1, col2, col3, col4 = st.columns(4)
-                perm_dashboard = col1.checkbox("Dashboard", value=True)
-                perm_commerce = col2.checkbox("Commerce", value=True)
-                perm_stock = col3.checkbox("Gestion Stock", value=(role_user in ["PDG","GERANTE"]))
-                perm_immo = col4.checkbox("Immobilier", value=(role_user in ["PDG","GERANTE"]))
-                col1, col2, col3, col4 = st.columns(4)
-                perm_auto = col1.checkbox("Automobile", value=(role_user in ["PDG","GERANTE"]))
-                perm_parc = col2.checkbox("Gestion Parc", value=(role_user in ["PDG","GERANTE"]))
-                perm_compta = col3.checkbox("Comptabilité", value=(role_user in ["PDG","GERANTE"]))
-                perm_factures = col4.checkbox("Factures", value=(role_user in ["PDG","GERANTE"]))
-                col1, col2 = st.columns(2)
-                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
-                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
-                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
-                    if not nom_user or not pwd_user:
-                        st.error("Nom et mot de passe obligatoires")
-                    else:
-                        try:
-                            permissions = {
-                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
-                                "immobilier": perm_immo, "automobile": perm_auto, "parc": perm_parc,
-                                "comptabilite": perm_compta, "factures": perm_factures,
-                                "supprimer": perm_supprimer, "users": perm_users
-                            }
-                            supabase.table("utilisateurs").insert({
-                                "nom": str(nom_user), "role": str(role_user), "password": str(pwd_user),
-                                "permissions": permissions
-                            }).execute()
-                            st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("❌ ERREUR AJOUT UTILISATEUR")
-                            st.code(f"ERREUR COMPLÈTE : {repr(e)}")
- if "🛍️ Commerce" in tab_map:
+if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
         if 'panier_commerce' not in st.session_state:
@@ -743,7 +643,7 @@ if "📦 Gestion Stock" in tab_map:
                 with st.expander(f"{row['nom_article']} - {row.get('prix_vente',0):,.0f} FC - Stock:{row.get('stock',0)}"):
                     c1, c2 = st.columns(2)
                     with c1:
-                        new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
+                                                new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_{row['id']}")
                         new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_{row['id']}")
                         new_prix_a = st.number_input("Prix Achat", value=float(row.get('prix_achat',0)), key=f"pa_{row['id']}")
                     with c2:
@@ -1266,7 +1166,64 @@ if "💰 Comptabilité" in tab_map:
                             }}
                             </script>
                         """, height=60)
-                        if "👥 Utilisateurs" in tab_map:
+
+if "📄 Factures" in tab_map:
+    with tab_map["📄 Factures"]:
+        st.markdown("## 📄 Factures - Relevé par Catégorie")
+        if df_compta.empty:
+            st.info("Aucune opération")
+        else:
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
+            col_f4, col_f5 = st.columns(2)
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
+            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+            if filtre_cat_fact!= "Toutes":
+                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+            if filtre_client_fact:
+                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            st.divider()
+            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période sélectionnée")
+            else:
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        # === CORRECTION : 6 COLONNES ===
+                        for idx, row in df_cat.iterrows():
+                            col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.2,0.8,3,1.2,0.8,0.8])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                                if col_f.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
+                                    try:
+                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                                        st.code(repr(e))
+
+if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
         with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
