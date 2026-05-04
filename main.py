@@ -1335,18 +1335,17 @@ if "👥 Utilisateurs" in tab_map:
                             new_pwd = st.text_input("Mot de passe", value=row['password'], type="password", key=f"pwd_u_{row['id']}")
                         
                         with c2:
-                            st.markdown("**Permissions:**")
-                            perm_dashboard = st.checkbox("Dashboard", value=perms_user.get('dashboard', True), key=f"pd_{row['id']}")
-                            perm_commerce = st.checkbox("Commerce", value=perms_user.get('commerce', True), key=f"pc_{row['id']}")
-                            perm_stock = st.checkbox("Stock", value=perms_user.get('stock', False), key=f"ps_{row['id']}")
-                            perm_immo = st.checkbox("Immobilier", value=perms_user.get('immobilier', False), key=f"pi_{row['id']}")
-                            perm_auto = st.checkbox("Automobile", value=perms_user.get('automobile', False), key=f"pa_{row['id']}")
-                            perm_parc = st.checkbox("Parc", value=perms_user.get('parc', False), key=f"pp_{row['id']}")
-                            perm_compta = st.checkbox("Comptabilité", value=perms_user.get('comptabilite', False), key=f"pco_{row['id']}")
-                            perm_fact = st.checkbox("Factures", value=perms_user.get('factures', False), key=f"pf_{row['id']}")
-                            perm_users = st.checkbox("Users", value=perms_user.get('users', False), key=f"pu_{row['id']}")
-                            perm_suppr = st.checkbox("Supprimer", value=perms_user.get('supprimer', False), key=f"psup_{row['id']}")
-                        
+    st.markdown("**Permissions:**")
+    perm_dashboard = st.checkbox("Dashboard", value=perms_user.get('dashboard', True), key=f"perm_dash_{row['id']}")
+    perm_commerce = st.checkbox("Commerce", value=perms_user.get('commerce', True), key=f"perm_com_{row['id']}")
+    perm_stock = st.checkbox("Stock", value=perms_user.get('stock', False), key=f"perm_stock_{row['id']}")
+    perm_immo = st.checkbox("Immobilier", value=perms_user.get('immobilier', False), key=f"perm_immo_{row['id']}")
+    perm_auto = st.checkbox("Automobile", value=perms_user.get('automobile', False), key=f"perm_auto_{row['id']}")
+    perm_parc = st.checkbox("Parc", value=perms_user.get('parc', False), key=f"perm_parc_{row['id']}")
+    perm_compta = st.checkbox("Comptabilité", value=perms_user.get('comptabilite', False), key=f"perm_compta_{row['id']}")
+    perm_fact = st.checkbox("Factures", value=perms_user.get('factures', False), key=f"perm_fact_{row['id']}")
+    perm_users = st.checkbox("Users", value=perms_user.get('users', False), key=f"perm_users_{row['id']}")
+    perm_suppr = st.checkbox("Supprimer", value=perms_user.get('supprimer', False), key=f"perm_suppr_{row['id']}")
                         new_perms = {
                             'dashboard': perm_dashboard, 'commerce': perm_commerce, 'stock': perm_stock,
                             'immobilier': perm_immo, 'automobile': perm_auto, 'parc': perm_parc,
