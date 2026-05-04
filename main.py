@@ -1232,7 +1232,7 @@ if "📄 Factures" in tab_map:
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
                         for idx, row in df_cat.iterrows():
                             # === 8 COLONNES : Date, Type, Desc, Montant, User, PDF, Imprimer, Supprimer ===
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5])
                             col_a.write(f"**{row.get('date','')}**")
                             col_b.write(f"{row.get('type','')}")
                             col_c.write(f"{row.get('description','')}")
