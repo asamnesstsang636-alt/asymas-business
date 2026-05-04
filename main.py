@@ -1232,7 +1232,7 @@ if "📄 Factures" in tab_map:
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
                         for idx, row in df_cat.iterrows():
-                            if st.session_state.user_role == "PDG":
+ if st.session_state.user_role == "PDG":
     if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
         supabase.table("compta").delete().eq("id", int(row['id'])).execute()
         st.success("Facture supprimée")
