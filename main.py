@@ -1192,12 +1192,11 @@ if "📄 Factures" in tab_map:
             col_f4, col_f5 = st.columns(2)
 
             # === FILTRE OBLIGATOIRE PAR CATÉGORIE AUTORISÉE ===
-            if st.session_state.user_role!= "PDG":
+            if st.session_state.user_role != "PDG":
                 cats_user = st.session_state.get('user_cats', [])
                 if cats_user and "Toutes" not in cats_user:
                     df_compta_sorted = df_compta_sorted[df_compta_sorted['categorie'].isin(cats_user)]
                 else:
-                    # Si pas de catégorie définie et pas PDG = voit rien
                     if not cats_user:
                         st.error("⛔ Aucune catégorie autorisée. Contacte le PDG.")
                         st.stop()
@@ -1207,7 +1206,7 @@ if "📄 Factures" in tab_map:
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
             df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
 
-            if filtre_cat_fact!= "Toutes":
+            if filtre_cat_fact != "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
             if filtre_client_fact:
                 df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
@@ -1232,77 +1231,77 @@ if "📄 Factures" in tab_map:
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
                         for idx, row in df_cat.iterrows():
-    # === 8 COLONNES MAINTENANT : Date, Type, Desc, Montant, User, PDF, Imprimer, Supprimer ===
-    col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
-    col_a.write(f"**{row.get('date','')}**")
-    col_b.write(f"{row.get('type','')}")
-    col_c.write(f"{row.get('description','')}")
-    col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
-    col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            # === 8 COLONNES : Date, Type, Desc, Montant, User, PDF, Imprimer, Supprimer ===
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g, col_h = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
 
-    # === BOUTON TÉLÉCHARGER PDF ===
-    try:
-        details_list = []
-        if row.get('details') and str(row.get('details'))!= 'nan':
-            details_list = json.loads(row['details'])
-        else:
-            details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
+                            # === BOUTON TÉLÉCHARGER PDF ===
+                            try:
+                                details_list = []
+                                if row.get('details') and str(row.get('details')) != 'nan':
+                                    details_list = json.loads(row['details'])
+                                else:
+                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
 
-        client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
-        pdf_bytes = generer_pdf_facture(
-            row.get('numero_facture', f"FACT-{row['id']}"),
-            row.get('categorie', 'Facture'),
-            client_nom,
-            details_list,
-            row.get('montant',0),
-            row.get('devise','FC'),
-            "+243...",
-            ""
-        )
-        col_f.download_button(
-            "📥",
-            data=pdf_bytes,
-            file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
-            mime="application/pdf",
-            key=f"dl_fact_{row['id']}",
-            help="Télécharger PDF"
-        )
+                                client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
+                                pdf_bytes = generer_pdf_facture(
+                                    row.get('numero_facture', f"FACT-{row['id']}"),
+                                    row.get('categorie', 'Facture'),
+                                    client_nom,
+                                    details_list,
+                                    row.get('montant',0),
+                                    row.get('devise','FC'),
+                                    "+243...",
+                                    ""
+                                )
+                                col_f.download_button(
+                                    "📥",
+                                    data=pdf_bytes,
+                                    file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_fact_{row['id']}",
+                                    help="Télécharger PDF"
+                                )
 
-        # === BOUTON IMPRIMER ===
-        pdf_b64 = base64.b64encode(pdf_bytes).decode()
-        col_g.markdown(f"""
-            <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-                🖨️
-            </button>
-            <script>
-            function printPDF_{row['id']}() {{
-                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                const win = window.open('', '_blank');
-                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                win.document.close();
-                setTimeout(() => {{ win.print(); }}, 1000);
-            }}
-            </script>
-        """, unsafe_allow_html=True)
+                                # === BOUTON IMPRIMER ===
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                col_g.markdown(f"""
+                                    <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                                        🖨️
+                                    </button>
+                                    <script>
+                                    function printPDF_{row['id']}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, unsafe_allow_html=True)
 
-        # === BOUTON SUPPRIMER - PDG UNIQUEMENT ===
-        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-            if col_h.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
-                try:
-                    supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                    st.success(f"Facture {row.get('numero_facture', row['id'])} supprimée")
-                    st.cache_data.clear()
-                    st.rerun()
-                except Exception as e:
-                    st.error("Erreur suppression")
-                    st.code(repr(e))
-        else:
-            col_h.write("") # Vide si pas PDG
-            
-    except Exception as e:
-        col_f.write("❌")
-        col_g.write("❌")
-        col_h.write("❌")
+                                # === BOUTON SUPPRIMER - PDG UNIQUEMENT ===
+                                if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                                    if col_h.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
+                                        try:
+                                            supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                            st.success(f"Facture {row.get('numero_facture', row['id'])} supprimée")
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error("Erreur suppression")
+                                            st.code(repr(e))
+                                else:
+                                    col_h.write("")
+                                    
+                            except Exception as e:
+                                col_f.write("❌")
+                                col_g.write("❌")
+                                col_h.write("❌")
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
