@@ -1230,24 +1230,16 @@ if "📄 Factures" in tab_map:
                     total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
-                         for idx, row in df_cat.iterrows():
-        col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
-        col_a.write(f"**{row.get('date','')}**")
-        col_b.write(f"{row.get('type','')}")
-        col_c.write(f"{row.get('description','')}")
-        col_d.write(f"{row.get('montant',0):,.0f}")
-        col_e.write(f"{row.get('devise','FC')}")
-        col_f.write(f"{row.get('utilisateur','N/A')}")
-        
-        if st.session_state.user_role == "PDG":
-            if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
-                supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                st.success("Facture supprimée")
-                st.cache_data.clear()
-                st.rerun()
-        else:
-            col_g.write("")
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        for idx, row in df_cat.iterrows():
+                            # 7 COLONNES = 7 VARIABLES
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+
                             # === BOUTON TÉLÉCHARGER PDF ===
                             try:
                                 details_list = []
