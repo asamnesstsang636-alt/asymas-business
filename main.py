@@ -4,7 +4,8 @@ st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="auto")
+    initial_sidebar_state="auto"
+)
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
@@ -118,16 +119,15 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
         if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
         theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True): st.session_state.user_role=None; st.session_state.username=None; st.rerun()
-    
+        if st.button("🚪 Déconnexion", use_container_width=True): st.session_state.user_role=None; st.session_state.user_name=None; st.rerun()
+
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
     elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
     elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
     elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
-    
+
     st.markdown("""<style>#MainMenu,header,footer{visibility:hidden!important}</style>""",unsafe_allow_html=True)
-    
-    st.markdown("""<style>#MainMenu{visibility: hidden;} footer{visibility: hidden;} header{visibility: hidden;}</style>""", unsafe_allow_html=True)
+
 st.markdown("""
 <style>
 h1, h2, h3 {
@@ -311,6 +311,8 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
             data_compta["categorie"] = str(type_op)
         if "devise" in colonnes_compta:
             data_compta["devise"] = str(devise)
+        if "numero_facture" in colonnes_compta:
+            data_compta["numero_facture"] = str(numero_facture)
         supabase.table("compta").insert(data_compta).execute()
         st.toast(f"✅ Enregistré compta", icon="✅")
     except Exception as e:
@@ -388,10 +390,6 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    if st.button("🚪 DÉCONNEXION", key="logout", width="stretch"):
-        st.session_state.user_role = None
-        st.session_state.user_name = None
-        st.rerun()
 
 if st.session_state.user_role == "UTILISATEUR":
     tab2, = st.tabs(["🛍️ Commerce"])
@@ -418,8 +416,6 @@ if tab1 and st.session_state.user_role in ["PDG", "GERANTE"]:
 
 with tab2:
     st.markdown("## 🛍️ Commerce - Point de Vente")
-
-    # === INIT SESSION STATE ===
     if 'panier_commerce' not in st.session_state:
         st.session_state.panier_commerce = []
     if 'vente_finie' not in st.session_state:
@@ -437,24 +433,19 @@ with tab2:
         st.error("Aucun article disponible - Ajoute des articles dans Gestion Stock")
     else:
         col_gauche, col_droite = st.columns([2,1])
-
         with col_gauche:
             st.subheader("👤 Client")
             st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
             st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
-
             st.subheader("📦 Rubrique Produit")
-
             col_scan1, col_scan2 = st.columns([1,3])
             with col_scan1:
                 qr_code = qrcode_scanner(key='qr_scanner_c')
             with col_scan2:
                 recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
-
             recherche = qr_code if qr_code else recherche_manuelle
             if qr_code:
                 st.success(f"QR Scanné: {qr_code}")
-
             df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
             if recherche:
                 search_clean = str(recherche).upper().strip()
@@ -462,31 +453,24 @@ with tab2:
                 if 'code_qr' in df_articles_filtre.columns:
                     mask = mask | df_articles_filtre['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
                 df_articles_filtre = df_articles_filtre[mask]
-
             if df_articles_filtre.empty:
                 st.warning("⚠️ Aucun produit disponible")
             else:
                 st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
-
                 options_articles = []
                 for _, p in df_articles_filtre.iterrows():
                     qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
                     options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{qr_txt} | ID:{p['id']}")
-
                 article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
-
                 if article_choisi:
                     id_choisi = int(article_choisi.split("ID:")[1])
                     p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
-
                     c1, c2, c3 = st.columns(3)
                     qte_max = int(p['stock'])
                     qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
                     c2.metric("Stock dispo", qte_max)
                     c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
-
                     st.info(f"**{p['nom_article']}** | Catégorie: {p.get('categorie','N/A')} | QR: {p.get('code_qr','N/A')}")
-
                     if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
                         existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
                         if existant:
@@ -506,10 +490,8 @@ with tab2:
                             })
                             st.success("Ajouté au panier")
                         st.rerun()
-
         with col_droite:
             st.subheader("🛒 Panier")
-
             if st.session_state.vente_finie and st.session_state.pdf_data:
                 st.success("✅ Vente enregistrée!")
                 st.download_button(
@@ -519,16 +501,30 @@ with tab2:
                     mime="application/pdf",
                     width="stretch"
                 )
+                # BOUTON IMPRIMER
+                pdf_b64 = base64.b64encode(st.session_state.pdf_data).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
                 if st.button("NOUVELLE VENTE", width="stretch"):
                     st.session_state.vente_finie = False
                     st.session_state.pdf_data = None
                     st.session_state.num_fact = None
                     st.session_state.client_com_nom = ""
                     st.rerun()
-
             elif not st.session_state.panier_commerce:
                 st.info("Panier vide")
-
             else:
                 total_panier = 0
                 for i, item in enumerate(st.session_state.panier_commerce):
@@ -539,10 +535,8 @@ with tab2:
                         st.session_state.panier_commerce.pop(i)
                         st.rerun()
                     total_panier += item['qte'] * item['pu']
-
                 st.markdown(f"### Total: {total_panier:,.0f} FC")
                 st.divider()
-
                 if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
                     if not st.session_state.client_com_nom:
                         st.error("Nom du client obligatoire!")
@@ -550,7 +544,6 @@ with tab2:
                         try:
                             num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                             details_list = []
-
                             for item in st.session_state.panier_commerce:
                                 supabase.table("ventes").insert({
                                     "numero_facture": num_fact,
@@ -560,17 +553,14 @@ with tab2:
                                     "prix_unitaire": item['pu'],
                                     "total": item['qte'] * item['pu']
                                 }).execute()
-
                                 stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
                                 supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
-
                                 details_list.append({
                                     "nom": item['nom'],
                                     "qte": item['qte'],
                                     "pu": item['pu'],
                                     "total": item['qte'] * item['pu']
                                 })
-
                             details_json = json.dumps(details_list)
                             supabase.table("compta").insert({
                                 "date": str(date.today()),
@@ -582,7 +572,6 @@ with tab2:
                                 "numero_facture": num_fact,
                                 "details": details_json
                             }).execute()
-
                             pdf_bytes = generer_pdf_facture(
                                 num_fact,
                                 "Vente Commerce",
@@ -592,17 +581,16 @@ with tab2:
                                 "FC",
                                 st.session_state.client_com_tel
                             )
-
                             st.session_state.pdf_data = pdf_bytes
                             st.session_state.num_fact = num_fact
                             st.session_state.vente_finie = True
                             st.session_state.panier_commerce = []
                             st.cache_data.clear()
                             st.rerun()
-
                         except Exception as e:
                             st.error("Erreur finalisation vente")
                             st.code(repr(e))
+
 if tab3 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab3:
         st.markdown("## 📦 Gestion Stock - Articles")
@@ -678,7 +666,7 @@ if tab4 and st.session_state.user_role in ["PDG", "GERANTE"]:
             duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
 
         total_mensuel = float(prix) + float(electricite) + float(eau)
-        st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
+        st.info(f"💎 *TOTAL : {total_mensuel:,.2f} USD*")
 
         if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
             if nom_client and adresse:
@@ -761,7 +749,6 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     st.warning("⚠️ Aucune voiture disponible")
                 else:
                     st.success(f"✅ {len(df_voitures_dispo)} véhicule(s) disponible(s)")
-
                     options_voitures = []
                     for _, v in df_voitures_dispo.iterrows():
                         options_voitures.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v.get('couleur','')} | {v['plaque']} | Stock:{int(v.get('quantite',1))} | {v['prix']:,.0f}$ | ID:{v['id']}")
@@ -771,15 +758,12 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     if voiture_choisie:
                         id_choisi = int(voiture_choisie.split("ID:")[1])
                         v = df_voitures_dispo[df_voitures_dispo['id'] == id_choisi].iloc[0]
-
                         c1, c2, c3 = st.columns(3)
                         qte_max = int(v.get('quantite', 1))
                         qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key=f"qte_v_unique")
                         c2.metric("Stock dispo", qte_max)
                         c3.metric("Prix unitaire", f"{v['prix']:,.0f}$")
-
-                        st.info(f"**{v['marque']} {v['modele']}** | Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} | QR: {v.get('code_qr','N/A')}")
-
+                        st.info(f"*{v['marque']} {v['modele']}* | Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} | QR: {v.get('code_qr','N/A')}")
                         if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_voiture_unique"):
                             existant = next((item for item in st.session_state.panier_voiture if item['id'] == int(v['id'])), None)
                             if existant:
@@ -817,6 +801,21 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             width="stretch",
                             key="dl_facture_auto"
                         )
+                    pdf_b64 = base64.b64encode(st.session_state.pdf_auto).decode()
+                    st.components.v1.html(f"""
+                        <button onclick="printPDFAuto()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                            🖨️ IMPRIMER LA FACTURE
+                        </button>
+                        <script>
+                        function printPDFAuto() {{
+                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                            const win = window.open('', '_blank');
+                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                            win.document.close();
+                            setTimeout(() => {{ win.print(); }}, 1000);
+                        }}
+                        </script>
+                    """, height=60)
                     if st.button("Nouvelle Vente", width="stretch", key="new_vente_auto"):
                         st.session_state.panier_voiture = []
                         st.session_state.vente_auto_finie = False
@@ -830,7 +829,7 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                 else:
                     for idx, item in enumerate(st.session_state.panier_voiture):
                         col1, col2, col3, col4 = st.columns([3,1,1,1])
-                        col1.write(f"**{item['nom']}** | {item.get('qualite','')} | {item['plaque']}")
+                        col1.write(f"*{item['nom']}* | {item.get('qualite','')} | {item['plaque']}")
                         col2.write(f"Qté: {item['qte']}")
                         col3.write(f"{item['pu'] * item['qte']:,.2f} $")
                         if col4.button("❌", key=f"del_v_{idx}"):
@@ -838,10 +837,8 @@ if tab5 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             st.rerun()
                         total_voiture += item['pu'] * item['qte']
                     st.metric("💰 TOTAL VOITURE", f"{total_voiture:,.2f} $")
-
-                    st.markdown(f"**Client:** {st.session_state.client_auto_nom}")
-                    st.markdown(f"**Tel:** {st.session_state.client_auto_tel}")
-
+                    st.markdown(f"*Client:* {st.session_state.client_auto_nom}")
+                    st.markdown(f"*Tel:* {st.session_state.client_auto_tel}")
                     if st.button("✅ FINALISER VENTE VOITURE", type="primary", width="stretch"):
                         if st.session_state.client_auto_nom and st.session_state.panier_voiture:
                             try:
@@ -1071,14 +1068,14 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             df_cat[df_cat['type']=='Dépense']['montant'].sum(),
                             df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum()
                         )
-                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
+                        safe_cat = str(cat).replace(" ", "").replace("/", "")
                         col_dl1.download_button(
                             label=f"📥 {cat} - EXCEL",
                             data=excel_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",
+                            file_name=f"Compta_{safe_cat}{date_debut}{date_fin}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             width="stretch",
-                            key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}"
+                            key=f"dl_excel_compta_{safe_cat}{date_debut}{filtre_nom}"
                         )
 
                         pdf_cat = FPDF()
@@ -1128,12 +1125,29 @@ if tab7 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         col_dl2.download_button(
                             label=f"📥 {cat} - PDF",
                             data=pdf_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.pdf",
+                            file_name=f"Compta_{safe_cat}{date_debut}{date_fin}.pdf",
                             mime="application/pdf",
                             width="stretch",
-                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
+                            key=f"dl_pdf_compta_{safe_cat}{date_debut}{filtre_nom}"
                         )
+                        # BOUTON IMPRIMER
+                        pdf_b64 = base64.b64encode(pdf_bytes_cat).decode()
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF_{safe_cat}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                                🖨️ IMPRIMER LE RELEVÉ {cat}
+                            </button>
+                            <script>
+                            function printPDF_{safe_cat}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=60)
 
+# === TAB 8 : FACTURES AVEC SUPPRESSION PDG ===
 if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
     with tab8:
         st.markdown("## 📄 Factures - Relevé par Catégorie")
@@ -1149,7 +1163,7 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
             df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-            if filtre_cat_fact != "Toutes":
+            if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
             if filtre_client_fact:
                 df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
@@ -1171,7 +1185,52 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                     total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                        st.dataframe(df_cat[['date', 'type', 'description', 'montant', 'devise']], use_container_width=True, hide_index=True)
+                        # === TABLEAU AVEC SUPPRESSION PDG ===
+                        for idx, row in df_cat.iterrows():
+                            col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.5,1,3,1.5,1,1])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            
+                            # BOUTON SUPPRIMER POUR PDG SEULEMENT
+                            if st.session_state.user_role == "PDG":
+                                if col_e.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
+                                    try:
+                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                                        st.code(repr(e))
+                            else:
+                                col_e.write("")
+                            
+                            # BOUTON RE-IMPRIMER INDIVIDUEL
+                            if 'numero_facture' in row and row['numero_facture']:
+                                if col_f.button("🖨️", key=f"print_fact_{row['id']}", help="Réimprimer"):
+                                    # Régénère le PDF pour cette facture
+                                    pdf_bytes = generer_pdf_facture(
+                                        row['numero_facture'],
+                                        row.get('categorie',''),
+                                        row.get('description','').split(' - ')[0] if ' - ' in str(row.get('description','')) else "Client",
+                                        [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}],
+                                        row.get('montant',0),
+                                        row.get('devise','FC')
+                                    )
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    st.components.v1.html(f"""
+                                        <script>
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                        </script>
+                                    """, height=0)
+                        
+                        st.divider()
                         col_dl1, col_dl2 = st.columns(2)
                         excel_bytes_cat = generer_excel_pro(df_cat, f"Releve {cat} {date_debut}-{date_fin}",
                                                            df_cat[df_cat['type']=='Revenu']['montant'].sum(),
@@ -1184,8 +1243,9 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                             file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             width="stretch",
-                            key=f"dl_excel_cat_{safe_cat}_{date_debut}"
+                            key=f"dl_excel_fact_{safe_cat}_{date_debut}_{filtre_client_fact}"
                         )
+
                         pdf_cat = FPDF()
                         pdf_cat.add_page()
                         pdf_cat.set_fill_color(20, 50, 40)
@@ -1197,19 +1257,20 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                         pdf_cat.set_font("Arial", "", 9)
                         pdf_cat.set_xy(10, 16)
                         pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                        pdf_cat.set_xy(10, 21)
-                        pdf_cat.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
                         pdf_cat.set_font("Arial", "B", 10)
                         pdf_cat.set_xy(150, 8)
+                        filtre_txt = f"Client: {filtre_client_fact}" if filtre_client_fact else "Tous"
                         pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
+                        pdf_cat.set_xy(150, 14)
+                        pdf_cat.cell(50, 6, filtre_txt, ln=True, align="R")
                         pdf_cat.ln(15)
                         pdf_cat.set_text_color(0, 0, 0)
                         pdf_cat.set_fill_color(255, 204, 0)
                         pdf_cat.set_font("Arial", "B", 14)
-                        pdf_cat.cell(0, 10, f"RELEVE - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
+                        pdf_cat.cell(0, 10, f"RELEVE FACTURES - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
                         pdf_cat.ln(5)
                         pdf_cat.set_font("Arial", "B", 11)
-                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | Total USD: {total_cat_usd:,.0f} | Total EUR: {total_cat_eur:,.0f}", ln=True)
+                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | USD: {total_cat_usd:,.0f} | EUR: {total_cat_eur:,.0f}", ln=True)
                         pdf_cat.ln(3)
                         pdf_cat.set_font("Arial", "B", 9)
                         pdf_cat.cell(25, 7, "Date", 1)
@@ -1230,90 +1291,43 @@ if tab8 and st.session_state.user_role in ["PDG", "GERANTE"]:
                                 continue
                         pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
                         col_dl2.download_button(
-                            label=f"📥 Télécharger {cat} - PDF",
+                            label=f"📥 {cat} - PDF",
                             data=pdf_bytes_cat,
                             file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.pdf",
                             mime="application/pdf",
                             width="stretch",
-                            key=f"dl_pdf_cat_{safe_cat}_{date_debut}"
+                            key=f"dl_pdf_fact_{safe_cat}_{date_debut}_{filtre_client_fact}"
                         )
-                st.divider()
-                st.subheader("📥 Télécharger Relevé Complet Filtré")
-                col_dl_g1, col_dl_g2 = st.columns(2)
-                total_revenu_global = df_filtre_fact[df_filtre_fact['type']=='Revenu']['montant'].sum()
-                total_depense_global = df_filtre_fact[df_filtre_fact['type']=='Dépense']['montant'].sum()
-                solde_global = total_revenu_global - total_depense_global
-                excel_bytes_global = generer_excel_pro(df_filtre_fact, f"Releve Filtré {date_debut}-{date_fin}", total_revenu_global, total_depense_global, solde_global)
-                col_dl_g1.download_button(
-                    label="📥 Télécharger TOUT - EXCEL",
-                    data=excel_bytes_global,
-                    file_name=f"Releve_Complet_{date_debut}_{date_fin}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    width="stretch",
-                    key="dl_excel_global"
-                )
-                pdf_global = FPDF()
-                pdf_global.add_page()
-                pdf_global.set_fill_color(20, 50, 40)
-                pdf_global.rect(0, 0, 210, 35, 'F')
-                pdf_global.set_text_color(255, 255, 255)
-                pdf_global.set_font("Arial", "B", 20)
-                pdf_global.set_xy(10, 8)
-                pdf_global.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                pdf_global.set_font("Arial", "", 9)
-                pdf_global.set_xy(10, 16)
-                pdf_global.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                pdf_global.set_font("Arial", "B", 10)
-                pdf_global.set_xy(150, 8)
-                pdf_global.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
-                pdf_global.ln(15)
-                pdf_global.set_text_color(0, 0, 0)
-                pdf_global.set_fill_color(255, 204, 0)
-                pdf_global.set_font("Arial", "B", 14)
-                pdf_global.cell(0, 10, "RELEVE COMPTABLE COMPLET", ln=True, fill=True)
-                pdf_global.ln(5)
-                pdf_global.set_font("Arial", "B", 11)
-                pdf_global.cell(0, 8, f"Total Revenus: {total_revenu_global:,.0f} | Depenses: {total_depense_global:,.0f} | Solde: {solde_global:,.0f}", ln=True)
-                pdf_global.ln(3)
-                pdf_global.set_font("Arial", "B", 9)
-                pdf_global.cell(25, 7, "Date", 1)
-                pdf_global.cell(30, 7, "Categorie", 1)
-                pdf_global.cell(25, 7, "Type", 1)
-                pdf_global.cell(80, 7, "Description", 1)
-                pdf_global.cell(30, 7, "Montant", 1, ln=True)
-                pdf_global.set_font("Arial", "", 8)
-                for _, row in df_filtre_fact.iterrows():
-                    try:
-                        pdf_global.cell(25, 6, safe_pdf_txt(row.get('date','')), 1)
-                        pdf_global.cell(30, 6, safe_pdf_txt(row.get('categorie',''))[:20], 1)
-                        pdf_global.cell(25, 6, safe_pdf_txt(row.get('type','')), 1)
-                        desc = safe_pdf_txt(row.get('description',''))[:40]
-                        pdf_global.cell(80, 6, desc, 1)
-                        pdf_global.cell(30, 6, f"{row.get('montant',0):,.0f}", 1, ln=True)
-                    except:
-                        continue
-                pdf_bytes_global = bytes(pdf_global.output(dest='S'))
-                col_dl_g2.download_button(
-                    label="📥 Télécharger TOUT - PDF",
-                    data=pdf_bytes_global,
-                    file_name=f"Releve_Complet_{date_debut}_{date_fin}.pdf",
-                    mime="application/pdf",
-                    width="stretch",
-                    key="dl_pdf_global"
-                )
+                        # === BOUTON IMPRIMER APRÈS CHAQUE OPÉRATION ===
+                        pdf_b64 = base64.b64encode(pdf_bytes_cat).decode()
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF_{safe_cat}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                                🖨️ IMPRIMER LE RELEVÉ {cat}
+                            </button>
+                            <script>
+                            function printPDF_{safe_cat}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=60)
 
+# === TAB 9 : UTILISATEURS - PDG SEULEMENT ===
 if tab9 and st.session_state.user_role == "PDG":
     with tab9:
-        st.markdown("## 👥 Gestion des Utilisateurs")
+        st.markdown("## 👥 Gestion Utilisateurs")
         with st.expander("➕ Ajouter Nouvel Utilisateur"):
             with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
-                nom = c1.text_input("Nom")
-                role = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
-                password = c3.text_input("Mot de passe", type="password")
+                nom_user = c1.text_input("Nom")
+                role_user = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
+                pwd_user = c3.text_input("Mot de passe", type="password")
                 if st.form_submit_button("💾 Ajouter Utilisateur"):
                     try:
-                        supabase.table("utilisateurs").insert({"nom": str(nom), "role": str(role), "password": str(password)}).execute()
+                        supabase.table("utilisateurs").insert({"nom": str(nom_user), "role": str(role_user), "password": str(pwd_user)}).execute()
                         st.success("Utilisateur ajouté")
                         st.cache_data.clear()
                         st.rerun()
@@ -1327,17 +1341,19 @@ if tab9 and st.session_state.user_role == "PDG":
         else:
             for _, row in df_utilisateurs.iterrows():
                 with st.expander(f"{row['nom']} - {row['role']}"):
-                    c1, c2, c3 = st.columns(3)
-                    new_nom = c1.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
-                    new_role = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
-                    new_pwd = c3.text_input("Nouveau mot de passe", type="password", key=f"pwd_u_{row['id']}")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
+                        new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
+                    with c2:
+                        new_pwd = st.text_input("Nouveau mot de passe", type="password", key=f"pwd_u_{row['id']}")
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
                         try:
-                            data_update = {"nom": str(new_nom), "role": str(new_role)}
+                            update_data = {"nom": str(new_nom), "role": str(new_role)}
                             if new_pwd:
-                                data_update["password"] = str(new_pwd)
-                            supabase.table("utilisateurs").update(data_update).eq("id", int(row['id'])).execute()
+                                update_data["password"] = str(new_pwd)
+                            supabase.table("utilisateurs").update(update_data).eq("id", int(row['id'])).execute()
                             st.success("Modifié")
                             st.cache_data.clear()
                             st.rerun()
