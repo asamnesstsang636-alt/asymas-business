@@ -1191,16 +1191,22 @@ if "📄 Factures" in tab_map:
             date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
             date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
             col_f4, col_f5 = st.columns(2)
+
+            # === FILTRE OBLIGATOIRE PAR CATÉGORIE AUTORISÉE ===
+            if st.session_state.user_role!= "PDG":
+                cats_user = st.session_state.get('user_cats', [])
+                if cats_user and "Toutes" not in cats_user:
+                    df_compta_sorted = df_compta_sorted[df_compta_sorted['categorie'].isin(cats_user)]
+                else:
+                    # Si pas de catégorie définie et pas PDG = voit rien
+                    if not cats_user:
+                        st.error("⛔ Aucune catégorie autorisée. Contacte le PDG.")
+                        st.stop()
+
             categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
             filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
             filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
             df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-
-            # === FILTRE PAR CATÉGORIE AUTORISÉE PAR LE PDG ===
-            if st.session_state.user_role!= "PDG":
-                cats_user = st.session_state.get('user_cats', [])
-                if cats_user and "Toutes" not in cats_user:
-                    df_filtre_fact = df_filtre_fact[df_filtre_fact['categorie'].isin(cats_user)]
 
             if filtre_cat_fact!= "Toutes":
                 df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
@@ -1227,7 +1233,7 @@ if "📄 Factures" in tab_map:
                     total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
                         for idx, row in df_cat.iterrows():
-                            # === CORRIGÉ : 7 COLONNES = 7 VARIABLES ===
+                            # 7 COLONNES = 7 VARIABLES
                             col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
                             col_a.write(f"**{row.get('date','')}**")
                             col_b.write(f"{row.get('type','')}")
@@ -1282,7 +1288,6 @@ if "📄 Factures" in tab_map:
                             except Exception as e:
                                 col_f.write("❌")
                                 col_g.write("❌")
-
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
