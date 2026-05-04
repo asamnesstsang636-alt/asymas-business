@@ -28,7 +28,7 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === TOUTES LES FONCTIONS D'ABORD ===
+# === FONCTIONS - DÉFINIES AVANT UTILISATION ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -68,108 +68,6 @@ def load_passwords():
             "GERANTE": "asiya2024",
             "UTILISATEUR": "basam2024"
         }
-
-def generer_qrcode(data_text):
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=3, border=1)
-    qr.add_data(data_text)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-    img.save(temp_file.name)
-    return temp_file.name
-
-def safe_pdf_txt(txt):
-    if txt is None or pd.isna(txt):
-        return ""
-    txt = str(txt)
-    txt = txt.replace('—', '-').replace('–', '-').replace('’', "'").replace('“', '"').replace('”', '"')
-    txt = txt.replace('•', '-').replace('…', '...')
-    txt = ''.join(c if ord(c) < 128 else '?' for c in txt)
-    return txt.replace('\n', ' ').replace('\r', '').strip()
-
-# === ENSUITE LE CODE DE CONNEXION ===
-passwords_db = load_passwords()
-
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-    st.session_state.user_name = None
-    st.session_state.user_perms = {}
-
-if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown("### Choisissez votre profil :")
-        df_users_login = load_table("utilisateurs") # Maintenant ça marche
-        if not df_users_login.empty:
-            options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
-        else:
-            options_login = ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"]
-        profil = st.selectbox("Utilisateur", options_login)
-        password = st.text_input("Mot de passe", type="password", key="pwd")
-        if st.button("SE CONNECTER", width="stretch", type="primary"):
-            if profil!= "-- Sélectionner --":
-                nom_connect = profil.split(" - ")[0]
-                role_connect = profil.split(" - ")[1] if " - " in profil else profil
-                user_data = df_users_login[df_users_login['nom'] == nom_connect]
-                if not user_data.empty and password == user_data.iloc[0]['password']:
-                    st.session_state.user_role = user_data.iloc[0]['role']
-                    st.session_state.user_name = user_data.iloc[0]['nom']
-                    st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
-                    st.rerun()
-                else:
-                    st.error("Profil ou mot de passe incorrect")
-    st.stop()
-if 'user_role' in st.session_state and st.session_state.user_role is not None:
-    with st.sidebar:
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True):
-            st.session_state.user_role=None
-            st.session_state.user_name=None
-            st.session_state.user_perms={}
-            st.rerun()
-
-    if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-h1, h2, h3 {
-    color: #00ff41!important;
-    font-size: 2.2rem!important;
-    font-weight: 900!important;
-    padding: 10px 0!important;
-    border-bottom: 3px solid #00ff41!important;
-    margin-bottom: 20px!important;
-}
-div[data-testid="stMetricValue"] {color: #00ff41!important;}
-.stButton>button {background-color: #00ff41!important; color: black!important; font-weight: bold; border: none;}
-</style>
-""", unsafe_allow_html=True)
-
-@st.cache_data(ttl=60)
-def load_table(table_name):
-    try:
-        with st.spinner(f"Chargement {table_name}..."):
-            data = supabase.table(table_name).select("*").order("id", desc=True).execute()
-        return pd.DataFrame(data.data)
-    except Exception as e:
-        st.error(f"Erreur chargement {table_name}")
-        st.code(repr(e))
-        return pd.DataFrame()
-
-@st.cache_data(ttl=300)
-def get_table_columns(table_name):
-    try:
-        test = supabase.table(table_name).select("*").limit(1).execute()
-        if test.data:
-            return list(test.data[0].keys())
-        return []
-    except:
-        return []
 
 def generer_qrcode(data_text):
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=3, border=1)
@@ -370,6 +268,109 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
             worksheet.column_dimensions[get_column_letter(col)].width = 18
     return output.getvalue()
 
+st.markdown("""
+<link rel="manifest" href="data:application/manifest+json,{
+  \\"name\\": \\"ASYMAS BUSINESS\\",
+  \\"short_name\\": \\"ASYMAS\\",
+  \\"start_url\\": \\".\\",
+  \\"display\\": \\"standalone\\",
+  \\"background_color\\": \\"#000000\\",
+  \\"theme_color\\": \\"#00ff41\\",
+  \\"description\\": \\"Agriculture Commerce Immobilier Automobile\\",
+  \\"icons\\": [{
+    \\"src\\": \\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f48e.png\\",
+    \\"sizes\\": \\"192x192\\",
+    \\"type\\": \\"image/png\\"
+  }]
+}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden!important;}
+header {visibility: hidden!important;}
+.stAppToolbar {display: none!important;}
+[data-testid="stToolbar"] {display: none!important;}
+[data-testid="stDecoration"] {display: none!important;}
+[data-testid="stHeader"] {display: none!important;}
+footer {visibility: hidden!important;}
+.stDeployButton {display:none!important;}
+[data-testid="stStatusWidget"] {display: none!important;}
+[data-testid="manage-app-button"] {display: none!important;}
+iframe[src*="streamlit.io"] {display: none!important;}
+button[kind="header"] {display: none!important;}
+div[data-testid="stBottomBlockContainer"] {display: none!important;}
+.st-emotion-cache-1wbqy5l {display: none!important;}
+button[title="Manage app"] {display: none!important;}
+a[href*="share.streamlit.io"] {display: none!important;}
+</style>
+""", unsafe_allow_html=True)
+
+passwords_db = load_passwords()
+
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = None
+    st.session_state.user_name = None
+    st.session_state.user_perms = {}
+
+if st.session_state.user_role is None:
+    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("### Choisissez votre profil :")
+        df_users_login = load_table("utilisateurs")
+        if not df_users_login.empty:
+            options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
+        else:
+            options_login = ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"]
+        profil = st.selectbox("Utilisateur", options_login)
+        password = st.text_input("Mot de passe", type="password", key="pwd")
+        if st.button("SE CONNECTER", width="stretch", type="primary"):
+            if profil!= "-- Sélectionner --":
+                nom_connect = profil.split(" - ")[0]
+                role_connect = profil.split(" - ")[1] if " - " in profil else profil
+                user_data = df_users_login[df_users_login['nom'] == nom_connect]
+                if not user_data.empty and password == user_data.iloc[0]['password']:
+                    st.session_state.user_role = user_data.iloc[0]['role']
+                    st.session_state.user_name = user_data.iloc[0]['nom']
+                    st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
+                    st.rerun()
+                else:
+                    st.error("Profil ou mot de passe incorrect")
+    st.stop()
+
+if 'user_role' in st.session_state and st.session_state.user_role is not None:
+    with st.sidebar:
+        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
+        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
+        if st.button("🚪 Déconnexion", use_container_width=True):
+            st.session_state.user_role=None
+            st.session_state.user_name=None
+            st.session_state.user_perms={}
+            st.rerun()
+
+    if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+h1, h2, h3 {
+    color: #00ff41!important;
+    font-size: 2.2rem!important;
+    font-weight: 900!important;
+    padding: 10px 0!important;
+    border-bottom: 3px solid #00ff41!important;
+    margin-bottom: 20px!important;
+}
+div[data-testid="stMetricValue"] {color: #00ff41!important;}
+.stButton>button {background-color: #00ff41!important; color: black!important; font-weight: bold; border: none;}
+</style>
+""", unsafe_allow_html=True)
+
 df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
@@ -435,7 +436,107 @@ if "📊 Dashboard" in tab_map:
         else:
             col4.metric("💰 Revenus", "0 FC")
 
-if "🛍️ Commerce" in tab_map:
+if "📄 Factures" in tab_map:
+    with tab_map["📄 Factures"]:
+        st.markdown("## 📄 Factures - Relevé par Catégorie")
+        if df_compta.empty:
+            st.info("Aucune opération")
+        else:
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
+            col_f4, col_f5 = st.columns(2)
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
+            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+            if filtre_cat_fact!= "Toutes":
+                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+            if filtre_client_fact:
+                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            st.divider()
+            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période sélectionnée")
+            else:
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        # === CORRECTION ICI : 6 COLONNES ===
+                        for idx, row in df_cat.iterrows():
+                            col_a, col_b, col_c, col_d, col_e, col_f = st.columns([1.2,0.8,3,1.2,0.8,0.8])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                                if col_f.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
+                                    try:
+                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                                        st.code(repr(e))
+
+if "👥 Utilisateurs" in tab_map:
+    with tab_map["👥 Utilisateurs"]:
+        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
+            with st.form("form_user", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                pwd_user = c3.text_input("Mot de passe *", type="password")
+                st.markdown("**🔐 Autorisations :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock", value=(role_user in ["PDG","GERANTE"]))
+                perm_immo = col4.checkbox("Immobilier", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2, col3, col4 = st.columns(4)
+                perm_auto = col1.checkbox("Automobile", value=(role_user in ["PDG","GERANTE"]))
+                perm_parc = col2.checkbox("Gestion Parc", value=(role_user in ["PDG","GERANTE"]))
+                perm_compta = col3.checkbox("Comptabilité", value=(role_user in ["PDG","GERANTE"]))
+                perm_factures = col4.checkbox("Factures", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2 = st.columns(2)
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
+                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
+                    if not nom_user or not pwd_user:
+                        st.error("Nom et mot de passe obligatoires")
+                    else:
+                        try:
+                            permissions = {
+                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                "immobilier": perm_immo, "automobile": perm_auto, "parc": perm_parc,
+                                "comptabilite": perm_compta, "factures": perm_factures,
+                                "supprimer": perm_supprimer, "users": perm_users
+                            }
+                            supabase.table("utilisateurs").insert({
+                                "nom": str(nom_user), "role": str(role_user), "password": str(pwd_user),
+                                "permissions": permissions
+                            }).execute()
+                            st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("❌ ERREUR AJOUT UTILISATEUR")
+                            st.code(f"ERREUR COMPLÈTE : {repr(e)}")
+                            if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
         if 'panier_commerce' not in st.session_state:
@@ -752,12 +853,9 @@ if "🚗 Automobile" in tab_map:
                 st.subheader("👤 Client")
                 st.session_state.client_auto_nom = st.text_input("Nom Client", value=st.session_state.client_auto_nom, key="nom_client_v")
                 st.session_state.client_auto_tel = st.text_input("Téléphone Client", value=st.session_state.client_auto_tel, key="tel_client_v")
-
                 st.subheader("🔍 Choisir Voiture")
                 search_qr = st.text_input("QR Code, Plaque, Marque ou Modèle", placeholder="Filtre la liste...", key="search_voiture_qr").strip()
-
                 df_voitures_dispo = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
-
                 if search_qr:
                     search_clean = search_qr.upper()
                     df_voitures_dispo = df_voitures_dispo[
@@ -766,7 +864,6 @@ if "🚗 Automobile" in tab_map:
                         df_voitures_dispo['marque'].str.contains(search_clean, case=False, na=False) |
                         df_voitures_dispo['modele'].str.contains(search_clean, case=False, na=False)
                     ]
-
                 if df_voitures_dispo.empty:
                     st.warning("⚠️ Aucune voiture disponible")
                 else:
@@ -774,9 +871,7 @@ if "🚗 Automobile" in tab_map:
                     options_voitures = []
                     for _, v in df_voitures_dispo.iterrows():
                         options_voitures.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v.get('couleur','')} | {v['plaque']} | Stock:{int(v.get('quantite',1))} | {v['prix']:,.0f}$ | ID:{v['id']}")
-
                     voiture_choisie = st.selectbox("Sélectionne le véhicule", options_voitures, key="select_voiture_unique")
-
                     if voiture_choisie:
                         id_choisi = int(voiture_choisie.split("ID:")[1])
                         v = df_voitures_dispo[df_voitures_dispo['id'] == id_choisi].iloc[0]
@@ -807,7 +902,6 @@ if "🚗 Automobile" in tab_map:
                                 })
                                 st.success("Ajouté au panier")
                             st.rerun()
-
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
@@ -1172,179 +1266,7 @@ if "💰 Comptabilité" in tab_map:
                             }}
                             </script>
                         """, height=60)
-
-if "📄 Factures" in tab_map:
-    with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures - Relevé par Catégorie")
-        if df_compta.empty:
-            st.info("Aucune opération")
-        else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
-            col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
-            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
-            col_f4, col_f5 = st.columns(2)
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
-            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
-            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
-            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-            if filtre_cat_fact!= "Toutes":
-                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
-            if filtre_client_fact:
-                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
-            col_t1, col_t2, col_t3 = st.columns(3)
-            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
-            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
-            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
-            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
-            st.divider()
-            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) == 0:
-                st.info("Aucune catégorie trouvée dans la période sélectionnée")
-            else:
-                for cat in sorted(categories):
-                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                        # === TABLEAU AVEC SUPPRESSION PDG + UTILISATEUR ===
-                        for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1.2,0.8,0.8])
-                            col_a.write(f"**{row.get('date','')}**")
-                            col_b.write(f"{row.get('type','')}")
-                            col_c.write(f"{row.get('description','')}")
-                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
-                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
-
-                            # BOUTON SUPPRIMER POUR PDG SEULEMENT
-                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                                if col_f.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
-                                    try:
-                                        supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                        st.success(f"Facture {row.get('numero_facture','')} supprimée")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error("Erreur suppression")
-                                        st.code(repr(e))
-                            else:
-                                col_f.write("")
-
-                            # BOUTON RE-IMPRIMER INDIVIDUEL
-                            if 'numero_facture' in row and row['numero_facture']:
-                                if col_g.button("🖨️", key=f"print_fact_{row['id']}", help="Réimprimer"):
-                                    pdf_bytes = generer_pdf_facture(
-                                        row['numero_facture'],
-                                        row.get('categorie',''),
-                                        row.get('description','').split(' - ')[0] if ' - ' in str(row.get('description','')) else "Client",
-                                        [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}],
-                                        row.get('montant',0),
-                                        row.get('devise','FC')
-                                    )
-                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                    st.components.v1.html(f"""
-                                        <script>
-                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                        const win = window.open('', '_blank');
-                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                        win.document.close();
-                                        setTimeout(() => {{ win.print(); }}, 1000);
-                                        </script>
-                                    """, height=0)
-
-                        st.divider()
-                        col_dl1, col_dl2 = st.columns(2)
-                        excel_bytes_cat = generer_excel_pro(df_cat, f"Releve {cat} {date_debut}-{date_fin}",
-                                                           df_cat[df_cat['type']=='Revenu']['montant'].sum(),
-                                                           df_cat[df_cat['type']=='Dépense']['montant'].sum(),
-                                                           df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum())
-                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
-                        col_dl1.download_button(
-                            label=f"📥 Télécharger {cat} - EXCEL",
-                            data=excel_bytes_cat,
-                            file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            width="stretch",
-                            key=f"dl_excel_fact_{safe_cat}_{date_debut}_{filtre_client_fact}"
-                        )
-
-                        pdf_cat = FPDF()
-                        pdf_cat.add_page()
-                        pdf_cat.set_fill_color(20, 50, 40)
-                        pdf_cat.rect(0, 0, 210, 35, 'F')
-                        pdf_cat.set_text_color(255, 255, 255)
-                        pdf_cat.set_font("Arial", "B", 20)
-                        pdf_cat.set_xy(10, 8)
-                        pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                        pdf_cat.set_font("Arial", "", 9)
-                        pdf_cat.set_xy(10, 16)
-                        pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                        pdf_cat.set_font("Arial", "B", 10)
-                        pdf_cat.set_xy(150, 8)
-                        filtre_txt = f"Client: {filtre_client_fact}" if filtre_client_fact else "Tous"
-                        pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
-                        pdf_cat.set_xy(150, 14)
-                        pdf_cat.cell(50, 6, filtre_txt, ln=True, align="R")
-                        pdf_cat.ln(15)
-                        pdf_cat.set_text_color(0, 0, 0)
-                        pdf_cat.set_fill_color(255, 204, 0)
-                        pdf_cat.set_font("Arial", "B", 14)
-                        pdf_cat.cell(0, 10, f"RELEVE FACTURES - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
-                        pdf_cat.ln(5)
-                        pdf_cat.set_font("Arial", "B", 11)
-                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | USD: {total_cat_usd:,.0f} | EUR: {total_cat_eur:,.0f}", ln=True)
-                        pdf_cat.ln(3)
-                        pdf_cat.set_font("Arial", "B", 9)
-                        pdf_cat.cell(20, 7, "Date", 1)
-                        pdf_cat.cell(20, 7, "Type", 1)
-                        pdf_cat.cell(60, 7, "Description", 1)
-                        pdf_cat.cell(25, 7, "Montant", 1)
-                        pdf_cat.cell(15, 7, "Dev", 1)
-                        pdf_cat.cell(30, 7, "Utilisateur", 1)
-                        pdf_cat.cell(20, 7, "N°Fact", 1, ln=True)
-                        pdf_cat.set_font("Arial", "", 8)
-                        for _, row in df_cat.iterrows():
-                            try:
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('date','')), 1)
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('type','')), 1)
-                                desc = safe_pdf_txt(row.get('description',''))[:30]
-                                pdf_cat.cell(60, 6, desc, 1)
-                                pdf_cat.cell(25, 6, f"{row.get('montant',0):,.0f}", 1)
-                                pdf_cat.cell(15, 6, safe_pdf_txt(row.get('devise','FC')), 1)
-                                pdf_cat.cell(30, 6, safe_pdf_txt(row.get('utilisateur','N/A')), 1)
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('numero_facture','')), 1, ln=True)
-                            except:
-                                continue
-                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
-                        col_dl2.download_button(
-                            label=f"📥 {cat} - PDF",
-                            data=pdf_bytes_cat,
-                            file_name=f"Releve_{safe_cat}_{date_debut}_{date_fin}.pdf",
-                            mime="application/pdf",
-                            width="stretch",
-                            key=f"dl_pdf_fact_{safe_cat}_{date_debut}_{filtre_client_fact}"
-                        )
-                        pdf_b64 = base64.b64encode(pdf_bytes_cat).decode()
-                        st.components.v1.html(f"""
-                            <button onclick="printPDF_{safe_cat}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                                🖨️ IMPRIMER LE RELEVÉ {cat}
-                            </button>
-                            <script>
-                            function printPDF_{safe_cat}() {{
-                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                const win = window.open('', '_blank');
-                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                win.document.close();
-                                setTimeout(() => {{ win.print(); }}, 1000);
-                            }}
-                            </script>
-                        """, height=60)
-
-# === TAB 9 : UTILISATEURS - PDG SEULEMENT ===
-if "👥 Utilisateurs" in tab_map:
+                        if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
         with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
@@ -1353,7 +1275,6 @@ if "👥 Utilisateurs" in tab_map:
                 nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
                 role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
                 pwd_user = c3.text_input("Mot de passe *", type="password")
-
                 st.markdown("**🔐 Autorisations :**")
                 col1, col2, col3, col4 = st.columns(4)
                 perm_dashboard = col1.checkbox("Dashboard", value=True)
@@ -1368,28 +1289,19 @@ if "👥 Utilisateurs" in tab_map:
                 col1, col2 = st.columns(2)
                 perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
                 perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
-
                 if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
                     if not nom_user or not pwd_user:
                         st.error("Nom et mot de passe obligatoires")
                     else:
                         try:
                             permissions = {
-                                "dashboard": perm_dashboard,
-                                "commerce": perm_commerce,
-                                "stock": perm_stock,
-                                "immobilier": perm_immo,
-                                "automobile": perm_auto,
-                                "parc": perm_parc,
-                                "comptabilite": perm_compta,
-                                "factures": perm_factures,
-                                "supprimer": perm_supprimer,
-                                "users": perm_users
+                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                "immobilier": perm_immo, "automobile": perm_auto, "parc": perm_parc,
+                                "comptabilite": perm_compta, "factures": perm_factures,
+                                "supprimer": perm_supprimer, "users": perm_users
                             }
-                            result = supabase.table("utilisateurs").insert({
-                                "nom": str(nom_user),
-                                "role": str(role_user),
-                                "password": str(pwd_user),
+                            supabase.table("utilisateurs").insert({
+                                "nom": str(nom_user), "role": str(role_user), "password": str(pwd_user),
                                 "permissions": permissions
                             }).execute()
                             st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
@@ -1398,7 +1310,6 @@ if "👥 Utilisateurs" in tab_map:
                         except Exception as e:
                             st.error("❌ ERREUR AJOUT UTILISATEUR")
                             st.code(f"ERREUR COMPLÈTE : {repr(e)}")
-                            st.code(f"Type erreur : {type(e).__name__}")
 
         st.divider()
         st.subheader("📋 Liste des Utilisateurs")
@@ -1412,7 +1323,6 @@ if "👥 Utilisateurs" in tab_map:
                         perms = json.loads(perms)
                     except:
                         perms = {}
-
                 with st.expander(f"{row['nom']} - {row['role']}", expanded=False):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -1422,7 +1332,6 @@ if "👥 Utilisateurs" in tab_map:
                                                key=f"role_u_{row['id']}")
                     with c2:
                         new_pwd = st.text_input("Nouveau mot de passe", type="password", placeholder="Laisser vide pour garder l'ancien", key=f"pwd_u_{row['id']}")
-
                     st.markdown("**🔐 Autorisations :**")
                     col1, col2, col3, col4 = st.columns(4)
                     p_dashboard = col1.checkbox("Dashboard", value=perms.get('dashboard',True), key=f"p1_{row['id']}")
@@ -1437,7 +1346,6 @@ if "👥 Utilisateurs" in tab_map:
                     col1, col2 = st.columns(2)
                     p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms.get('supprimer',False), key=f"p9_{row['id']}")
                     p_users = col2.checkbox("👥 Gérer Users", value=perms.get('users',False), key=f"p10_{row['id']}")
-
                     c1, c2 = st.columns(2)
                     if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
                         try:
