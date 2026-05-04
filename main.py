@@ -1327,14 +1327,14 @@ if "👥 Utilisateurs" in tab_map:
                             except: perms_user = {}
                         
                         c1, c2 = st.columns(2)
-                        with c1:
-                            new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
-                            new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], 
-                                                    index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']) if row['role'] in ["PDG", "GERANTE", "UTILISATEUR"] else 0, 
-                                                    key=f"role_u_{row['id']}")
-                            new_pwd = st.text_input("Mot de passe", value=row['password'], type="password", key=f"pwd_u_{row['id']}")
-                        
-                        with c2:
+with c1:
+    new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
+    new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], 
+                            index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']) if row['role'] in ["PDG", "GERANTE", "UTILISATEUR"] else 0, 
+                            key=f"role_u_{row['id']}")
+    new_pwd = st.text_input("Mot de passe", value=row['password'], type="password", key=f"pwd_u_{row['id']}")
+
+with c2:
     st.markdown("**Permissions:**")
     perm_dashboard = st.checkbox("Dashboard", value=perms_user.get('dashboard', True), key=f"perm_dash_{row['id']}")
     perm_commerce = st.checkbox("Commerce", value=perms_user.get('commerce', True), key=f"perm_com_{row['id']}")
@@ -1346,12 +1346,13 @@ if "👥 Utilisateurs" in tab_map:
     perm_fact = st.checkbox("Factures", value=perms_user.get('factures', False), key=f"perm_fact_{row['id']}")
     perm_users = st.checkbox("Users", value=perms_user.get('users', False), key=f"perm_users_{row['id']}")
     perm_suppr = st.checkbox("Supprimer", value=perms_user.get('supprimer', False), key=f"perm_suppr_{row['id']}")
-                        new_perms = {
-                            'dashboard': perm_dashboard, 'commerce': perm_commerce, 'stock': perm_stock,
-                            'immobilier': perm_immo, 'automobile': perm_auto, 'parc': perm_parc,
-                            'comptabilite': perm_compta, 'factures': perm_fact, 'users': perm_users,
-                            'supprimer': perm_suppr
-                        }
+
+new_perms = {
+    'dashboard': perm_dashboard, 'commerce': perm_commerce, 'stock': perm_stock,
+    'immobilier': perm_immo, 'automobile': perm_auto, 'parc': perm_parc,
+    'comptabilite': perm_compta, 'factures': perm_fact, 'users': perm_users,
+    'supprimer': perm_suppr
+}
                         
                         c1, c2 = st.columns(2)
                         if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
