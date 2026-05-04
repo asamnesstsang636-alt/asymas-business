@@ -1285,8 +1285,7 @@ if "📄 Factures" in tab_map:
                                 """, unsafe_allow_html=True)
 
                                 # === BOUTON SUPPRIMER - PDG UNIQUEMENT ===
-                                # === BOUTON SUPPRIMER - PDG UNIQUEMENT ===
-                                if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
     if col_h.button("🗑️", key=f"del_fact_{row['id']}", help="Supprimer cette facture"):
         try:
             supabase.table("compta").delete().eq("id", int(row['id'])).execute()
