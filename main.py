@@ -1312,7 +1312,7 @@ if "📄 Factures" in tab_map:
                     st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
                     st.write(f"**Description:** {row.get('description','')}")
                     st.write(f"**Créé par:** {row.get('utilisateur','N/A')}")
-                    c1, c2 = st.columns(2)
+                    c1, c2, c3 = st.columns(3)
                     if row.get('statut') == 'Brouillon':
                         if c1.button("✅ Valider", key=f"val_f_{row['id']}", width="stretch"):
                             try:
@@ -1323,11 +1323,12 @@ if "📄 Factures" in tab_map:
                             except Exception as e:
                                 st.error("Erreur validation")
                                 st.code(repr(e))
+                    # BOUTON SUPPRIMER POUR PDG
                     if st.session_state.user_role == "PDG":
-                        if c2.button("🗑️ Supprimer", key=f"del_f_{row['id']}", width="stretch"):
+                        if c3.button("🗑️ Supprimer", key=f"del_f_{row['id']}", width="stretch"):
                             try:
                                 supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
-                                st.success("Supprimé")
+                                st.success("Facture supprimée")
                                 st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
