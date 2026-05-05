@@ -493,7 +493,7 @@ if "🛍️ Commerce" in tab_map:
                        if not df_articles_filtre.empty:
                           st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
                         else:
-                           st.error(f"❌ QR {qr_clean} : Produit introuvable dans le stock")
+                            st.error(f"❌ QR {qr_clean} : Produit introuvable dans le stock")
 
                     # Si pas de QR mais recherche texte
                     elif recherche_manuelle:
