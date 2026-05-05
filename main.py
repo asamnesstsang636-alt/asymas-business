@@ -482,12 +482,15 @@ if "🛍️ Commerce" in tab_map:
                 if qr_code:
                     st.success(f"QR Scanné: {qr_code}")
                 df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
-                if recherche:
-                   search_clean = str(recherche).upper().strip()
-                   mask = df_articles_filtre['nom_article'].str.contains(recherche, case=False, na=False)
-                   if 'code_qr' in df_articles_filtre.columns:
-                       mask = mask | df_articles_filtre['code_qr'].astype(str).str.upper().str.contains(search_clean, case=False, na=False)
-                   df_articles_filtre = df_articles_filtre[mask] # <-- CORRECTION ICI
+                recherche = qr_code if qr_code else recherche_manuelle
+                if qr_code:
+                   st.success(f"QR Scanné: {qr_code}")
+                   # Pour QR : recherche exacte
+                   df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str) == str(qr_code)]
+                elif recherche_manuelle:
+                   # Pour texte : recherche partielle
+                   mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
+                   df_articles_filtre = df_articles_filtre[mask]
                 if df_articles_filtre.empty:
                     st.warning("⚠️ Aucun produit disponible")
                 else:
