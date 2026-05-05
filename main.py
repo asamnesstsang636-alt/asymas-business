@@ -477,22 +477,30 @@ if "🛍️ Commerce" in tab_map:
                 with col_scan1:
                     qr_code = qrcode_scanner(key='qr_scanner_c')
                 with col_scan2:
-                    recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
-                recherche = qr_code if qr_code else recherche_manuelle
-                if qr_code:
-                    st.success(f"QR Scanné: {qr_code}")
-                df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
-                recherche = qr_code if qr_code else recherche_manuelle
-                if qr_code:
-                   st.success(f"QR Scanné: {qr_code}")
-                   # Pour QR : recherche exacte
-                   df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str) == str(qr_code)]
-                elif recherche_manuelle:
-                   # Pour texte : recherche partielle
-                   mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-                   df_articles_filtre = df_articles_filtre[mask]
-                if df_articles_filtre.empty:
-                    st.warning("⚠️ Aucun produit disponible")
+                    st.subheader("📦 Rubrique Produit")
+                    qr_code = qrcode_scanner(key="qr")
+
+                    recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_prod").strip()
+
+                    # On part de tous les articles en stock
+                    df_articles_filtre = df_articles[(df_articles['stock'] > 0)]
+
+                    # Si QR scanné : priorité au QR
+                    if qr_code:
+                       qr_clean = str(qr_code).strip()
+                       df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip() == qr_clean]
+    
+                       if not df_articles_filtre.empty:
+                          st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
+                        else:
+                           st.error(f"❌ QR {qr_clean} : Produit introuvable dans le stock")
+
+                    # Si pas de QR mais recherche texte
+                    elif recherche_manuelle:
+                       mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
+                       df_articles_filtre = df_articles_filtre[mask]
+
+                    st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
                 else:
                     st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
                     options_articles = []
