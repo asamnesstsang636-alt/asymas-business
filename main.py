@@ -475,26 +475,20 @@ if "🛍️ Commerce" in tab_map:
                 st.subheader("📦 Rubrique Produit")
                 col_scan1, col_scan2 = st.columns([1,3])
                 with col_scan1:
-                  qr_code = qrcode_scanner(key='qr_scanner_c')
+                    qr_code = qrcode_scanner(key='qr_scanner_c')
                 with col_scan2:
-                  recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
-
-                # IMPORTANT : On force le rerun si QR scanné
-                if qr_code and qr_code!= st.session_state.get('last_qr', ''):
-                   st.session_state.last_qr = qr_code
-                   st.rerun()
-
-                df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
-
+                    recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
+                recherche = qr_code if qr_code else recherche_manuelle
                 if qr_code:
-                   qr_clean = str(qr_code).strip().upper()
-                   # Recherche exacte sur code_qr
-                   df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
-                   if not df_articles_filtre.empty:
-                      st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
-                    else:
-                      st.error(f"❌ QR {qr_code} : Produit introuvable dans le stock")
+                    st.success(f"QR Scanné: {qr_code}")
+                df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
+                recherche = qr_code if qr_code else recherche_manuelle
+                if qr_code:
+                   st.success(f"QR Scanné: {qr_code}")
+                   # Pour QR : recherche exacte
+                   df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str) == str(qr_code)]
                 elif recherche_manuelle:
+                   # Pour texte : recherche partielle
                    mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
                    df_articles_filtre = df_articles_filtre[mask]
                 if df_articles_filtre.empty:
