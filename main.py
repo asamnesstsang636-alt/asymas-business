@@ -203,7 +203,6 @@ Tel: +243 995 105 623"""
     pdf.set_xy(10, y_position + 10)
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
-
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
@@ -407,6 +406,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 
+# === GESTION DES TABS AVEC PERMISSIONS - TOUT LE MONDE VOIT LES TABS DE BASE ===
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
@@ -427,6 +427,7 @@ if st.session_state.user_role == "PDG" or perms.get('factures', False):
 if st.session_state.user_role == "PDG" or perms.get('users', False):
     tabs_dispo.append("👥 Utilisateurs")
 
+# Si aucun tab, afficher au moins Dashboard et Commerce
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
 
@@ -474,24 +475,28 @@ if "🛍️ Commerce" in tab_map:
                 st.subheader("📦 Rubrique Produit")
                 col_scan1, col_scan2 = st.columns([1,3])
                 with col_scan1:
-                    qr_code = qrcode_scanner(key='qr_scanner_c')
+                  qr_code = qrcode_scanner(key='qr_scanner_c')
                 with col_scan2:
-                    recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
+                  recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
 
-                # CORRECTION PRINCIPALE : FILTRE QR + TEXTE
+                # IMPORTANT : On force le rerun si QR scanné
+                if qr_code and qr_code!= st.session_state.get('last_qr', ''):
+                   st.session_state.last_qr = qr_code
+                   st.rerun()
+
                 df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
 
                 if qr_code:
-                    qr_clean = str(qr_code).strip()
-                    df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip() == qr_clean]
-                    if not df_articles_filtre.empty:
-                        st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
+                   qr_clean = str(qr_code).strip().upper()
+                   # Recherche exacte sur code_qr
+                   df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
+                   if not df_articles_filtre.empty:
+                      st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
                     else:
-                        st.error(f"❌ QR {qr_clean} : Produit introuvable")
+                      st.error(f"❌ QR {qr_code} : Produit introuvable dans le stock")
                 elif recherche_manuelle:
-                    mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-                    df_articles_filtre = df_articles_filtre[mask]
-
+                   mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
+                   df_articles_filtre = df_articles_filtre[mask]
                 if df_articles_filtre.empty:
                     st.warning("⚠️ Aucun produit disponible")
                 else:
@@ -1090,26 +1095,11 @@ if "💰 Comptabilité" in tab_map:
                     total_cat = total_cat_fc + total_cat_usd + total_cat_eur
 
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
-                        # CORRECTION BOUTON SUPPRIMER PDG
-                        for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
-                            col_a.write(f"**{row.get('date','')}**")
-                            col_b.write(f"{row.get('type','')}")
-                            col_c.write(f"{row.get('description','')}")
-                            col_d.write(f"{row.get('montant',0):,.0f}")
-                            col_e.write(f"{row.get('devise','FC')}")
-                            col_f.write(f"{row.get('utilisateur','N/A')}")
+                        colonnes_affiche = ['date', 'type', 'description', 'montant', 'devise']
+                        if 'utilisateur' in df_cat.columns:
+                            colonnes_affiche.append('utilisateur')
+                        st.dataframe(df_cat[colonnes_affiche], use_container_width=True, hide_index=True)
 
-                            if st.session_state.user_role == "PDG":
-                                if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
-                                    supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                    st.success("Facture supprimée")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            else:
-                                col_g.write("")
-
-                        st.divider()
                         col_dl1, col_dl2 = st.columns(2)
                         excel_bytes_cat = generer_excel_pro(
                             df_cat,
@@ -1182,155 +1172,280 @@ if "💰 Comptabilité" in tab_map:
                             width="stretch",
                             key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
-
-if "👥 Utilisateurs" in tab_map:
-    with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        if st.session_state.user_role!= "PDG":
-            st.error("🔒 Accès réservé au PDG")
-        else:
-            with st.expander("➕ Ajouter Utilisateur"):
-                with st.form("form_user", clear_on_submit=True):
-                    c1, c2 = st.columns(2)
-                    nom_u = c1.text_input("Nom")
-                    role_u = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
-                    pwd_u = c1.text_input("Mot de passe", type="password")
-                    perms_u = c2.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer"])
-                    cats_u = c1.text_input("Catégories autorisées", placeholder="Loyer,Vente Auto")
-                    if st.form_submit_button("💾 Ajouter Utilisateur"):
-                        try:
-                            cats_list = [c.strip() for c in cats_u.split(",")] if cats_u else []
-                            perms_dict = {p: True for p in perms_u}
-                            supabase.table("utilisateurs").insert({
-                                "nom": str(nom_u),
-                                "role": str(role_u),
-                                "password": str(pwd_u),
-                                "permissions": perms_dict,
-                                "categories_autorisees": cats_list
-                            }).execute()
-                            st.success("Utilisateur ajouté")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur ajout")
-                            st.code(repr(e))
-            st.divider()
-            st.subheader("📋 Liste Utilisateurs")
-            if df_utilisateurs.empty:
-                st.info("Aucun utilisateur")
-            else:
-                for _, row in df_utilisateurs.iterrows():
-                    with st.expander(f"{row['nom']} - {row['role']}"):
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
-                            new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
-                            new_pwd = st.text_input("Mot de passe", value=row['password'], type="password", key=f"pwd_u_{row['id']}")
-                        with c2:
-                            perms_actuelles = row.get('permissions', {})
-                            if isinstance(perms_actuelles, str):
-                                try: perms_actuelles = json.loads(perms_actuelles)
-                                except: perms_actuelles = {}
-                            perms_list = [k for k, v in perms_actuelles.items() if v]
-                            new_perms = st.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer"], default=perms_list, key=f"perms_u_{row['id']}")
-                            cats_actuelles = row.get('categories_autorisees', [])
-                            if isinstance(cats_actuelles, str):
-                                try: cats_actuelles = json.loads(cats_actuelles)
-                                except: cats_actuelles = []
-                            new_cats = st.text_input("Catégories", value=",".join(cats_actuelles), key=f"cats_u_{row['id']}")
-                        c1, c2 = st.columns(2)
-                        if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
-                            try:
-                                cats_list = [c.strip() for c in new_cats.split(",")] if new_cats else []
-                                perms_dict = {p: True for p in new_perms}
-                                supabase.table("utilisateurs").update({
-                                    "nom": str(new_nom),
-                                    "role": str(new_role),
-                                    "password": str(new_pwd),
-                                    "permissions": perms_dict,
-                                    "categories_autorisees": cats_list
-                                }).eq("id", int(row['id'])).execute()
-                                st.success("Modifié")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur modif")
-                                st.code(repr(e))
-                        if c2.button("🗑️ Supprimer", key=f"del_u_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
-                                st.success("Supprimé")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
+                        pdf_b64 = base64.b64encode(pdf_bytes_cat).decode()
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF_{safe_cat}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                                🖨️ IMPRIMER LE RELEVÉ {cat}
+                            </button>
+                            <script>
+                            function printPDF_{safe_cat}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=60)
 
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures Proforma")
-        with st.expander("➕ Créer Facture Proforma"):
-            with st.form("form_facture", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                client = c1.text_input("Client")
-                tel = c2.text_input("Téléphone", value="+243...")
-                c1, c2, c3 = st.columns(3)
-                type_fact = c1.selectbox("Type", ["Devis", "Proforma", "Facture"])
-                devise = c2.selectbox("Devise", ["FC", "$", "€"])
-                montant = c3.number_input("Montant", min_value=0.0)
-                description = st.text_area("Description", placeholder="Détails de la facture...")
-                if st.form_submit_button("💾 Créer Facture"):
-                    try:
-                        numero = f"PROF-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        supabase.table("factures_proforma").insert({
-                            "numero": numero,
-                            "type": type_fact,
-                            "client": client,
-                            "telephone": tel,
-                            "description": description,
-                            "montant": float(montant),
-                            "devise": devise,
-                            "date": str(date.today()),
-                            "utilisateur": st.session_state.user_name,
-                            "statut": "Brouillon"
-                        }).execute()
-                        st.success(f"Facture {numero} créée")
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur création")
-                        st.code(repr(e))
-        st.divider()
-        st.subheader("📋 Liste Factures")
-        if df_factures.empty:
-            st.info("Aucune facture")
+        st.markdown("## 📄 Factures - Relevé par Catégorie")
+        if df_compta.empty:
+            st.info("Aucune opération")
         else:
-            for _, row in df_factures.iterrows():
-                with st.expander(f"{row['numero']} - {row['client']} - {row.get('montant',0):,.0f} {row.get('devise','FC')} - {row.get('statut','')}"):
-                    st.write(f"**Type:** {row.get('type','')}")
-                    st.write(f"**Date:** {row.get('date','')}")
-                    st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
-                    st.write(f"**Description:** {row.get('description','')}")
-                    st.write(f"**Créé par:** {row.get('utilisateur','N/A')}")
-                    c1, c2, c3 = st.columns(3)
-                    if row.get('statut') == 'Brouillon':
-                        if c1.button("✅ Valider", key=f"val_f_{row['id']}", width="stretch"):
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
+            col_f4, col_f5 = st.columns(2)
+
+            # === FILTRE OBLIGATOIRE PAR CATÉGORIE AUTORISÉE ===
+            if st.session_state.user_role!= "PDG":
+                cats_user = st.session_state.get('user_cats', [])
+                if cats_user and "Toutes" not in cats_user:
+                    df_compta_sorted = df_compta_sorted[df_compta_sorted['categorie'].isin(cats_user)]
+                else:
+                    # Si pas de catégorie définie et pas PDG = voit rien
+                    if not cats_user:
+                        st.error("⛔ Aucune catégorie autorisée. Contacte le PDG.")
+                        st.stop()
+
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
+            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
+
+            if filtre_cat_fact!= "Toutes":
+                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+            if filtre_client_fact:
+                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
+
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            st.divider()
+
+            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période sélectionnée")
+            else:
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        for idx, row in df_cat.iterrows():
+                            # 7 COLONNES = 7 VARIABLES
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            if st.session_state.user_role == "PDG":
+                                 if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
+                                      supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                      st.success("Facture supprimée")
+                                      st.cache_data.clear()
+                                      st.rerun()
+                                 else:
+                                    col_g.write("")
+    
+            
+           
+                                     
+            
+           
+       
+
+                            # === BOUTON TÉLÉCHARGER PDF ===
                             try:
-                                supabase.table("factures_proforma").update({"statut": "Validée"}).eq("id", int(row['id'])).execute()
-                                st.success("Facture validée")
-                                st.cache_data.clear()
-                                st.rerun()
+                                details_list = []
+                                if row.get('details') and str(row.get('details'))!= 'nan':
+                                    details_list = json.loads(row['details'])
+                                else:
+                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
+
+                                client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
+                                pdf_bytes = generer_pdf_facture(
+                                    row.get('numero_facture', f"FACT-{row['id']}"),
+                                    row.get('categorie', 'Facture'),
+                                    client_nom,
+                                    details_list,
+                                    row.get('montant',0),
+                                    row.get('devise','FC'),
+                                    "+243...",
+                                    ""
+                                )
+                                col_f.download_button(
+                                    "📥",
+                                    data=pdf_bytes,
+                                    file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_fact_{row['id']}",
+                                    help="Télécharger PDF"
+                                )
+
+                                # === BOUTON IMPRIMER ===
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                col_g.markdown(f"""
+                                    <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                                        🖨️
+                                    </button>
+                                    <script>
+                                    function printPDF_{row['id']}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, unsafe_allow_html=True)
                             except Exception as e:
-                                st.error("Erreur validation")
-                                st.code(repr(e))
-                    # BOUTON SUPPRIMER POUR PDG
-                    if st.session_state.user_role == "PDG":
-                        if c3.button("🗑️ Supprimer", key=f"del_f_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
-                                st.success("Facture supprimée")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
+                                col_f.write("❌")
+                                col_g.write("❌")
+if "👥 Utilisateurs" in tab_map:
+    with tab_map["👥 Utilisateurs"]:
+        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
+            with st.form("form_user", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                pwd_user = c3.text_input("Mot de passe *", type="password")
+                st.markdown("**🔐 Autorisations d'onglets :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock", value=(role_user in ["PDG","GERANTE"]))
+                perm_immo = col4.checkbox("Immobilier", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2, col3, col4 = st.columns(4)
+                perm_auto = col1.checkbox("Automobile", value=(role_user in ["PDG","GERANTE"]))
+                perm_parc = col2.checkbox("Gestion Parc", value=(role_user in ["PDG","GERANTE"]))
+                perm_compta = col3.checkbox("Comptabilité", value=(role_user in ["PDG","GERANTE"]))
+                perm_factures = col4.checkbox("Factures", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2 = st.columns(2)
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
+
+                st.markdown("**📂 Catégories de Factures Visibles :**")
+                categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                cats_autorisees = st.multiselect(
+                    "Sélectionne les catégories que cet utilisateur peut voir dans Factures",
+                    categories_dispo,
+                    default=["Toutes"],
+                    key="cats_user_new"
+                )
+
+                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
+                    if not nom_user or not pwd_user:
+                        st.error("Nom et mot de passe obligatoires")
+                    else:
+                        try:
+                            permissions = {
+                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                "immobilier": perm_immo, "automobile": perm_auto, "parc": perm_parc,
+                                "comptabilite": perm_compta, "factures": perm_factures,
+                                "supprimer": perm_supprimer, "users": perm_users
+                            }
+                            supabase.table("utilisateurs").insert({
+                                "nom": str(nom_user),
+                                "role": str(role_user),
+                                "password": str(pwd_user),
+                                "permissions": permissions,
+                                "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
+                            }).execute()
+                            st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("❌ ERREUR AJOUT UTILISATEUR")
+                            st.code(f"ERREUR COMPLÈTE : {repr(e)}")
+
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
+        else:
+            for _, row in df_utilisateurs.iterrows():
+                perms_user = row.get('permissions', {})
+                if isinstance(perms_user, str):
+                    try:
+                        perms_user = json.loads(perms_user)
+                    except:
+                        perms_user = {}
+                cats_user = row.get('categories_autorisees', [])
+                if cats_user is None:
+                    cats_user = []
+                with st.expander(f"{row['nom']} - {row['role']}", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
+                        new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"],
+                                               index=["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"].index(row['role']) if row['role'] in ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"] else 2,
+                                               key=f"role_u_{row['id']}")
+                    with c2:
+                        new_pwd = st.text_input("Nouveau mot de passe", type="password", placeholder="Laisser vide pour garder l'ancien", key=f"pwd_u_{row['id']}")
+                    st.markdown("**🔐 Autorisations d'onglets :**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_dashboard = col1.checkbox("Dashboard", value=perms_user.get('dashboard',True), key=f"p1_{row['id']}")
+                    p_commerce = col2.checkbox("Commerce", value=perms_user.get('commerce',True), key=f"p2_{row['id']}")
+                    p_stock = col3.checkbox("Stock", value=perms_user.get('stock',False), key=f"p3_{row['id']}")
+                    p_immo = col4.checkbox("Immobilier", value=perms_user.get('immobilier',False), key=f"p4_{row['id']}")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_auto = col1.checkbox("Auto", value=perms_user.get('automobile',False), key=f"p5_{row['id']}")
+                    p_parc = col2.checkbox("Parc", value=perms_user.get('parc',False), key=f"p6_{row['id']}")
+                    p_compta = col3.checkbox("Compta", value=perms_user.get('comptabilite',False), key=f"p7_{row['id']}")
+                    p_fact = col4.checkbox("Factures", value=perms_user.get('factures',False), key=f"p8_{row['id']}")
+                    col1, col2 = st.columns(2)
+                    p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms_user.get('supprimer',False), key=f"p9_{row['id']}")
+                    p_users = col2.checkbox("👥 Gérer Users", value=perms_user.get('users',False), key=f"p10_{row['id']}")
+
+                    st.markdown("**📂 Catégories de Factures Visibles :**")
+                    categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                    cats_modif = st.multiselect(
+                        "Catégories autorisées",
+                        categories_dispo,
+                        default=cats_user if cats_user else ["Toutes"],
+                        key=f"cats_u_{row['id']}"
+                    )
+
+                    c1, c2 = st.columns(2)
+                    if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
+                        try:
+                            update_data = {
+                                "nom": str(new_nom),
+                                "role": str(new_role),
+                                "permissions": {
+                                    "dashboard": p_dashboard, "commerce": p_commerce, "stock": p_stock,
+                                    "immobilier": p_immo, "automobile": p_auto, "parc": p_parc,
+                                    "comptabilite": p_compta, "factures": p_fact,
+                                    "supprimer": p_del, "users": p_users
+                                },
+                                "categories_autorisees": cats_modif if "Toutes" not in cats_modif else []
+                            }
+                            if new_pwd:
+                                update_data["password"] = str(new_pwd)
+                            supabase.table("utilisateurs").update(update_data).eq("id", int(row['id'])).execute()
+                            st.success("Modifié")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur modif")
+                            st.code(repr(e))
+                    if c2.button("🗑️ Supprimer", key=f"del_u_{row['id']}", width="stretch"):
+                        try:
+                            supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
+                            st.success("Supprimé")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur suppression")
+                            st.code(repr(e))
