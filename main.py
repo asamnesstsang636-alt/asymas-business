@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 st.set_page_config(
-    page_title="ASYMAS CONSULTING",
-    page_icon="🏗️",
+    page_title="ASYMAS BUSINESS",
+    page_icon="🌾",
     layout="wide",
     initial_sidebar_state="auto"
 )
@@ -137,7 +137,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(85, 6, "", 'LRB', 1, 'L')
     pdf.ln(8)
     pdf.set_fill_color(0, 102, 0)
-    pdf.set_text_color(255, 255)
+    pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)
     pdf.cell(25, 8, "QTE", 1, 0, 'C', True)
@@ -233,7 +233,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
     pdf.ln(15)
 
     # TITRE PROJET
-    pdf.set_text_color(0, 0)
+    pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "B", 12)
     pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
     pdf.ln(3)
@@ -281,7 +281,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
             pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C')
             pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
             pdf.cell(25, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R')
-            pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R')
+            pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 'R')
 
         pdf.set_font("Arial", "B", 8)
         pdf.cell(160, 6, "Sous Total", 1, 0, 'R', True)
@@ -392,11 +392,11 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
 
 st.markdown("""
 <link rel="manifest" href="data:application/manifest+json,{
-  \\"name\\": \\"ASYMAS CONSULTING\\",
+  \\"name\\": \\"ASYMAS BUSINESS\\",
   \\"short_name\\": \\"ASYMAS\\",
   \\"start_url\\": \\".\\",
   \\"display\\": \\"standalone\\",
-  \\"background_color\\": \\"#000000\\",
+  \\"background_color\\": \\"#000\\",
   \\"theme_color\\": \\"#00ff41\\",
   \\"description\\": \\"Agriculture Commerce Immobilier Automobile\\",
   \\"icons\\": [{
@@ -439,7 +439,7 @@ if 'user_role' not in st.session_state:
     st.session_state.user_cats = []
 
 if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS CONSULTING - CONNEXION")
+    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
@@ -509,13 +509,13 @@ if 'montant' not in df_compta.columns:
 if 'type' not in df_compta.columns:
     df_compta['type'] = 'Inconnu'
 
-st.markdown(f"# ASYMAS CONSULTING - {st.session_state.user_name}")
+st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
 st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS CONSULTING v2.5")
+    st.info("ASYMAS BUSINESS v2.5")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -616,8 +616,6 @@ if "🛍️ Commerce" in tab_map:
                 elif recherche_manuelle:
                     mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
                     df_articles_filtre = df_articles_filtre[mask]
-
-                df_articles_filtre = df_articles_filtre[mask]
 
                 if df_articles_filtre.empty:
                     st.warning("⚠️ Aucun produit disponible")
