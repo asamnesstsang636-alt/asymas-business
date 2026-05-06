@@ -1567,16 +1567,16 @@ if "📋 Devis" in tab_map:
                     sous_total = 0
 
                     for i, ligne in enumerate(lignes_section):
-                        idx_global = st.session_state.lignes_cloture.index(ligne)
-                        c1, c2, c3, c4, c5, c6 = st.columns([0.5, 3, 1, 0.5])
-                        ligne['no'] = c1.text_input("No", value=ligne['no'], key=f"no_clot_{idx_global}", label_visibility="collapsed")
-                        ligne['designation'] = c2.text_input("Désignation", value=ligne['designation'], key=f"des_clot_{idx_global}", label_visibility="collapsed")
-                        ligne['unite'] = c3.text_input("Unité", value=ligne['unite'], key=f"unit_clot_{idx_global}", label_visibility="collapsed")
-                        ligne['qte'] = c4.number_input("Qté", value=float(ligne['qte']), key=f"qte_clot_{idx_global}", label_visibility="collapsed")
-                        ligne['pu'] = c5.number_input("PU", value=float(ligne['pu']), key=f"pu_clot_{idx_global}", label_visibility="collapsed")
-                        if c6.button("❌", key=f"del_clot_{idx_global}"):
-                            st.session_state.lignes_cloture.pop(idx_global)
-                            st.rerun()
+                      idx_global = st.session_state.lignes_cloture.index(ligne)
+                      c1, c2, c3, c4, c5, c6 = st.columns([0.5, 3, 1, 1, 1, 0.5])
+                      ligne['no'] = c1.text_input("No", value=ligne['no'], key=f"no_clot_{idx_global}", label_visibility="collapsed")
+                      ligne['designation'] = c2.text_input("Désignation", value=ligne['designation'], key=f"des_clot_{idx_global}", label_visibility="collapsed")
+                      ligne['unite'] = c3.text_input("Unité", value=ligne['unite'], key=f"unit_clot_{idx_global}", label_visibility="collapsed")
+                      ligne['qte'] = c4.number_input("Qté", value=float(ligne['qte']), key=f"qte_clot_{idx_global}", label_visibility="collapsed")
+                      ligne['pu'] = c5.number_input("PU", value=float(ligne['pu']), key=f"pu_clot_{idx_global}", label_visibility="collapsed")
+                      if c6.button("❌", key=f"del_clot_{idx_global}"):
+                         st.session_state.lignes_cloture.pop(idx_global)
+                         st.rerun()
 
                         pt = ligne['qte'] * ligne['pu']
                         sous_total += pt
