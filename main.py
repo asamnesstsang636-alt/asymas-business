@@ -587,7 +587,7 @@ if "🛍️ Commerce" in tab_map:
                     qr_code = qrcode_scanner(key='qr_scanner_c')
                 with col_scan2:
                     recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
-                    if qr_code and qr_code!= st.session_state.last_qr:
+                if qr_code and qr_code!= st.session_state.last_qr:
                     st.session_state.last_qr = qr_code
                     st.rerun()
 
