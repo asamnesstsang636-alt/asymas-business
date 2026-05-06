@@ -1188,7 +1188,7 @@ if "💰 Comptabilité" in tab_map:
                 data_insert = {"type": str(type_op), "categorie": str(cat), "montant": float(montant), "utilisateur": st.session_state.user_name}
                 if "description" in colonnes_compta:
                     desc = c1.text_input("Description", placeholder="Ex: Loyer - Client Jean")
-                    data_insert["description"] = str(desc = c1.text_input("Description", placeholder="Ex: Loyer - Client Jean")
+                    data_insert["description"] = str(desc)
                     data_insert["description"] = str(desc)
                 if "devise" in colonnes_compta:
                     devise = c2.selectbox("Devise", ["FC", "$", "€"])
