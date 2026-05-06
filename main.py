@@ -1311,15 +1311,106 @@ if "📄 Factures" in tab_map:
         df_proforma = load_table("factures_proforma")
         df_compta_factures = df_compta[df_compta['numero_facture'].notna()] if 'numero_facture' in df_compta.columns else pd.DataFrame()
 
-        # === FILTRAGE PAR PERMISSIONS ===
-        if st.session_state.user_role!= "PDG":
-            categories_autorisees = []
-            if perms.get('commerce', False): categories_autorisees.append("Vente Commerce")
-            if perms.get('immobilier', False): categories_autorisees.append("Loyer")
-            if perms.get('automobile', False): categories_autorisees.append("Vente Voiture")
-            df_compta_factures = df_compta_factures[df_compta_factures['categorie'].isin(categories_autorisees)]
-        else:
-            categories_autorisees = df_compta_factures['categorie'].dropna().unique().tolist()
+        # === CRÉER FACTURE PROFORMA ===
+        with st.expander("➕ Créer Facture Proforma"):
+            if 'lignes_proforma' not in st.session_state:
+                st.session_state.lignes_proforma = [{"nom": "", "qte": 1, "pu": 0.0}]
+
+            c1, c2, c3 = st.columns(3)
+            client_proforma = c1.text_input("Client", key="client_proforma")
+            tel_proforma = c2.text_input("Téléphone", value="+243...", key="tel_proforma")
+            cat_proforma = c3.selectbox("Catégorie", ["Vente Commerce", "Loyer", "Vente Voiture", "Prestation Service"], key="cat_proforma")
+
+            c1, c2 = st.columns(2)
+            devise_proforma = c1.selectbox("Devise", ["$", "FC", "€"], key="devise_proforma")
+            date_validite = c2.date_input("Valable jusqu'au", value=date.today() + timedelta(days=30), key="date_validite_proforma")
+
+            st.markdown("### Détails Articles / Prestations")
+
+            col_btn1, col_btn2 = st.columns([3,1])
+            if col_btn1.button("➕ Ajouter Ligne", key="add_ligne_proforma"):
+                st.session_state.lignes_proforma.append({"nom": "", "qte": 1, "pu": 0.0})
+                st.rerun()
+
+            total_proforma = 0
+            for i, ligne in enumerate(st.session_state.lignes_proforma):
+                c1, c2, c3, c4 = st.columns([4,1,2,1])
+                ligne['nom'] = c1.text_input(f"Designation {i+1}", value=ligne['nom'], key=f"nom_prof_{i}")
+                ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=ligne['qte'], key=f"qte_prof_{i}")
+                ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=ligne['pu'], key=f"pu_prof_{i}")
+                if c4.button("❌", key=f"del_prof_{i}") and len(st.session_state.lignes_proforma) > 1:
+                    st.session_state.lignes_proforma.pop(i)
+                    st.rerun()
+                total_proforma += ligne['qte'] * ligne['pu']
+
+            st.metric("💰 TOTAL PROFORMA", f"{total_proforma:,.2f} {devise_proforma}")
+
+            if st.button("💾 GÉNÉRER FACTURE PROFORMA", type="primary", width="stretch"):
+                if not client_proforma:
+                    st.error("⚠️ Nom du client obligatoire")
+                    st.stop()
+                try:
+                    numero_proforma = f"PRO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    details_json = json.dumps(st.session_state.lignes_proforma)
+
+                    supabase.table("factures_proforma").insert({
+                        "numero": numero_proforma,
+                        "client": client_proforma,
+                        "telephone": tel_proforma,
+                        "categorie": cat_proforma,
+                        "montant": float(total_proforma),
+                        "devise": devise_proforma,
+                        "date": str(date.today()),
+                        "date_validite": str(date_validite),
+                        "details": details_json,
+                        "statut": "En attente",
+                        "utilisateur": st.session_state.user_name
+                    }).execute()
+
+                    pdf_bytes = generer_pdf_facture(
+                        numero_proforma,
+                        f"Proforma - {cat_proforma}",
+                        client_proforma,
+                        st.session_state.lignes_proforma,
+                        total_proforma,
+                        devise_proforma,
+                        tel_proforma
+                    )
+
+                    st.success(f"✅ Proforma {numero_proforma} créée")
+                    st.download_button(
+                        label="📥 TÉLÉCHARGER PROFORMA PDF",
+                        data=bytes(pdf_bytes),
+                        file_name=f"{numero_proforma}.pdf",
+                        mime="application/pdf",
+                        width="stretch",
+                        type="primary"
+                    )
+
+                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                    st.components.v1.html(f"""
+                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                            🖨️ IMPRIMER PROFORMA
+                        </button>
+                        <script>
+                        function printPDF() {{
+                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                            const win = window.open('', '_blank');
+                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                            win.document.close();
+                            setTimeout(() => {{ win.print(); }}, 1000);
+                        }}
+                        </script>
+                    """, height=60)
+
+                    st.session_state.lignes_proforma = [{"nom": "", "qte": 1, "pu": 0.0}]
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as e:
+                    st.error("Erreur création proforma")
+                    st.code(repr(e))
+
+        st.divider()
 
         # === FILTRES DATE + NOM ===
         col_f1, col_f2, col_f3 = st.columns(3)
@@ -1327,31 +1418,108 @@ if "📄 Factures" in tab_map:
         date_fin_fact = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
         filtre_nom_fact = col_f3.text_input("👤 Nom Client", placeholder="Tape un nom...", key="filtre_nom_fact")
 
+        # === FILTRAGE PROFORMA ===
+        df_proforma_filtre = df_proforma.copy()
+        if 'date' in df_proforma_filtre.columns:
+            df_proforma_filtre = df_proforma_filtre[(df_proforma_filtre['date'] >= str(date_debut_fact)) & (df_proforma_filtre['date'] <= str(date_fin_fact))]
+        if filtre_nom_fact:
+            df_proforma_filtre = df_proforma_filtre[df_proforma_filtre['client'].str.contains(filtre_nom_fact, case=False, na=False)]
+
+        # === FILTRAGE PERMISSIONS PROFORMA ===
+        if st.session_state.user_role!= "PDG":
+            categories_autorisees = []
+            if perms.get('commerce', False): categories_autorisees.append("Vente Commerce")
+            if perms.get('immobilier', False): categories_autorisees.append("Loyer")
+            if perms.get('automobile', False): categories_autorisees.append("Vente Voiture")
+            if 'categorie' in df_proforma_filtre.columns:
+                df_proforma_filtre = df_proforma_filtre[df_proforma_filtre['categorie'].isin(categories_autorisees)]
+
+        st.subheader("📋 Factures Proforma")
+        if df_proforma_filtre.empty:
+            st.info("Aucune proforma pour cette période")
+        else:
+            # === TRIAGE PAR CATÉGORIE COMME COMPTA ===
+            categories_prof = df_proforma_filtre['categorie'].dropna().unique() if 'categorie' in df_proforma_filtre.columns else ['Proforma']
+            for cat in categories_prof:
+                df_cat = df_proforma_filtre[df_proforma_filtre['categorie'] == cat] if 'categorie' in df_proforma_filtre.columns else df_proforma_filtre
+                total_cat = df_cat['montant'].sum()
+
+                with st.expander(f"📁 {cat} - Total: {total_cat:,.2f} ({len(df_cat)} proforma)"):
+                    for idx, row in df_cat.iterrows():
+                        col_info, col_btn1, col_btn2, col_btn3 = st.columns([3,1,1,1])
+                        col_info.markdown(f"**{row['numero']}** | {row.get('date','')} | {row['client']} | **{row.get('montant',0):,.0f} {row.get('devise','$')}** | Statut: {row.get('statut','')}")
+
+                        if col_btn1.button("📥 PDF", key=f"dl_prof_{row['id']}", width="stretch"):
+                            try:
+                                details_list = json.loads(row.get('details', '[]'))
+                                pdf_bytes = generer_pdf_facture(
+                                    row['numero'],
+                                    f"Proforma - {row.get('categorie','')}",
+                                    row['client'],
+                                    details_list,
+                                    row['montant'],
+                                    row.get('devise','$'),
+                                    row.get('telephone','+243...')
+                                )
+                                st.download_button(
+                                    label="💾 Télécharger",
+                                    data=bytes(pdf_bytes),
+                                    file_name=f"{row['numero']}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_btn_prof_{row['id']}"
+                                )
+                            except Exception as e:
+                                st.error("Erreur PDF")
+
+                        if col_btn2.button("🖨️", key=f"print_prof_{row['id']}", width="stretch"):
+                            try:
+                                details_list = json.loads(row.get('details', '[]'))
+                                pdf_bytes = generer_pdf_facture(
+                                    row['numero'],
+                                    f"Proforma - {row.get('categorie','')}",
+                                    row['client'],
+                                    details_list,
+                                    row['montant'],
+                                    row.get('devise','$'),
+                                    row.get('telephone','+243...')
+                                )
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                st.components.v1.html(f"""
+                                    <script>
+                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                    const win = window.open('', '_blank');
+                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                    win.document.close();
+                                    setTimeout(() => {{ win.print(); }}, 1000);
+                                    </script>
+                                """, height=0)
+                                st.success("Impression lancée")
+                            except:
+                                st.error("Erreur impression")
+
+                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                            if col_btn3.button("🗑️", key=f"del_prof_{row['id']}", width="stretch"):
+                                supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
+                                st.success("Proforma supprimée")
+                                st.cache_data.clear()
+                                st.rerun()
+
+        st.divider()
+
+        # === FACTURES AUTO TRIÉES PAR CATÉGORIE ===
+        st.subheader("📋 Factures Automatiques - Triées par Catégorie")
+
+        # FILTRAGE PERMISSIONS FACTURES AUTO
+        if st.session_state.user_role!= "PDG":
+            categories_autorisees = []
+            if perms.get('commerce', False): categories_autorisees.append("Vente Commerce")
+            if perms.get('immobilier', False): categories_autorisees.append("Loyer")
+            if perms.get('automobile', False): categories_autorisees.append("Vente Voiture")
+            df_compta_factures = df_compta_factures[df_compta_factures['categorie'].isin(categories_autorisees)]
+
         df_compta_factures = df_compta_factures[(df_compta_factures['date'] >= str(date_debut_fact)) & (df_compta_factures['date'] <= str(date_fin_fact))]
         if filtre_nom_fact:
             df_compta_factures = df_compta_factures[df_compta_factures['description'].str.contains(filtre_nom_fact, case=False, na=False)]
-
-        st.divider()
-
-        # === FACTURES PROFORMA ===
-        st.subheader("📋 Factures Proforma")
-        if df_proforma.empty:
-            st.info("Aucune proforma")
-        else:
-            for idx, row in df_proforma.iterrows():
-                with st.expander(f"{row.get('numero','N/A')} - {row.get('client','')} - {row.get('montant',0):,.0f} {row.get('devise','FC')}"):
-                    st.write(f"**Date:** {row.get('date','')} | **Client:** {row.get('client','')}")
-                    st.write(f"**Créé par:** {row.get('utilisateur','')}")
-                    c1, c2 = st.columns(2)
-                    if c1.button("📥 Télécharger PDF", key=f"dl_proforma_{row['id']}", width="stretch"):
-                        st.info("Fonction PDF proforma à connecter")
-                    if c2.button("🖨️ Imprimer", key=f"print_proforma_{row['id']}", width="stretch"):
-                        st.info("Fonction impression proforma à connecter")
-
-        st.divider()
-
-        # === FACTURES AUTO TRIÉES PAR CATÉGORIE COMME COMPTA ===
-        st.subheader("📋 Factures Automatiques - Triées par Catégorie")
 
         if df_compta_factures.empty:
             st.info("Aucune facture auto pour cette période")
