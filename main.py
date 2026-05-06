@@ -1343,6 +1343,12 @@ if "📋 Devis" in tab_map:
             st.error("🔒 Accès non autorisé - Contacte le PDG")
             st.stop()
         
+        # INIT SESSION STATE POUR LE PDF
+        if 'devis_pdf_bytes' not in st.session_state:
+            st.session_state.devis_pdf_bytes = None
+        if 'devis_numero_genere' not in st.session_state:
+            st.session_state.devis_numero_genere = None
+        
         with st.expander("➕ Créer Nouveau Devis"):
             if 'lignes_devis' not in st.session_state:
                 st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
@@ -1361,7 +1367,6 @@ if "📋 Devis" in tab_map:
             
             st.markdown("### Détails Matériaux / Prestations")
             
-            # BOUTONS HORS DU FORM
             col_btn1, col_btn2 = st.columns([3,1])
             if col_btn1.button("➕ Ajouter Ligne", key="add_ligne_devis"):
                 st.session_state.lignes_devis.append({"nom": "", "qte": 1, "pu": 0.0})
@@ -1382,6 +1387,13 @@ if "📋 Devis" in tab_map:
             
             # FORM UNIQUEMENT POUR LA VALIDATION FINALE
             with st.form("form_devis_final", clear_on_submit=True):
+                description_devis = st.text_area(
+                    "📝 Description détaillée du projet", 
+                    placeholder="Décris les travaux/prestations en détail...\nLigne 1\nLigne 2\nLigne 3\nLigne 4\nLigne 5\nLigne 6\nLigne 7\nLigne 8\nLigne 9\nLigne 10",
+                    height=250,
+                    key="desc_devis"
+                )
+                
                 main_oeuvre = st.number_input("💪 Main d'Oeuvre", min_value=0.0, value=0.0)
                 montant_global = total_matieres + main_oeuvre
                 
@@ -1389,6 +1401,12 @@ if "📋 Devis" in tab_map:
                 st.info(f"Total matériaux: {total_matieres:,.2f} {devise} + Main d'oeuvre: {main_oeuvre:,.2f} {devise}")
                 
                 if st.form_submit_button("💾 GÉNÉRER DEVIS PDF", type="primary"):
+                    if not client:
+                        st.error("⚠️ Nom du client obligatoire")
+                        st.stop()
+                    if not description_devis or len(description_devis.strip().split('\n')) < 3:
+                        st.error("⚠️ La description doit avoir minimum 3 lignes")
+                        st.stop()
                     try:
                         numero = f"DEV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         ingenieur = "SAMY TSANGYA" if type_devis == "Industriel" else "ESDRAS TSANGYA"
@@ -1399,6 +1417,7 @@ if "📋 Devis" in tab_map:
                             "client": client,
                             "telephone": tel,
                             "type_devis": type_devis,
+                            "description_longue": description_devis,
                             "montant_global": float(montant_global),
                             "main_oeuvre": float(main_oeuvre),
                             "devise": devise,
@@ -1406,24 +1425,58 @@ if "📋 Devis" in tab_map:
                             "telephone_ingenieur": tel_ing,
                             "details": json.dumps(st.session_state.lignes_devis),
                             "utilisateur": st.session_state.user_name,
-                            "statut": "Brouillon"
+                            "statut": "Validé"
                         }).execute()
                         
-                        pdf_bytes = generer_pdf_devis(numero, type_devis, client, st.session_state.lignes_devis, montant_global, main_oeuvre, devise, tel)
-                        st.success(f"✅ Devis {numero} généré - Signé par Ing. {ingenieur}")
-                        st.download_button(
-                            label="📥 Télécharger Devis PDF",
-                            data=bytes(pdf_bytes),
-                            file_name=f"{numero}.pdf",
-                            mime="application/pdf",
-                            width="stretch"
-                        )
+                        pdf_bytes = generer_pdf_devis(numero, type_devis, client, st.session_state.lignes_devis, montant_global, main_oeuvre, devise, tel, description_devis)
+                        
+                        # STOCKAGE EN SESSION STATE POUR AFFICHAGE HORS FORM
+                        st.session_state.devis_pdf_bytes = pdf_bytes
+                        st.session_state.devis_numero_genere = numero
+                        st.session_state.devis_ingenieur = ingenieur
+                        
                         st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error("Erreur création devis")
                         st.code(repr(e))
+        
+        # AFFICHAGE BOUTONS TÉLÉCHARGEMENT + IMPRESSION HORS DU FORM
+        if st.session_state.devis_pdf_bytes and st.session_state.devis_numero_genere:
+            st.success(f"✅ Devis {st.session_state.devis_numero_genere} généré - Signé par Ing. {st.session_state.devis_ingenieur}")
+            
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                st.download_button(
+                    label="📥 TÉLÉCHARGER LE PDF",
+                    data=st.session_state.devis_pdf_bytes,
+                    file_name=f"{st.session_state.devis_numero_genere}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    type="primary"
+                )
+            with col_dl2:
+                pdf_b64 = base64.b64encode(st.session_state.devis_pdf_bytes).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                        🖨️ IMPRIMER LE DEVIS
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=50)
+            
+            if st.button("🆕 NOUVEAU DEVIS", width="stretch"):
+                st.session_state.devis_pdf_bytes = None
+                st.session_state.devis_numero_genere = None
+                st.rerun()
         
         st.divider()
         st.subheader("📋 Liste des Devis")
@@ -1442,7 +1495,10 @@ if "📋 Devis" in tab_map:
                     st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
                     st.write(f"**Ingénieur:** {row.get('ingenieur','')} | **Tel:** {row.get('telephone_ingenieur','')}")
                     st.write(f"**Main d'oeuvre:** {row.get('main_oeuvre',0):,.2f} {row.get('devise','$')}")
-                    st.write(f"**Statut:** {row.get('statut','')}")
+                    st.write(f"**Statut:** {row.get('statut','')} | **Créé par:** {row.get('utilisateur','')}")
+                    
+                    if row.get('description_longue'):
+                        st.text_area("Description", value=row.get('description_longue',''), height=150, disabled=True, key=f"desc_view_{row['id']}")
                     
                     c1, c2, c3 = st.columns(3)
                     if c1.button("📄 Télécharger PDF", key=f"dl_devis_{row['id']}", width="stretch"):
@@ -1450,7 +1506,7 @@ if "📋 Devis" in tab_map:
                         pdf_bytes = generer_pdf_devis(
                             row['numero'], row['type_devis'], row['client'], details,
                             row.get('montant_global',0), row.get('main_oeuvre',0), 
-                            row.get('devise','$'), row.get('telephone','')
+                            row.get('devise','$'), row.get('telephone',''), row.get('description_longue','')
                         )
                         st.download_button(
                             label="📥 Download",
