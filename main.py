@@ -1686,9 +1686,171 @@ if "📋 Devis" in tab_map:
                         st.code(repr(e))
 
         # Tab Devis Vide - Industriel/Bâtiment
-        with tab2:
-            st.markdown("### 📝 Devis Vide - Choisis le type")
-            #... ton code Devis Vide existant ici...
+  with tab2:
+    st.markdown("### 📝 Devis Vide - Choisis le type")
+    
+    if 'devis_pdf_bytes' not in st.session_state:
+        st.session_state.devis_pdf_bytes = None
+    if 'devis_numero_genere' not in st.session_state:
+        st.session_state.devis_numero_genere = None
+
+    with st.expander("➕ Créer Nouveau Devis International", expanded=True):
+        if 'lignes_devis' not in st.session_state:
+            st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
+
+        c1, c2 = st.columns(2)
+        client = c1.text_input("Client", key="client_devis")
+        tel = c2.text_input("Téléphone", value="+243...", key="tel_devis")
+
+        # CHOIX TYPE DEVIS - C'EST ÇA QUI MANQUAIT
+        types_dispo = []
+        if peut_industriel: types_dispo.append("Industriel")
+        if peut_batiment: types_dispo.append("Bâtiment & Génie Civil")
+
+        if len(types_dispo) == 1:
+            type_devis = types_dispo[0]
+            st.info(f"Type autorisé : {type_devis}")
+        else:
+            type_devis = st.selectbox("Type Devis International", types_dispo, key="type_devis_select")
+
+        c1, c2, c3 = st.columns(3)
+        devise = c1.selectbox("Devise", ["$", "€", "FC"], key="devise_devis")
+        date_validite_devis = c2.date_input("Valable jusqu'au", value=date.today() + timedelta(days=30), key="date_valid_devis")
+        
+        # Champs spécifiques Industriel
+        if type_devis == "Industriel":
+            titre_projet = st.text_input("Titre du projet", value="FOURNITURE EQUIPEMENTS INDUSTRIELS", key="titre_projet_industriel")
+            parcelle = ""
+            localisation = st.text_input("Localisation", value="Beni, Nord-Kivu", key="loc_industriel")
+        else:
+            titre_projet = st.text_input("Titre du projet", value="CONSTRUCTION MAISON D'HABITATION", key="titre_projet_batiment")
+            parcelle = st.text_input("N° Parcelle", value="", key="parcelle_devis")
+            localisation = st.text_input("Localisation", value="Beni, Nord-Kivu", key="loc_batiment")
+
+        st.markdown("### Détails Matériaux / Prestations")
+
+        col_btn1, col_btn2 = st.columns([3,1])
+        if col_btn1.button("➕ Ajouter Ligne", key="add_ligne_devis"):
+            st.session_state.lignes_devis.append({"nom": "", "qte": 1, "pu": 0.0})
+            st.rerun()
+
+        total_matieres = 0
+        for i, ligne in enumerate(st.session_state.lignes_devis):
+            c1, c2, c3, c4 = st.columns([4,1,2,1])
+            ligne['nom'] = c1.text_input(f"Désignation {i+1}", value=ligne['nom'], key=f"nom_d_{i}", placeholder="Ex: Moteur 5HP, Béton armé...")
+            ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=int(ligne['qte']), key=f"qte_d_{i}")
+            ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=float(ligne['pu']), key=f"pu_d_{i}")
+            if c4.button("❌", key=f"del_ligne_{i}") and len(st.session_state.lignes_devis) > 1:
+                st.session_state.lignes_devis.pop(i)
+                st.rerun()
+            total_matieres += ligne['qte'] * ligne['pu']
+
+        st.divider()
+
+        description_devis = st.text_area(
+            "📝 Description détaillée du projet",
+            placeholder="Décris les travaux/prestations en détail...\nLigne 1\nLigne 2\nLigne 3",
+            height=150,
+            key="desc_devis"
+        )
+
+        main_oeuvre = st.number_input("💪 Main d'Oeuvre", min_value=0.0, value=0.0, key="mo_devis")
+        montant_global = total_matieres + main_oeuvre
+
+        col_t1, col_t2, col_t3 = st.columns(3)
+        col_t1.metric("TOTAL MATÉRIAUX", f"{total_matieres:,.2f} {devise}")
+        col_t2.metric("MAIN D'OEUVRE", f"{main_oeuvre:,.2f} {devise}")
+        col_t3.metric("COUT GLOBAL", f"{montant_global:,.2f} {devise}")
+
+        if st.button("💾 GÉNÉRER DEVIS INTERNATIONAL PDF", type="primary", width="stretch"):
+            if not client:
+                st.error("⚠️ Nom du client obligatoire")
+                st.stop()
+            if not description_devis or len(description_devis.strip()) < 10:
+                st.error("⚠️ Description trop courte - minimum 10 caractères")
+                st.stop()
+            try:
+                numero = f"DEV-{type_devis[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                
+                if type_devis == "Industriel":
+                    ingenieur = "SAMY TSANGYA"
+                    tel_ing = "+243 995 105 623"
+                else:
+                    ingenieur = "ESDRAS TSANGYA"
+                    tel_ing = "+243 972 888 690"
+
+                details_sections = [{
+                    "numero": "I",
+                    "titre": "TRAVAUX / MATERIAUX / EQUIPEMENTS",
+                    "items": [{"num": f"{i+1}", "designation": l['nom'], "unite": "U", "qte": l['qte'], "pu": l['pu']} for i, l in enumerate(st.session_state.lignes_devis) if l['nom']]
+                }]
+
+                supabase.table("devis").insert({
+                    "numero": numero,
+                    "client": client,
+                    "telephone": tel,
+                    "type_devis": type_devis,
+                    "description_longue": description_devis,
+                    "montant_global": float(montant_global),
+                    "main_oeuvre": float(main_oeuvre),
+                    "devise": devise,
+                    "ingenieur": ingenieur,
+                    "telephone_ingenieur": tel_ing,
+                    "details": json.dumps(st.session_state.lignes_devis),
+                    "utilisateur": st.session_state.user_name,
+                    "statut": "Validé",
+                    "date": str(date.today())
+                }).execute()
+
+                pdf_bytes = generer_pdf_devis_consulting(
+                    numero, type_devis, client, titre_projet, parcelle, localisation, 
+                    details_sections, devise, tel, main_oeuvre
+                )
+
+                st.session_state.devis_pdf_bytes = pdf_bytes
+                st.session_state.devis_numero_genere = numero
+                st.session_state.devis_ingenieur = ingenieur
+                st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur création devis")
+                st.code(repr(e))
+
+    if st.session_state.devis_pdf_bytes and st.session_state.devis_numero_genere:
+        st.success(f"✅ Devis {st.session_state.devis_numero_genere} généré - Signé par Ing. {st.session_state.devis_ingenieur}")
+
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            st.download_button(
+                label="📥 TÉLÉCHARGER LE PDF",
+                data=st.session_state.devis_pdf_bytes,
+                file_name=f"{st.session_state.devis_numero_genere}.pdf",
+                mime="application/pdf",
+                width="stretch",
+                type="primary"
+            )
+        with col_dl2:
+            pdf_b64 = base64.b64encode(st.session_state.devis_pdf_bytes).decode()
+            st.components.v1.html(f"""
+                <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                    🖨️ IMPRIMER LE DEVIS
+                </button>
+                <script>
+                function printPDF() {{
+                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                    const win = window.open('', '_blank');
+                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                    win.document.close();
+                    setTimeout(() => {{ win.print(); }}, 1000);
+                }}
+                </script>
+            """, height=50)
+
+        if st.button("🆕 NOUVEAU DEVIS", width="stretch"):
+            st.session_state.devis_pdf_bytes = None
+            st.session_state.devis_numero_genere = None
+            st.rerun()
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion des Utilisateurs")
