@@ -1578,9 +1578,9 @@ if "📋 Devis" in tab_map:
                          st.session_state.lignes_cloture.pop(idx_global)
                          st.rerun()
 
-                        pt = ligne['qte'] * ligne['pu']
-                        sous_total += pt
-                        total_mat += pt
+                      pt = ligne['qte'] * ligne['pu']
+                      sous_total += pt
+                      total_mat += pt
 
                     st.caption(f"Sous-total {section_nom}: {sous_total:,.2f} USD")
                     st.divider()
