@@ -1180,8 +1180,8 @@ if "🚘 Gestion Parc" in tab_map:
            except Exception as e:
                         st.error("Erreur suppression")
                         st.code(repr(e))
-                else:
-                    c2.info("🔒 Suppression non autorisée")
+                   else:
+                      c2.info("🔒 Suppression non autorisée")
 
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
