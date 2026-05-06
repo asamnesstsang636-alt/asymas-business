@@ -243,7 +243,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
         pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True)
     pdf.ln(5)
     pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(220, 220)
+    pdf.set_fill_color(220, 220, 220)
     pdf.cell(10, 7, "N°", 1, 0, 'C', True)
     pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
     pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
@@ -1175,6 +1175,7 @@ if "🚘 Gestion Parc" in tab_map:
                     else:
                         c2.info("🔒 Suppression non autorisée")
 
+# === TAB COMPTABILITÉ AVEC FACTURES TELECHARGEABLES ===
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
@@ -1188,7 +1189,6 @@ if "💰 Comptabilité" in tab_map:
                 data_insert = {"type": str(type_op), "categorie": str(cat), "montant": float(montant), "utilisateur": st.session_state.user_name}
                 if "description" in colonnes_compta:
                     desc = c1.text_input("Description", placeholder="Ex: Loyer - Client Jean")
-                    data_insert["description"] = str(desc)
                     data_insert["description"] = str(desc)
                 if "devise" in colonnes_compta:
                     devise = c2.selectbox("Devise", ["FC", "$", "€"])
@@ -1239,13 +1239,68 @@ if "💰 Comptabilité" in tab_map:
 
             st.divider()
             st.subheader("📊 Relevé par Catégorie")
+
+            # FILTRAGE PAR PERMISSIONS
+            categories_autorisees = []
+            if st.session_state.user_role == "PDG":
+                categories_autorisees = df_filtre_compta['categorie'].dropna().unique().tolist()
+            else:
+                if perms.get('commerce', False): categories_autorisees.append("Vente Commerce")
+                if perms.get('immobilier', False): categories_autorisees.append("Loyer")
+                if perms.get('automobile', False): categories_autorisees.append("Vente Voiture")
+                # Ajoute d'autres catégories selon permissions
+
             if 'categorie' in df_filtre_compta.columns:
-                categories = df_filtre_compta['categorie'].dropna().unique()
+                categories = [c for c in df_filtre_compta['categorie'].dropna().unique() if c in categories_autorisees or st.session_state.user_role == "PDG"]
                 for cat in categories:
                     df_cat = df_filtre_compta[df_filtre_compta['categorie'] == cat]
                     total_cat = df_cat['montant'].sum()
                     with st.expander(f"📁 {cat} - Total: {total_cat:,.0f} FC ({len(df_cat)} opérations)"):
-                        st.dataframe(df_cat[['date','type','description','montant','devise','utilisateur']], width="stretch", hide_index=True)
+                        for idx, row in df_cat.iterrows():
+                            c1, c2, c3, c4 = st.columns([3,2,2])
+                            c1.write(f"**{row['date']}** | {row.get('description','')}")
+                            c2.write(f"{row['montant']:,.0f} {row.get('devise','FC')}")
+                            c3.write(f"Par: {row.get('utilisateur','')}")
+
+                            # BOUTON TELECHARGER/IMPRIMER SI FACTURE
+                            if 'numero_facture' in row and pd.notna(row['numero_facture']):
+                                if c4.button("📄 PDF", key=f"pdf_fact_{row['id']}"):
+                                    try:
+                                        details_list = json.loads(row.get('details', '[]')) if row.get('details') else [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
+                                        pdf_bytes = generer_pdf_facture(
+                                            row['numero_facture'],
+                                            row.get('categorie','Vente'),
+                                            row.get('description','').split(' - ')[1] if ' - ' in row.get('description','') else 'Client',
+                                            details_list,
+                                            row['montant'],
+                                            row.get('devise','FC')
+                                        )
+                                        st.download_button(
+                                            label="📥 Télécharger",
+                                            data=bytes(pdf_bytes),
+                                            file_name=f"{row['numero_facture']}.pdf",
+                                            mime="application/pdf",
+                                            key=f"dl_compta_{row['id']}"
+                                        )
+                                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                        st.components.v1.html(f"""
+                                            <button onclick="printPDF()" style="width:100%; padding:5px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:3px; cursor:pointer;">
+                                                🖨️ Imprimer
+                                            </button>
+                                            <script>
+                                            function printPDF() {{
+                                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                                const win = window.open('', '_blank');
+                                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                                win.document.close();
+                                                setTimeout(() => {{ win.print(); }}, 1000);
+                                            }}
+                                            </script>
+                                        """, height=35)
+                                    except Exception as e:
+                                        st.error("Erreur génération PDF")
+                            else:
+                                c4.write("")
             else:
                 st.dataframe(df_filtre_compta, width="stretch", hide_index=True)
 
@@ -1255,6 +1310,15 @@ if "📄 Factures" in tab_map:
 
         df_proforma = load_table("factures_proforma")
         df_compta_factures = df_compta[df_compta['numero_facture'].notna()] if 'numero_facture' in df_compta.columns else pd.DataFrame()
+
+        # FILTRAGE PAR PERMISSIONS
+        if st.session_state.user_role!= "PDG":
+            if not perms.get('commerce', False):
+                df_compta_factures = df_compta_factures[df_compta_factures['categorie']!= "Vente Commerce"]
+            if not perms.get('immobilier', False):
+                df_compta_factures = df_compta_factures[df_compta_factures['categorie']!= "Loyer"]
+            if not perms.get('automobile', False):
+                df_compta_factures = df_compta_factures[df_compta_factures['categorie']!= "Vente Voiture"]
 
         st.subheader("📋 Factures Proforma")
         if df_proforma.empty:
@@ -1266,9 +1330,43 @@ if "📄 Factures" in tab_map:
         if df_compta_factures.empty:
             st.info("Aucune facture auto")
         else:
-            st.dataframe(df_compta_factures[['date','numero_facture','description','montant','devise','utilisateur']], width="stretch", hide_index=True)
+            for idx, row in df_compta_factures.iterrows():
+                with st.expander(f"{row['numero_facture']} - {row.get('categorie','')} - {row['montant']:,.0f} {row.get('devise','FC')}"):
+                    st.write(f"**Date:** {row['date']} | **Client:** {row.get('description','')}")
+                    st.write(f"**Créé par:** {row.get('utilisateur','')}")
+                    c1, c2 = st.columns(2)
+                    if c1.button("📥 Télécharger PDF", key=f"dl_fact_auto_{row['id']}", width="stretch"):
+                        try:
+                            details_list = json.loads(row.get('details', '[]')) if row.get('details') else [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
+                            client_nom = row.get('description','').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
+                            pdf_bytes = generer_pdf_facture(row['numero_facture'], row.get('categorie','Vente'), client_nom, details_list, row['montant'], row.get('devise','FC'))
+                            st.download_button(
+                                label="📥 Download",
+                                data=bytes(pdf_bytes),
+                                file_name=f"{row['numero_facture']}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_btn_fact_{row['id']}"
+                            )
+                        except:
+                            st.error("Erreur génération")
+                    if c2.button("🖨️ Imprimer", key=f"print_fact_{row['id']}", width="stretch"):
+                        try:
+                            details_list = json.loads(row.get('details', '[]')) if row.get('details') else [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
+                            client_nom = row.get('description','').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
+                            pdf_bytes = generer_pdf_facture(row['numero_facture'], row.get('categorie','Vente'), client_nom, details_list, row['montant'], row.get('devise','FC'))
+                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                            st.components.v1.html(f"""
+                                <script>
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                                </script>
+                            """, height=0)
+                        except:
+                            st.error("Erreur impression")
 
-# === RUBRIQUE DEVIS AVEC FILTRAGE PAR PARTIE ===
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis International - ASYMAS CONSULTING")
