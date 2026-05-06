@@ -88,7 +88,7 @@ def safe_pdf_txt(txt):
     txt = txt.replace('—', '-').replace('–', '-').replace('’', "'").replace('“', '"').replace('”', '"')
     txt = txt.replace('•', '-').replace('…', '...')
     txt = ''.join(c if ord(c) < 128 else '?' for c in txt)
-    return txt.replace('\n', ' ').replace('\r', '').strip()
+    return txt.replace('\r', '').strip()
 
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode=""):
     pdf = FPDF()
@@ -204,7 +204,7 @@ Tel: +243 995 105 623"""
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
 
-def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, main_oeuvre, devise="$", tel_client="+243..."):
+def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, main_oeuvre, devise="$", tel_client="+243...", description_longue=""):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=10)
@@ -232,23 +232,31 @@ def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, 
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, f"DEVIS {safe_pdf_txt(type_devis.upper())}", ln=True, fill=True)
     pdf.ln(5)
-    
+
     pdf.set_font("Arial", "B", 10)
     pdf.cell(0, 7, "CLIENT:", ln=True)
     pdf.set_font("Arial", "", 9)
     pdf.cell(0, 6, f"Nom: {safe_pdf_txt(client)}", ln=True)
     pdf.cell(0, 6, f"Tel: {safe_pdf_txt(tel_client)}", ln=True)
-    pdf.ln(5)
-    
+    pdf.ln(3)
+
+    if description_longue and str(description_longue).strip():
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(0, 7, "DESCRIPTION DU PROJET:", ln=True)
+        pdf.set_font("Arial", "", 9)
+        pdf.set_fill_color(245, 245, 245)
+        pdf.multi_cell(0, 5, safe_pdf_txt(description_longue), border=1, fill=True)
+        pdf.ln(5)
+
     pdf.set_fill_color(0, 102, 0)
-    pdf.set_text_color(255, 255, 255)
+    pdf.set_text_color(255, 255)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)
     pdf.cell(25, 8, "QTE", 1, 0, 'C', True)
     pdf.cell(40, 8, f"MONTANT ({safe_pdf_txt(devise)})", 1, 1, 'C', True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "", 9)
-    
+
     total_matieres = 0
     if isinstance(details_list, list) and details_list:
         for item in details_list:
@@ -260,17 +268,17 @@ def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, 
             pdf.cell(115, 7, nom, 1, 0, 'L')
             pdf.cell(25, 7, str(qte), 1, 0, 'C')
             pdf.cell(40, 7, f"{montant_item:,.2f}", 1, 1, 'R')
-    
+
     pdf.set_font("Arial", "B", 9)
     pdf.cell(140, 8, "MAIN D'OEUVRE", 1, 0, 'R')
     pdf.cell(40, 8, f"{main_oeuvre:,.2f}", 1, 1, 'R')
-    
+
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 11)
     pdf.cell(140, 10, "COUT GLOBAL", 1, 0, 'R', True)
     pdf.cell(40, 10, f"{montant_global:,.2f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
     pdf.ln(15)
-    
+
     pdf.set_font("Arial", "B", 10)
     if type_devis == "Industriel":
         pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
@@ -292,13 +300,13 @@ def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, 
         pdf.cell(90, 5, "Ing. ESDRAS TSANGYA", ln=True)
         pdf.set_xy(10, pdf.get_y())
         pdf.cell(90, 5, "Tel: +243 972 888 690", ln=True)
-    
+
     pdf.ln(10)
     pdf.set_font("Arial", "I", 9)
     pdf.set_text_color(0, 102, 0)
     pdf.cell(0, 6, "Devis International - Valable 30 jours", ln=True, align="C")
     pdf.set_text_color(0, 0, 0)
-    
+
     return bytes(pdf.output(dest='S'))
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
@@ -495,7 +503,7 @@ st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.1")
+    st.info("ASYMAS BUSINESS v2.3")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -1169,11 +1177,11 @@ if "🚘 Gestion Parc" in tab_map:
                                 st.success("Supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
-                    else:
-                        c2.info("🔒 Suppression non autorisée")
+                           except Exception as e:
+                        st.error("Erreur suppression")
+                        st.code(repr(e))
+                else:
+                    c2.info("🔒 Suppression non autorisée")
 
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
@@ -1219,118 +1227,124 @@ if "💰 Comptabilité" in tab_map:
                 df_filtre_compta = df_filtre_compta[df_filtre_compta['description'].str.contains(filtre_nom, case=False, na=False)]
 
             col_t1, col_t2, col_t3 = st.columns(3)
-            total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_filtre_compta[df_filtre_compta.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_filtre_compta[df_filtre_compta.get('devise','FC')=='€']['montant'].sum()
-            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
-            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
-            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            total_rev = df_filtre_compta[df_filtre_compta['type']=='Revenu']['montant'].sum()
+            total_dep = df_filtre_compta[df_filtre_compta['type']=='Dépense']['montant'].sum()
+            solde = total_rev - total_dep
+            col_t1.metric("💚 Revenus", f"{total_rev:,.0f} FC")
+            col_t2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
+            col_t3.metric("💰 Solde", f"{solde:,.0f} FC", delta=f"{solde:,.0f}")
+
+            if not df_filtre_compta.empty:
+                excel_data = generer_excel_pro(df_filtre_compta, "Releve Comptable", total_rev, total_dep, solde)
+                st.download_button(
+                    label="📥 Télécharger Relevé Excel",
+                    data=excel_data,
+                    file_name=f"releve_compta_{date_debut}_{date_fin}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    width="stretch"
+                )
+
             st.divider()
-
-            categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) == 0:
-                st.info("Aucune opération trouvée avec ces filtres")
+            st.subheader("📊 Relevé par Catégorie")
+            if 'categorie' in df_filtre_compta.columns:
+                categories = df_filtre_compta['categorie'].dropna().unique()
+                for cat in categories:
+                    df_cat = df_filtre_compta[df_filtre_compta['categorie'] == cat]
+                    total_cat = df_cat['montant'].sum()
+                    with st.expander(f"📁 {cat} - Total: {total_cat:,.0f} FC ({len(df_cat)} opérations)"):
+                        st.dataframe(df_cat[['date','type','description','montant','devise','utilisateur']], width="stretch", hide_index=True)
             else:
-                for cat in sorted(categories):
-                    df_cat = df_filtre_compta[df_filtre_compta.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    total_cat = total_cat_fc + total_cat_usd + total_cat_eur
+                st.dataframe(df_filtre_compta, width="stretch", hide_index=True)
 
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
-                        for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,1,0.5])
-                            col_a.write(f"**{row.get('date','')}**")
-                            col_b.write(f"{row.get('type','')}")
-                            col_c.write(f"{row.get('description','')}")
-                            col_d.write(f"{row.get('montant',0):,.0f}")
-                            col_e.write(f"{row.get('devise','FC')}")
-                            col_f.write(f"{row.get('utilisateur','N/A')}")
-
-                            # BOUTON SUPPRIMER VISIBLE SEULEMENT POUR PDG
-                            if st.session_state.user_role == "PDG":
-                                if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
-                                    supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                    st.success("Opération supprimée")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            else:
-                                col_g.write("")
-
-                        st.divider()
-                        col_dl1, col_dl2 = st.columns(2)
-                        excel_bytes_cat = generer_excel_pro(
-                            df_cat,
-                            f"Releve {cat} {date_debut}-{date_fin}",
-                            df_cat[df_cat['type']=='Revenu']['montant'].sum(),
-                            df_cat[df_cat['type']=='Dépense']['montant'].sum(),
-                            df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum()
-                        )
-                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
-                        col_dl1.download_button(
-                            label=f"📥 {cat} - EXCEL",
-                            data=excel_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            width="stretch",
-                            key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}"
-                        )
-
-                        pdf_cat = FPDF()
-                        pdf_cat.add_page()
-                        pdf_cat.set_fill_color(20, 50, 40)
-                        pdf_cat.rect(0, 0, 210, 35, 'F')
-                        pdf_cat.set_text_color(255, 255, 255)
-                        pdf_cat.set_font("Arial", "B", 20)
-                        pdf_cat.set_xy(10, 8)
-                        pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                        pdf_cat.set_font("Arial", "", 9)
-                        pdf_cat.set_xy(10, 16)
-                        pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                        pdf_cat.set_font("Arial", "B", 10)
-                        pdf_cat.set_xy(150, 8)
-                        filtre_txt = f"Filtre: {filtre_nom}" if filtre_nom else "Tous"
-                        pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
-                        pdf_cat.set_xy(150, 14)
-                        pdf_cat.cell(50, 6, filtre_txt, ln=True, align="R")
-                        pdf_cat.ln(15)
-                        pdf_cat.set_text_color(0, 0, 0)
-                        pdf_cat.set_fill_color(255, 204, 0)
-                        pdf_cat.set_font("Arial", "B", 14)
-                        pdf_cat.cell(0, 10, f"RELEVE COMPTABLE - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
-                        pdf_cat.ln(5)
-                        pdf_cat.set_font("Arial", "B", 11)
-                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | USD: {total_cat_usd:,.0f} | EUR: {total_cat_eur:,.0f}", ln=True)
-                        pdf_cat.ln(3)
-                        pdf_cat.set_font("Arial", "B", 9)
-                        pdf_cat.cell(20, 7, "Date", 1)
-                        pdf_cat.cell(20, 7, "Type", 1)
-                        pdf_cat.cell(70, 7, "Description", 1)
-                        pdf_cat.cell(25, 7, "Montant", 1)
-                        pdf_cat.cell(15, 7, "Dev", 1)
-                        pdf_cat.cell(30, 7, "Utilisateur", 1, ln=True)
-                        pdf_cat.set_font("Arial", "", 8)
-                        for _, row in df_cat.iterrows():
-                            try:
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('date','')), 1)
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('type','')), 1)
-                                desc = safe_pdf_txt(row.get('description',''))[:35]
-                                pdf_cat.cell(70, 6, desc, 1)
-                                pdf_cat.cell(25, 6, f"{row.get('montant',0):,.0f}", 1)
-                                pdf_cat.cell(15, 6, safe_pdf_txt(row.get('devise','FC')), 1)
-                                pdf_cat.cell(30, 6, safe_pdf_txt(row.get('utilisateur','N/A')), 1, ln=True)
-                            except:
-                                continue
-                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
-                        col_dl2.download_button(
-                            label=f"📥 {cat} - PDF",
-                            data=pdf_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.pdf",
+if "📄 Factures" in tab_map:
+    with tab_map["📄 Factures"]:
+        st.markdown("## 📄 Factures Proforma")
+        colonnes_factures = get_table_columns("factures_proforma")
+        with st.expander("➕ Créer Facture Proforma"):
+            with st.form("form_facture", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                client_fact = c1.text_input("Client")
+                type_fact = c2.selectbox("Type", ["Vente", "Service", "Devis"])
+                desc_fact = st.text_area("Description détaillée", height=100)
+                montant_fact = st.number_input("Montant", min_value=0.0)
+                devise_fact = st.selectbox("Devise", ["FC", "$", "€"])
+                
+                if st.form_submit_button("💾 Générer Facture PDF"):
+                    try:
+                        numero = f"PF-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        data_fact = {
+                            "numero": numero,
+                            "client": client_fact,
+                            "type": type_fact,
+                            "description": desc_fact,
+                            "montant": float(montant_fact),
+                            "devise": devise_fact,
+                            "date": str(date.today()),
+                            "utilisateur": st.session_state.user_name,
+                            "statut": "Brouillon"
+                        }
+                        supabase.table("factures_proforma").insert(data_fact).execute()
+                        
+                        details_list = [{"nom": desc_fact, "qte": 1, "pu": montant_fact}]
+                        pdf_bytes = generer_pdf_facture(numero, type_fact, client_fact, details_list, montant_fact, devise_fact)
+                        
+                        st.success(f"✅ Facture {numero} créée")
+                        st.download_button(
+                            label="📥 Télécharger PDF",
+                            data=bytes(pdf_bytes),
+                            file_name=f"{numero}.pdf",
                             mime="application/pdf",
-                            width="stretch",
-                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
+                            width="stretch"
                         )
+                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                                🖨️ IMPRIMER LA FACTURE
+                            </button>
+                            <script>
+                            function printPDF() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=60)
+                        st.cache_data.clear()
+                    except Exception as e:
+                        st.error("Erreur création facture")
+                        st.code(repr(e))
+        
+        st.divider()
+        st.subheader("📋 Liste des Factures")
+        if df_factures.empty:
+            st.info("Aucune facture")
+        else:
+            for _, row in df_factures.iterrows():
+                with st.expander(f"{row['numero']} - {row['client']} - {row.get('montant',0):,.0f} {row.get('devise','FC')}"):
+                    st.write(f"**Type:** {row.get('type','')} | **Statut:** {row.get('statut','')}")
+                    st.write(f"**Description:** {row.get('description','')}")
+                    st.write(f"**Date:** {row.get('date','')} | **Créé par:** {row.get('utilisateur','')}")
+                    
+                    c1, c2, c3 = st.columns(3)
+                    if c1.button("📄 Télécharger PDF", key=f"dl_fact_{row['id']}", width="stretch"):
+                        details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
+                        pdf_bytes = generer_pdf_facture(row['numero'], row.get('type',''), row['client'], details_list, row.get('montant',0), row.get('devise','FC'))
+                        st.download_button(
+                            label="📥 Download",
+                            data=bytes(pdf_bytes),
+                            file_name=f"{row['numero']}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_btn_fact_{row['id']}"
+                        )
+                    
+                    if st.session_state.user_role == "PDG":
+                        if c3.button("🗑️ Supprimer", key=f"del_fact_{row['id']}", width="stretch"):
+                            supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
+                            st.success("Facture supprimée")
+                            st.cache_data.clear()
+                            st.rerun()
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
@@ -1343,7 +1357,6 @@ if "📋 Devis" in tab_map:
             st.error("🔒 Accès non autorisé - Contacte le PDG")
             st.stop()
         
-        # INIT SESSION STATE POUR LE PDF
         if 'devis_pdf_bytes' not in st.session_state:
             st.session_state.devis_pdf_bytes = None
         if 'devis_numero_genere' not in st.session_state:
@@ -1385,7 +1398,6 @@ if "📋 Devis" in tab_map:
             
             st.divider()
             
-            # FORM UNIQUEMENT POUR LA VALIDATION FINALE
             with st.form("form_devis_final", clear_on_submit=True):
                 description_devis = st.text_area(
                     "📝 Description détaillée du projet", 
@@ -1430,7 +1442,6 @@ if "📋 Devis" in tab_map:
                         
                         pdf_bytes = generer_pdf_devis(numero, type_devis, client, st.session_state.lignes_devis, montant_global, main_oeuvre, devise, tel, description_devis)
                         
-                        # STOCKAGE EN SESSION STATE POUR AFFICHAGE HORS FORM
                         st.session_state.devis_pdf_bytes = pdf_bytes
                         st.session_state.devis_numero_genere = numero
                         st.session_state.devis_ingenieur = ingenieur
@@ -1442,7 +1453,6 @@ if "📋 Devis" in tab_map:
                         st.error("Erreur création devis")
                         st.code(repr(e))
         
-        # AFFICHAGE BOUTONS TÉLÉCHARGEMENT + IMPRESSION HORS DU FORM
         if st.session_state.devis_pdf_bytes and st.session_state.devis_numero_genere:
             st.success(f"✅ Devis {st.session_state.devis_numero_genere} généré - Signé par Ing. {st.session_state.devis_ingenieur}")
             
@@ -1525,151 +1535,57 @@ if "📋 Devis" in tab_map:
 
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        if st.session_state.user_role!= "PDG":
-            st.error("🔒 Accès réservé au PDG")
-        else:
-            with st.expander("➕ Ajouter Utilisateur"):
-                with st.form("form_user", clear_on_submit=True):
-                    c1, c2 = st.columns(2)
-                    nom_u = c1.text_input("Nom")
-                    role_u = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
-                    pwd_u = c1.text_input("Mot de passe", type="password")
-                    perms_u = c2.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer", "devis_industriel", "devis_batiment"])
-                    cats_u = c1.text_input("Catégories autorisées", placeholder="Loyer,Vente Auto")
-                    if st.form_submit_button("💾 Ajouter Utilisateur"):
-                        try:
-                            cats_list = [c.strip() for c in cats_u.split(",")] if cats_u else []
-                            perms_dict = {p: True for p in perms_u}
-                            supabase.table("utilisateurs").insert({
-                                "nom": str(nom_u),
-                                "role": str(role_u),
-                                "password": str(pwd_u),
-                                "permissions": perms_dict,
-                                "categories_autorisees": cats_list
-                            }).execute()
-                            st.success("Utilisateur ajouté")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur ajout")
-                            st.code(repr(e))
-            st.divider()
-            st.subheader("📋 Liste Utilisateurs")
-            if df_utilisateurs.empty:
-                st.info("Aucun utilisateur")
-            else:
-                for _, row in df_utilisateurs.iterrows():
-                    with st.expander(f"{row['nom']} - {row['role']}"):
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
-                            new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"], index=["PDG", "GERANTE", "UTILISATEUR"].index(row['role']), key=f"role_u_{row['id']}")
-                            new_pwd = st.text_input("Mot de passe", value=row['password'], type="password", key=f"pwd_u_{row['id']}")
-                        with c2:
-                            perms_actuelles = row.get('permissions', {})
-                            if isinstance(perms_actuelles, str):
-                                try: perms_actuelles = json.loads(perms_actuelles)
-                                except: perms_actuelles = {}
-                            perms_list = [k for k, v in perms_actuelles.items() if v]
-                            new_perms = st.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer", "devis_industriel", "devis_batiment"], default=perms_list, key=f"perms_u_{row['id']}")
-                            cats_actuelles = row.get('categories_autorisees', [])
-                            if isinstance(cats_actuelles, str):
-                                try: cats_actuelles = json.loads(cats_actuelles)
-                                except: cats_actuelles = []
-                            new_cats = st.text_input("Catégories", value=",".join(cats_actuelles), key=f"cats_u_{row['id']}")
-                        c1, c2 = st.columns(2)
-                        if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
-                            try:
-                                cats_list = [c.strip() for c in new_cats.split(",")] if new_cats else []
-                                perms_dict = {p: True for p in new_perms}
-                                supabase.table("utilisateurs").update({
-                                    "nom": str(new_nom),
-                                    "role": str(new_role),
-                                    "password": str(new_pwd),
-                                    "permissions": perms_dict,
-                                    "categories_autorisees": cats_list
-                                }).eq("id", int(row['id'])).execute()
-                                st.success("Modifié")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur modif")
-                                st.code(repr(e))
-                        if c2.button("🗑️ Supprimer", key=f"del_u_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
-                                st.success("Supprimé")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
-
-if "📄 Factures" in tab_map:
-    with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures Proforma")
-        with st.expander("➕ Créer Facture Proforma"):
-            with st.form("form_facture", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                client = c1.text_input("Client")
-                tel = c2.text_input("Téléphone", value="+243...")
+        st.markdown("## 👥 Gestion des Utilisateurs")
+        with st.expander("➕ Ajouter Utilisateur"):
+            with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
-                type_fact = c1.selectbox("Type", ["Devis", "Proforma", "Facture"])
-                devise = c2.selectbox("Devise", ["FC", "$", "€"])
-                montant = c3.number_input("Montant", min_value=0.0)
-                description = st.text_area("Description", placeholder="Détails de la facture...")
-                if st.form_submit_button("💾 Créer Facture"):
+                nom_user = c1.text_input("Nom")
+                role_user = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "COMMERCANT"])
+                pwd_user = c3.text_input("Mot de passe", type="password")
+                
+                st.markdown("**Permissions :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perms_dict = {}
+                perms_dict['dashboard'] = col1.checkbox("Dashboard", value=True)
+                perms_dict['commerce'] = col2.checkbox("Commerce", value=True)
+                perms_dict['stock'] = col3.checkbox("Stock")
+                perms_dict['immobilier'] = col4.checkbox("Immobilier")
+                perms_dict['automobile'] = col1.checkbox("Automobile")
+                perms_dict['parc'] = col2.checkbox("Parc Auto")
+                perms_dict['comptabilite'] = col3.checkbox("Comptabilité")
+                perms_dict['factures'] = col4.checkbox("Factures")
+                perms_dict['devis_industriel'] = col1.checkbox("Devis Industriel")
+                perms_dict['devis_batiment'] = col2.checkbox("Devis Bâtiment")
+                perms_dict['users'] = col3.checkbox("Gestion Users")
+                perms_dict['supprimer'] = col4.checkbox("Supprimer données")
+                
+                if st.form_submit_button("💾 Ajouter Utilisateur"):
                     try:
-                        numero = f"PROF-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        supabase.table("factures_proforma").insert({
-                            "numero": numero,
-                            "type": type_fact,
-                            "client": client,
-                            "telephone": tel,
-                            "description": description,
-                            "montant": float(montant),
-                            "devise": devise,
-                            "date": str(date.today()),
-                            "utilisateur": st.session_state.user_name,
-                            "statut": "Brouillon"
+                        supabase.table("utilisateurs").insert({
+                            "nom": nom_user,
+                            "role": role_user,
+                            "password": pwd_user,
+                            "permissions": perms_dict,
+                            "categories_autorisees": []
                         }).execute()
-                        st.success(f"Facture {numero} créée")
+                        st.success(f"Utilisateur {nom_user} ajouté")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
-                        st.error("Erreur création")
+                        st.error("Erreur ajout utilisateur")
                         st.code(repr(e))
+        
         st.divider()
-        st.subheader("📋 Liste Factures")
-        if df_factures.empty:
-            st.info("Aucune facture")
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
         else:
-            for _, row in df_factures.iterrows():
-                with st.expander(f"{row['numero']} - {row['client']} - {row.get('montant',0):,.0f} {row.get('devise','FC')} - {row.get('statut','')}"):
-                    st.write(f"**Type:** {row.get('type','')}")
-                    st.write(f"**Date:** {row.get('date','')}")
-                    st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
-                    st.write(f"**Description:** {row.get('description','')}")
-                    st.write(f"**Créé par:** {row.get('utilisateur','N/A')}")
-                    c1, c2, c3 = st.columns(3)
-                    if row.get('statut') == 'Brouillon':
-                        if c1.button("✅ Valider", key=f"val_f_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("factures_proforma").update({"statut": "Validée"}).eq("id", int(row['id'])).execute()
-                                st.success("Facture validée")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur validation")
-                                st.code(repr(e))
-                    if st.session_state.user_role == "PDG":
-                        if c3.button("🗑️ Supprimer", key=f"del_f_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
-                                st.success("Facture supprimée")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
+            for _, row in df_utilisateurs.iterrows():
+                with st.expander(f"{row['nom']} - {row['role']}"):
+                    st.json(row.get('permissions', {}))
+                    if st.session_state.user_role == "PDG" and row['nom'] != st.session_state.user_name:
+                        if st.button("🗑️ Supprimer", key=f"del_user_{row['id']}"):
+                            supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
+                            st.success("Utilisateur supprimé")
+                            st.cache_data.clear()
+                            st.rerun()
