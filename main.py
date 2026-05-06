@@ -1471,76 +1471,61 @@ if "📄 Factures" in tab_map:
         df_factures_hist = df_compta[df_compta['numero_facture'].notna()].copy() if 'numero_facture' in df_compta.columns else pd.DataFrame()
         df_factures_hist = pd.concat([df_factures_hist, df_factures], ignore_index=True) if not df_factures.empty else df_factures_hist
 
-        if df_factures_hist.empty:
-            st.info("Aucune facture trouvée")
-        else:
-            if 'date' in df_factures_hist.columns:
-                df_factures_hist['date'] = pd.to_datetime(df_factures_hist['date'], errors='coerce')
-                df_factures_hist = df_factures_hist.sort_values('date', ascending=False)
-
-            filtre_type = st.selectbox("Filtrer par type", ["Toutes", "Proforma Technique", "Proforma Commerciale", "Facture Simple"])
-            if filtre_type!= "Toutes":
-                df_factures_hist = df_factures_hist[df_factures_hist['statut'] == filtre_type]
-
-            for _, row in df_factures_hist.iterrows():
-                client_nom = row.get('client', row.get('description','Inconnu').split(' - ')[0] if ' - ' in str(row.get('description','')) else 'Inconnu')
-                with st.expander(f"{row.get('numero_facture', row.get('numero','N/A'))} - {client_nom} - {row['montant']:,.0f} {row.get('devise','FC')} - {row.get('statut','')}"):
-                    col1, col2 = st.columns([2,1])
-                    with col1:
-                        st.write(f"**Client:** {client_nom} | **Tel:** {row.get('telephone','')}")
-                        st.write(f"**Type:** {row.get('categorie', row.get('type',''))} | **Montant:** {row['montant']:,.0f} {row.get('devise','FC')}")
-                        st.write(f"**Description:** {row.get('description','')}")
-                        st.write(f"**Date:** {row.get('date','')} | **Par:** {row.get('utilisateur','')}")
-
-                    with col2:
-                        # REGÉNÉRER PDF POUR ANCIENNES FACTURES
-                        if st.button(f"📥 Télécharger PDF", key=f"dl_old_{row['id']}"):
-                            details_list = []
-                            if row.get('details'):
-                                try:
-                                    details_list = json.loads(row['details']) if isinstance(row['details'], str) else row['details']
-                                except:
+             if df_filtre.empty:
+                st.info("Aucune opération")
+            else:
+                for _, row in df_filtre.iterrows():
+                    with st.expander(f"{row.get('date','')} - {row.get('numero_facture','')} - {row['type']} - {row['montant']:,.0f} {row.get('devise','FC')}"):
+                        col1, col2 = st.columns([2,1])
+                        with col1:
+                            st.write(f"**{row.get('categorie','')}** - {row.get('description','')}")
+                            st.write(f"Par: {row.get('utilisateur','')} | Statut: {row.get('statut','')}")
+                            st.write(f"Client: {row.get('client','N/A')} | Tel: {row.get('telephone','')}")
+                        with col2:
+                            if row.get('numero_facture'):
+                                if st.button("📥 Télécharger Facture", key=f"dl_compta_{row['id']}", width="stretch"):
                                     details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
-                            else:
-                                details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
+                                    if row.get('details'):
+                                        try:
+                                            details_list = json.loads(row['details'])
+                                        except: pass
 
-                            type_pdf = "Simple" if "Simple" in str(row.get('statut','')) else "Proforma"
-                            pdf_bytes = generer_pdf_facture(
-                                row.get('numero_facture', row.get('numero','N/A')),
-                                row.get('categorie', row.get('type','')),
-                                client_nom,
-                                details_list,
-                                row['montant'],
-                                row.get('devise','FC'),
-                                row.get('telephone','+243...'),
-                                "",
-                                type_pdf
-                            )
-                            st.download_button(
-                                "💾 Sauvegarder PDF",
-                                data=pdf_bytes,
-                                file_name=f"{row.get('numero_facture', row.get('numero','facture'))}.pdf",
-                                mime="application/pdf",
-                                key=f"save_pdf_{row['id']}",
-                                width="stretch"
-                            )
+                                    client_nom = row.get('client', row.get('description','Client').split(' - ')[0] if ' - ' in str(row.get('description','')) else 'Client')
+                                    pdf_bytes = generer_pdf_facture(
+                                        row['numero_facture'],
+                                        row.get('categorie', row.get('type','')),
+                                        client_nom,
+                                        details_list,
+                                        row['montant'],
+                                        row.get('devise','FC'),
+                                        row.get('telephone','+243...'),
+                                        "",
+                                        "Simple" if "Simple" in str(row.get('statut','')) else "Proforma"
+                                    )
+                                    st.download_button(
+                                        "💾 Sauvegarder PDF",
+                                        data=pdf_bytes,
+                                        file_name=f"{row['numero_facture']}.pdf",
+                                        mime="application/pdf",
+                                        key=f"save_compta_{row['id']}",
+                                        width="stretch"
+                                    )
 
-                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                            st.components.v1.html(f"""
-                                <button onclick="printPDF()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
-                                    🖨️ IMPRIMER
-                                </button>
-                                <script>
-                                function printPDF() {{
-                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                    const win = window.open('', '_blank');
-                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                    win.document.close();
-                                    setTimeout(() => {{ win.print(); }}, 1000);
-                                }}
-                                </script>
-                            """, height=50)
-
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    st.components.v1.html(f"""
+                                        <button onclick="printPDF()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
+                                            🖨️ IMPRIMER
+                                        </button>
+                                        <script>
+                                        function printPDF() {{
+                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                            const win = window.open('', '_blank');
+                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                            win.document.close();
+                                            setTimeout(() => {{ win.print(); }}, 1000);
+                                        }}
+                                        </script>
+                                    """, height=50)
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis International - ASYMAS CONSULTING")
