@@ -1583,7 +1583,7 @@ if "📋 Devis" in tab_map:
 
                     for i, ligne in enumerate(lignes_section):
                         idx_global = st.session_state.lignes_cloture.index(ligne)
-                        c1, c2, c3, c4, c5, c6 = st.columns([0.5, 3, 1, 1, 0.5])
+                        c1, c2, c3, c4, c5, c6 = st.columns([0.5, 3, 1, 1, 1, 0.5])
                         ligne['no'] = c1.text_input("No", value=ligne['no'], key=f"no_clot_{idx_global}", label_visibility="collapsed")
                         ligne['designation'] = c2.text_input("Désignation", value=ligne['designation'], key=f"des_clot_{idx_global}", label_visibility="collapsed")
                         ligne['unite'] = c3.text_input("Unité", value=ligne['unite'], key=f"unit_clot_{idx_global}", label_visibility="collapsed")
