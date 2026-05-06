@@ -124,7 +124,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.set_draw_color(0, 0, 0)
     pdf.cell(85, 7, "FACTURE A:", 1, 0, 'L')
     pdf.cell(10, 7, "", 0, 0)
-    pdf.cell(85, 7, "DETAILS PAIEMENT:", 1, 'L')
+    pdf.cell(85, 7, "DETAILS PAIEMENT:", 1, 1, 'L')
     pdf.set_font("Arial", "", 9)
     pdf.cell(85, 6, f"Client: {safe_pdf_txt(client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
@@ -137,7 +137,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(85, 6, "", 'LRB', 1, 'L')
     pdf.ln(8)
     pdf.set_fill_color(0, 102, 0)
-    pdf.set_text_color(255, 255, 255)
+    pdf.set_text_color(255, 255)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)
     pdf.cell(25, 8, "QTE", 1, 0, 'C', True)
@@ -212,7 +212,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
     # ENTETE ASYMAS CONSULTING - SEULEMENT POUR DEVIS
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255)
+    pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 20)
     pdf.set_xy(10, 8)
     pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
@@ -233,7 +233,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
     pdf.ln(15)
 
     # TITRE PROJET
-    pdf.set_text_color(0, 0, 0)
+    pdf.set_text_color(0, 0)
     pdf.set_font("Arial", "B", 12)
     pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
     pdf.ln(3)
@@ -251,7 +251,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
 
     # TABLEAU
     pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(220, 220)
+    pdf.set_fill_color(220, 220, 220)
     pdf.cell(10, 7, "N°", 1, 0, 'C', True)
     pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
     pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
@@ -290,7 +290,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
 
     if main_oeuvre > 0:
         pdf.cell(160, 6, "MAIN D'OEUVRE", 1, 0, 'R')
-        pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 'R')
+        pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 1, 'R')
         grand_total += main_oeuvre
 
     pdf.set_fill_color(255, 204, 0)
@@ -616,6 +616,8 @@ if "🛍️ Commerce" in tab_map:
                 elif recherche_manuelle:
                     mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
                     df_articles_filtre = df_articles_filtre[mask]
+
+                df_articles_filtre = df_articles_filtre[mask]
 
                 if df_articles_filtre.empty:
                     st.warning("⚠️ Aucun produit disponible")
@@ -1360,7 +1362,7 @@ if "📄 Factures" in tab_map:
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
-        st.markdown("## 📋 Devis International")
+        st.markdown("## 📋 Devis International - ASYMAS CONSULTING")
         
         peut_industriel = st.session_state.user_role == "PDG" or perms.get('devis_industriel', False)
         peut_batiment = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
@@ -1390,6 +1392,10 @@ if "📋 Devis" in tab_map:
             type_devis = c1.selectbox("Type Devis", types_dispo, key="type_devis")
             devise = c2.selectbox("Devise", ["$", "€", "FC"], key="devise_devis")
             
+            titre_projet = st.text_input("Titre du projet", value="CONSTRUCTION MAISON D'HABITATION", key="titre_projet_devis")
+            parcelle = st.text_input("N° Parcelle", value="", key="parcelle_devis")
+            localisation = st.text_input("Localisation", value="Beni, Nord-Kivu", key="localisation_devis")
+            
             st.markdown("### Détails Matériaux / Prestations")
             
             col_btn1, col_btn2 = st.columns([3,1])
@@ -1413,8 +1419,8 @@ if "📋 Devis" in tab_map:
             with st.form("form_devis_final", clear_on_submit=True):
                 description_devis = st.text_area(
                     "📝 Description détaillée du projet", 
-                    placeholder="Décris les travaux/prestations en détail...\nLigne 1\nLigne 2\nLigne 3\nLigne 4\nLigne 5\nLigne 6\nLigne 7\nLigne 8\nLigne 9\nLigne 10",
-                    height=250,
+                    placeholder="Décris les travaux/prestations en détail...\nLigne 1\nLigne 2\nLigne 3\nLigne 4\nLigne 5",
+                    height=200,
                     key="desc_devis"
                 )
                 
@@ -1428,13 +1434,20 @@ if "📋 Devis" in tab_map:
                     if not client:
                         st.error("⚠️ Nom du client obligatoire")
                         st.stop()
-                    if not description_devis or len(description_devis.strip().split('\n')) < 3:
-                        st.error("⚠️ La description doit avoir minimum 3 lignes")
+                    if not description_devis or len(description_devis.strip().split('\n')) < 2:
+                        st.error("⚠️ La description doit avoir minimum 2 lignes")
                         st.stop()
                     try:
                         numero = f"DEV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         ingenieur = "SAMY TSANGYA" if type_devis == "Industriel" else "ESDRAS TSANGYA"
                         tel_ing = "+243 995 105 623" if type_devis == "Industriel" else "+243 972 888 690"
+                        
+                        # Format sections pour PDF
+                        details_sections = [{
+                            "numero": "I",
+                            "titre": "TRAVAUX / MATERIAUX",
+                            "items": [{"num": f"{i+1}", "designation": l['nom'], "unite": "U", "qte": l['qte'], "pu": l['pu']} for i, l in enumerate(st.session_state.lignes_devis) if l['nom']]
+                        }]
                         
                         supabase.table("devis").insert({
                             "numero": numero,
@@ -1452,7 +1465,7 @@ if "📋 Devis" in tab_map:
                             "statut": "Validé"
                         }).execute()
                         
-                        pdf_bytes = generer_pdf_devis(numero, type_devis, client, st.session_state.lignes_devis, montant_global, main_oeuvre, devise, tel, description_devis)
+                        pdf_bytes = generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise, tel, main_oeuvre)
                         
                         st.session_state.devis_pdf_bytes = pdf_bytes
                         st.session_state.devis_numero_genere = numero
@@ -1506,7 +1519,7 @@ if "📋 Devis" in tab_map:
             st.info("Aucun devis")
         else:
             df_devis_filtre = df_devis.copy()
-            if st.session_state.user_role!= "PDG":
+            if st.session_state.user_role != "PDG":
                 types_autorises = []
                 if peut_industriel: types_autorises.append("Industriel")
                 if peut_batiment: types_autorises.append("Bâtiment & Génie Civil")
@@ -1525,10 +1538,16 @@ if "📋 Devis" in tab_map:
                     c1, c2, c3 = st.columns(3)
                     if c1.button("📄 Télécharger PDF", key=f"dl_devis_{row['id']}", width="stretch"):
                         details = json.loads(row.get('details', '[]'))
-                        pdf_bytes = generer_pdf_devis(
-                            row['numero'], row['type_devis'], row['client'], details,
-                            row.get('montant_global',0), row.get('main_oeuvre',0), 
-                            row.get('devise','$'), row.get('telephone',''), row.get('description_longue','')
+                        details_sections = [{
+                            "numero": "I",
+                            "titre": "TRAVAUX / MATERIAUX",
+                            "items": [{"num": f"{i+1}", "designation": d['nom'], "unite": "U", "qte": d['qte'], "pu": d['pu']} for i, d in enumerate(details)]
+                        }]
+                        pdf_bytes = generer_pdf_devis_consulting(
+                            row['numero'], row['type_devis'], row['client'], 
+                            row.get('description_longue','').split('\n')[0] if row.get('description_longue') else "PROJET",
+                            "", "", details_sections,
+                            row.get('devise','$'), row.get('telephone',''), row.get('main_oeuvre',0)
                         )
                         st.download_button(
                             label="📥 Download",
