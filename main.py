@@ -1510,55 +1510,61 @@ if "📋 Devis" in tab_map:
             st.error("🔒 Accès non autorisé - Contacte le PDG")
             st.stop()
 
-        # Créer les tabs même si 1 seul autorisé
-        tab_names = []
-        if peut_batiment:
-            tab_names.append("🧱 Modèle Clôture 23.5m")
-        if peut_industriel or peut_batiment:
-            tab_names.append("📝 Devis Vide")
-        
-        tabs_devis = st.tabs(tab_names)
-        
-        # Tab Clôture
-        if peut_batiment:
-            with tabs_devis[0]:
+        # FORCE L'AFFICHAGE DES 2 TABS SI TU ES PDG
+        if st.session_state.user_role == "PDG":
+            tab1, tab2 = st.tabs(["🧱 Modèle Clôture 23.5m - Bâtiment", "📝 Devis Vide - Industriel/Bâtiment"])
+        else:
+            tab_names = []
+            if peut_batiment:
+                tab_names.append("🧱 Modèle Clôture 23.5m")
+            if peut_industriel:
+                tab_names.append("📝 Devis Vide")
+            if not tab_names:
+                st.error("Aucune permission devis")
+                st.stop()
+            tabs_devis = st.tabs(tab_names)
+            tab1 = tabs_devis[0] if peut_batiment else None
+            tab2 = tabs_devis[-1]
+
+        # Tab Clôture Bâtiment
+        if peut_batiment or st.session_state.user_role == "PDG":
+            with tab1:
                 st.markdown("### DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE")
-                
-                # TITRE EDITABLE
+
                 if 'titre_cloture' not in st.session_state:
                     st.session_state.titre_cloture = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE DE 23.5m"
-                
+
                 st.session_state.titre_cloture = st.text_input(
-                    "Titre du devis", 
-                    value=st.session_state.titre_cloture, 
+                    "Titre du devis éditable",
+                    value=st.session_state.titre_cloture,
                     key="titre_cloture_input"
                 )
-                
+
                 if 'lignes_cloture' not in st.session_state:
                     st.session_state.lignes_cloture = [
-                        {"section": "I", "no": "", "designation": "Installation chantier", "unite": "ff", "qte": 1, "pu": 200, "is_section": False},
-                        {"section": "I", "no": "", "designation": "Demolitions", "unite": "ff", "qte": 1, "pu": 70, "is_section": False},
-                        {"section": "II", "no": "1", "designation": "moellon", "unite": "Canters", "qte": 9, "pu": 50, "is_section": False},
-                        {"section": "II", "no": "2", "designation": "sable", "unite": "Canters", "qte": 4, "pu": 40, "is_section": False},
-                        {"section": "II", "no": "3", "designation": "ciment", "unite": "sac", "qte": 23, "pu": 13.5, "is_section": False},
-                        {"section": "II", "no": "4", "designation": "gravier", "unite": "Canters", "qte": 3, "pu": 80, "is_section": False},
-                        {"section": "II", "no": "5", "designation": "armature de 10", "unite": "pièce", "qte": 9, "pu": 9, "is_section": False},
-                        {"section": "II", "no": "6", "designation": "armature de 8", "unite": "pièce", "qte": 4, "pu": 8, "is_section": False},
-                        {"section": "II", "no": "7", "designation": "armature de 6", "unite": "pièce", "qte": 12, "pu": 3.5, "is_section": False},
-                        {"section": "II", "no": "8", "designation": "Fil à ligature", "unite": "kg", "qte": 16, "pu": 2.5, "is_section": False},
-                        {"section": "III", "no": "1", "designation": "bloc ciment", "unite": "pièce", "qte": 987, "pu": 1, "is_section": False},
-                        {"section": "III", "no": "2", "designation": "sable", "unite": "Canters", "qte": 5, "pu": 40, "is_section": False},
-                        {"section": "III", "no": "3", "designation": "ciment", "unite": "sac", "qte": 15, "pu": 13.5, "is_section": False},
-                        {"section": "III", "no": "4", "designation": "gravier", "unite": "Canters", "qte": 0.5, "pu": 70, "is_section": False},
-                        {"section": "III", "no": "5", "designation": "Barre Corniche de6", "unite": "pièce", "qte": 8, "pu": 3, "is_section": False},
-                        {"section": "III", "no": "6", "designation": "Fil à ligature", "unite": "kg", "qte": 6, "pu": 2, "is_section": False},
-                        {"section": "IV", "no": "1", "designation": "socle et longrine", "unite": "pièce", "qte": 8, "pu": 7, "is_section": False},
-                        {"section": "IV", "no": "2", "designation": "Colonne", "unite": "pièce", "qte": 18, "pu": 7, "is_section": False},
-                        {"section": "IV", "no": "3", "designation": "Corniche", "unite": "pièce", "qte": 6, "pu": 7, "is_section": False},
-                        {"section": "IV", "no": "4", "designation": "clous de8", "unite": "kg", "qte": 15, "pu": 2, "is_section": False},
-                        {"section": "IV", "no": "5", "designation": "clous de10", "unite": "kg", "qte": 10, "pu": 2, "is_section": False},
-                        {"section": "V", "no": "1", "designation": "ciment", "unite": "sac", "qte": 20, "pu": 13.5, "is_section": False},
-                        {"section": "V", "no": "2", "designation": "sable", "unite": "Canters", "qte": 7, "pu": 40, "is_section": False},
+                        {"section": "I", "no": "", "designation": "Installation chantier", "unite": "ff", "qte": 1, "pu": 200},
+                        {"section": "I", "no": "", "designation": "Demolitions", "unite": "ff", "qte": 1, "pu": 70},
+                        {"section": "II", "no": "1", "designation": "moellon", "unite": "Canters", "qte": 9, "pu": 50},
+                        {"section": "II", "no": "2", "designation": "sable", "unite": "Canters", "qte": 4, "pu": 40},
+                        {"section": "II", "no": "3", "designation": "ciment", "unite": "sac", "qte": 23, "pu": 13.5},
+                        {"section": "II", "no": "4", "designation": "gravier", "unite": "Canters", "qte": 3, "pu": 80},
+                        {"section": "II", "no": "5", "designation": "armature de 10", "unite": "pièce", "qte": 9, "pu": 9},
+                        {"section": "II", "no": "6", "designation": "armature de 8", "unite": "pièce", "qte": 4, "pu": 8},
+                        {"section": "II", "no": "7", "designation": "armature de 6", "unite": "pièce", "qte": 12, "pu": 3.5},
+                        {"section": "II", "no": "8", "designation": "Fil à ligature", "unite": "kg", "qte": 16, "pu": 2.5},
+                        {"section": "III", "no": "1", "designation": "bloc ciment", "unite": "pièce", "qte": 987, "pu": 1},
+                        {"section": "III", "no": "2", "designation": "sable", "unite": "Canters", "qte": 5, "pu": 40},
+                        {"section": "III", "no": "3", "designation": "ciment", "unite": "sac", "qte": 15, "pu": 13.5},
+                        {"section": "III", "no": "4", "designation": "gravier", "unite": "Canters", "qte": 0.5, "pu": 70},
+                        {"section": "III", "no": "5", "designation": "Barre Corniche de6", "unite": "pièce", "qte": 8, "pu": 3},
+                        {"section": "III", "no": "6", "designation": "Fil à ligature", "unite": "kg", "qte": 6, "pu": 2},
+                        {"section": "IV", "no": "1", "designation": "socle et longrine", "unite": "pièce", "qte": 8, "pu": 7},
+                        {"section": "IV", "no": "2", "designation": "Colonne", "unite": "pièce", "qte": 18, "pu": 7},
+                        {"section": "IV", "no": "3", "designation": "Corniche", "unite": "pièce", "qte": 6, "pu": 7},
+                        {"section": "IV", "no": "4", "designation": "clous de8", "unite": "kg", "qte": 15, "pu": 2},
+                        {"section": "IV", "no": "5", "designation": "clous de10", "unite": "kg", "qte": 10, "pu": 2},
+                        {"section": "V", "no": "1", "designation": "ciment", "unite": "sac", "qte": 20, "pu": 13.5},
+                        {"section": "V", "no": "2", "designation": "sable", "unite": "Canters", "qte": 7, "pu": 40},
                     ]
 
                 c1, c2 = st.columns(2)
@@ -1570,7 +1576,7 @@ if "📋 Devis" in tab_map:
                 st.markdown("#### Sections : I.Installation | II.Fondation | III.Élévation | IV.Coffrage | V.Finissage")
 
                 if st.button("➕ Ajouter Ligne Matériau", key="add_ligne_cloture"):
-                    st.session_state.lignes_cloture.append({"section": "V", "no": "", "designation": "", "unite": "pièce", "qte": 1, "pu": 0, "is_section": False})
+                    st.session_state.lignes_cloture.append({"section": "V", "no": "", "designation": "", "unite": "pièce", "qte": 1, "pu": 0})
                     st.rerun()
 
                 total_mat = 0
@@ -1583,7 +1589,7 @@ if "📋 Devis" in tab_map:
 
                     for i, ligne in enumerate(lignes_section):
                         idx_global = st.session_state.lignes_cloture.index(ligne)
-                        c1, c2, c3, c4, c5, c6 = st.columns([0.5, 3, 1, 1, 1, 0.5])
+                        c1, c2, c3, c4, c5, c6 = st.columns([1, 6, 2, 2, 2, 1])
                         ligne['no'] = c1.text_input("No", value=ligne['no'], key=f"no_clot_{idx_global}", label_visibility="collapsed")
                         ligne['designation'] = c2.text_input("Désignation", value=ligne['designation'], key=f"des_clot_{idx_global}", label_visibility="collapsed")
                         ligne['unite'] = c3.text_input("Unité", value=ligne['unite'], key=f"unit_clot_{idx_global}", label_visibility="collapsed")
@@ -1614,7 +1620,7 @@ if "📋 Devis" in tab_map:
                         st.stop()
                     try:
                         numero = f"DEV-CLOT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        
+
                         details_sections = []
                         for section_code, section_nom in sections.items():
                             items = []
@@ -1679,12 +1685,10 @@ if "📋 Devis" in tab_map:
                         st.error("Erreur génération devis")
                         st.code(repr(e))
 
-        # Tab Devis Vide
-        tab_index_vide = 1 if peut_batiment else 0
-        with tabs_devis[tab_index_vide]:
-            # ... garde ton code Devis Vide existant ici ...
-            st.info("Devis Vide - Code existant")
-
+        # Tab Devis Vide - Industriel/Bâtiment
+        with tab2:
+            st.markdown("### 📝 Devis Vide - Choisis le type")
+            #... ton code Devis Vide existant ici...
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion des Utilisateurs")
