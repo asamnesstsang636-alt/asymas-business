@@ -1520,7 +1520,8 @@ if "📋 Devis" in tab_map:
                             "telephone_ingenieur": tel_ing,
                             "details": json.dumps(st.session_state.lignes_devis),
                             "utilisateur": st.session_state.user_name,
-                            "statut": "Validé"
+                            "statut": "Validé",
+                            "date": str(date.today())
                         }).execute()
 
                         pdf_bytes = generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise, tel, main_oeuvre)
@@ -1573,32 +1574,47 @@ if "📋 Devis" in tab_map:
 
         st.divider()
         st.subheader("📋 Liste des Devis")
-        if df_devis.empty:
-            st.info("Aucun devis")
+
+        # === FILTRES DATE + NOM ===
+        col_f1, col_f2, col_f3 = st.columns(3)
+        date_debut_devis = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_devis")
+        date_fin_devis = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_devis")
+        filtre_nom_devis = col_f3.text_input("👤 Nom Client", placeholder="Tape un nom...", key="filtre_nom_devis")
+
+        df_devis_filtre = df_devis.copy()
+        if 'date' in df_devis_filtre.columns:
+            df_devis_filtre = df_devis_filtre[(df_devis_filtre['date'] >= str(date_debut_devis)) & (df_devis_filtre['date'] <= str(date_fin_devis))]
+        if filtre_nom_devis:
+            df_devis_filtre = df_devis_filtre[df_devis_filtre['client'].str.contains(filtre_nom_devis, case=False, na=False)]
+
+        # === FILTRAGE PAR PERMISSIONS ===
+        if st.session_state.user_role!= "PDG":
+            types_autorises = []
+            if peut_industriel: types_autorises.append("Industriel")
+            if peut_batiment: types_autorises.append("Bâtiment & Génie Civil")
+            df_devis_filtre = df_devis_filtre[df_devis_filtre['type_devis'].isin(types_autorises)]
+            st.caption(f"🔒 Filtrage actif : Tu vois uniquement les devis {', '.join(types_autorises)}")
+
+        if df_devis_filtre.empty:
+            st.warning("Aucun devis pour ta partie/période")
         else:
-            df_devis_filtre = df_devis.copy()
-            if st.session_state.user_role!= "PDG":
-                types_autorises = []
-                if peut_industriel: types_autorises.append("Industriel")
-                if peut_batiment: types_autorises.append("Bâtiment & Génie Civil")
-                df_devis_filtre = df_devis_filtre[df_devis_filtre['type_devis'].isin(types_autorises)]
-                st.caption(f"🔒 Filtrage actif : Tu vois uniquement les devis {', '.join(types_autorises)}")
+            # === TRIAGE PAR TYPE COMME COMPTABILITÉ ===
+            types_devis = df_devis_filtre['type_devis'].dropna().unique()
+            for type_d in types_devis:
+                df_type = df_devis_filtre[df_devis_filtre['type_devis'] == type_d]
+                total_type = df_type['montant_global'].sum() if 'montant_global' in df_type.columns else 0
 
-            if df_devis_filtre.empty:
-                st.warning("Aucun devis pour ta partie")
-            else:
-                for _, row in df_devis_filtre.iterrows():
-                    with st.expander(f"{row['numero']} - {row['client']} - {row['type_devis']} - {row.get('montant_global',0):,.2f} {row.get('devise','$')}"):
-                        st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
-                        st.write(f"**Ingénieur:** {row.get('ingenieur','')} | **Tel:** {row.get('telephone_ingenieur','')}")
-                        st.write(f"**Main d'oeuvre:** {row.get('main_oeuvre',0):,.2f} {row.get('devise','$')}")
-                        st.write(f"**Statut:** {row.get('statut','')} | **Créé par:** {row.get('utilisateur','')}")
+                with st.expander(f"📁 {type_d} - Total: {total_type:,.2f} ({len(df_type)} devis)"):
+                    for _, row in df_type.iterrows():
+                        col_info, col_btn1, col_btn2, col_btn3 = st.columns([3,1,1,1])
+                        col_info.markdown(f"**{row['numero']}** | {row.get('date','')} | {row['client']} | **{row.get('montant_global',0):,.2f} {row.get('devise','$')}**")
 
-                        if row.get('description_longue'):
-                            st.text_area("Description", value=row.get('description_longue',''), height=150, disabled=True, key=f"desc_view_{row['id']}")
+                        if col_btn1.button("👁️ Voir", key=f"voir_devis_{row['id']}", width="stretch"):
+                            st.info(f"**Ingénieur:** {row.get('ingenieur','')} | **Main d'oeuvre:** {row.get('main_oeuvre',0):,.2f}")
+                            if row.get('description_longue'):
+                                st.text_area("Description", value=row.get('description_longue',''), height=150, disabled=True, key=f"desc_view_{row['id']}")
 
-                        c1, c2, c3 = st.columns(3)
-                        if c1.button("📄 Télécharger PDF", key=f"dl_devis_{row['id']}", width="stretch"):
+                        if col_btn2.button("📥 PDF", key=f"dl_devis_{row['id']}", width="stretch"):
                             details = json.loads(row.get('details', '[]'))
                             details_sections = [{
                                 "numero": "I",
@@ -1612,20 +1628,19 @@ if "📋 Devis" in tab_map:
                                 row.get('devise','$'), row.get('telephone',''), row.get('main_oeuvre',0)
                             )
                             st.download_button(
-                                label="📥 Download",
+                                label="💾 Télécharger",
                                 data=bytes(pdf_bytes),
                                 file_name=f"{row['numero']}.pdf",
                                 mime="application/pdf",
-                                key=f"dl_btn_{row['id']}"
+                                key=f"dl_btn_devis_{row['id']}"
                             )
 
                         if st.session_state.user_role == "PDG":
-                            if c3.button("🗑️ Supprimer", key=f"del_devis_{row['id']}", width="stretch"):
+                            if col_btn3.button("🗑️", key=f"del_devis_{row['id']}", width="stretch"):
                                 supabase.table("devis").delete().eq("id", int(row['id'])).execute()
                                 st.success("Devis supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
-
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion des Utilisateurs")
