@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 st.set_page_config(
-    page_title="ASYMAS BUSINESS",
-    page_icon="🌾",
+    page_title="ASYMAS CONSULTING",
+    page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="auto"
 )
@@ -124,7 +124,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.set_draw_color(0, 0, 0)
     pdf.cell(85, 7, "FACTURE A:", 1, 0, 'L')
     pdf.cell(10, 7, "", 0, 0)
-    pdf.cell(85, 7, "DETAILS PAIEMENT:", 1, 1, 'L')
+    pdf.cell(85, 7, "DETAILS PAIEMENT:", 1, 'L')
     pdf.set_font("Arial", "", 9)
     pdf.cell(85, 6, f"Client: {safe_pdf_txt(client)}", 'LR', 0, 'L')
     pdf.cell(10, 6, "", 0, 0)
@@ -204,19 +204,23 @@ Tel: +243 995 105 623"""
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
 
-def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, main_oeuvre, devise="$", tel_client="+243...", description_longue=""):
+def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=10)
+
+    # ENTETE ASYMAS CONSULTING - SEULEMENT POUR DEVIS
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255, 255)
+    pdf.set_text_color(255, 255)
     pdf.set_font("Arial", "B", 20)
     pdf.set_xy(10, 8)
-    pdf.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
     pdf.set_font("Arial", "", 9)
     pdf.set_xy(10, 16)
     pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+    pdf.set_xy(10, 21)
+    pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
     pdf.set_font("Arial", "B", 10)
     pdf.set_xy(150, 8)
     pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
@@ -227,85 +231,93 @@ def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, 
     pdf.set_xy(150, 20)
     pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
     pdf.ln(15)
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_fill_color(255, 204, 0)
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, f"DEVIS {safe_pdf_txt(type_devis.upper())}", ln=True, fill=True)
-    pdf.ln(5)
 
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(0, 7, "CLIENT:", ln=True)
-    pdf.set_font("Arial", "", 9)
-    pdf.cell(0, 6, f"Nom: {safe_pdf_txt(client)}", ln=True)
-    pdf.cell(0, 6, f"Tel: {safe_pdf_txt(tel_client)}", ln=True)
+    # TITRE PROJET
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", "B", 12)
+    pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
     pdf.ln(3)
 
-    if description_longue and str(description_longue).strip():
-        pdf.set_font("Arial", "B", 10)
-        pdf.cell(0, 7, "DESCRIPTION DU PROJET:", ln=True)
-        pdf.set_font("Arial", "", 9)
-        pdf.set_fill_color(245, 245, 245)
-        pdf.multi_cell(0, 5, safe_pdf_txt(description_longue), border=1, fill=True)
-        pdf.ln(5)
-
-    pdf.set_fill_color(0, 102, 0)
-    pdf.set_text_color(255, 255)
+    # INFOS PROJET
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)
-    pdf.cell(25, 8, "QTE", 1, 0, 'C', True)
-    pdf.cell(40, 8, f"MONTANT ({safe_pdf_txt(devise)})", 1, 1, 'C', True)
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", "", 9)
+    if parcelle:
+        pdf.cell(0, 6, f"PARCELLE N° {safe_pdf_txt(parcelle)}", ln=True)
+    if localisation:
+        pdf.cell(0, 6, f"LOCALISATION: {safe_pdf_txt(localisation)}", ln=True)
+    pdf.cell(0, 6, f"CLIENT: {safe_pdf_txt(client)}", ln=True)
+    if tel_client:
+        pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True)
+    pdf.ln(5)
 
-    total_matieres = 0
-    if isinstance(details_list, list) and details_list:
-        for item in details_list:
-            nom = safe_pdf_txt(item.get('nom', ''))
-            qte = item.get('qte', 1)
-            pu = item.get('pu', 0)
-            montant_item = pu * qte
-            total_matieres += montant_item
-            pdf.cell(115, 7, nom, 1, 0, 'L')
-            pdf.cell(25, 7, str(qte), 1, 0, 'C')
-            pdf.cell(40, 7, f"{montant_item:,.2f}", 1, 1, 'R')
-
+    # TABLEAU
     pdf.set_font("Arial", "B", 9)
-    pdf.cell(140, 8, "MAIN D'OEUVRE", 1, 0, 'R')
-    pdf.cell(40, 8, f"{main_oeuvre:,.2f}", 1, 1, 'R')
+    pdf.set_fill_color(220, 220)
+    pdf.cell(10, 7, "N°", 1, 0, 'C', True)
+    pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
+    pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
+    pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
+    pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
+    pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
+
+    pdf.set_font("Arial", "", 8)
+    grand_total = 0
+
+    for section in details_sections:
+        pdf.set_font("Arial", "B", 9)
+        pdf.set_fill_color(200, 200, 200)
+        pdf.cell(10, 6, section['numero'], 1, 0, 'L', True)
+        pdf.cell(180, 6, safe_pdf_txt(section['titre']), 1, 1, 'L', True)
+        pdf.set_font("Arial", "", 8)
+
+        sous_total = 0
+        for item in section['items']:
+            qte = item.get('qte', 0)
+            pu = item.get('pu', 0)
+            total_item = qte * pu
+            sous_total += total_item
+
+            pdf.cell(10, 5, item.get('num', ''), 1, 0, 'C')
+            pdf.cell(90, 5, safe_pdf_txt(item.get('designation', '')), 1, 0, 'L')
+            pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C')
+            pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
+            pdf.cell(25, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R')
+            pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R')
+
+        pdf.set_font("Arial", "B", 8)
+        pdf.cell(160, 6, "Sous Total", 1, 0, 'R', True)
+        pdf.cell(30, 6, f"{sous_total:,.0f}", 1, 1, 'R', True)
+        grand_total += sous_total
+
+    if main_oeuvre > 0:
+        pdf.cell(160, 6, "MAIN D'OEUVRE", 1, 0, 'R')
+        pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 'R')
+        grand_total += main_oeuvre
 
     pdf.set_fill_color(255, 204, 0)
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(140, 10, "COUT GLOBAL", 1, 0, 'R', True)
-    pdf.cell(40, 10, f"{montant_global:,.2f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
-    pdf.ln(15)
-
     pdf.set_font("Arial", "B", 10)
-    if type_devis == "Industriel":
-        pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-        pdf.ln(3)
-        pdf.set_draw_color(0, 0, 0)
-        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-        pdf.set_font("Arial", "", 9)
-        pdf.set_xy(10, pdf.get_y() + 1)
-        pdf.cell(90, 5, "Ing. SAMY TSANGYA", ln=True)
-        pdf.set_xy(10, pdf.get_y())
-        pdf.cell(90, 5, "Tel: +243 995 105 623", ln=True)
-    else:
-        pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-        pdf.ln(3)
-        pdf.set_draw_color(0, 0, 0)
-        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-        pdf.set_font("Arial", "", 9)
-        pdf.set_xy(10, pdf.get_y() + 1)
-        pdf.cell(90, 5, "Ing. ESDRAS TSANGYA", ln=True)
-        pdf.set_xy(10, pdf.get_y())
-        pdf.cell(90, 5, "Tel: +243 972 888 690", ln=True)
-
+    pdf.cell(160, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(30, 8, f"{grand_total:,.0f}", 1, 1, 'R', True)
     pdf.ln(10)
+
+    # SIGNATURE
+    pdf.set_font("Arial", "B", 10)
+    ingenieur = "SAMY TSANGYA" if type_devis == "Industriel" else "ESDRAS TSANGYA"
+    tel_ing = "+243 995 105 623" if type_devis == "Industriel" else "+243 972 888 690"
+
+    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    pdf.ln(3)
+    pdf.set_draw_color(0, 0, 0)
+    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(10, pdf.get_y() + 1)
+    pdf.cell(90, 5, f"Ing. {ingenieur}", ln=True)
+    pdf.set_xy(10, pdf.get_y())
+    pdf.cell(90, 5, f"Tel: {tel_ing}", ln=True)
+
+    pdf.ln(8)
     pdf.set_font("Arial", "I", 9)
     pdf.set_text_color(0, 102, 0)
-    pdf.cell(0, 6, "Devis International - Valable 30 jours", ln=True, align="C")
-    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align="C")
 
     return bytes(pdf.output(dest='S'))
 
@@ -380,7 +392,7 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
 
 st.markdown("""
 <link rel="manifest" href="data:application/manifest+json,{
-  \\"name\\": \\"ASYMAS BUSINESS\\",
+  \\"name\\": \\"ASYMAS CONSULTING\\",
   \\"short_name\\": \\"ASYMAS\\",
   \\"start_url\\": \\".\\",
   \\"display\\": \\"standalone\\",
@@ -427,7 +439,7 @@ if 'user_role' not in st.session_state:
     st.session_state.user_cats = []
 
 if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
+    st.markdown("# 🔐 ASYMAS CONSULTING - CONNEXION")
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
@@ -497,13 +509,13 @@ if 'montant' not in df_compta.columns:
 if 'type' not in df_compta.columns:
     df_compta['type'] = 'Inconnu'
 
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+st.markdown(f"# ASYMAS CONSULTING - {st.session_state.user_name}")
 st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.3")
+    st.info("ASYMAS CONSULTING v2.5")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -1177,11 +1189,11 @@ if "🚘 Gestion Parc" in tab_map:
                                 st.success("Supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
-           except Exception as e:
-                        st.error("Erreur suppression")
-                        st.code(repr(e))
-                   else:
-                      c2.info("🔒 Suppression non autorisée")
+                            except Exception as e:
+                                st.error("Erreur suppression")
+                                st.code(repr(e))
+                    else:
+                        c2.info("🔒 Suppression non autorisée")
 
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
