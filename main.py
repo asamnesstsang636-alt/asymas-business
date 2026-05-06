@@ -1344,42 +1344,49 @@ if "📋 Devis" in tab_map:
             st.stop()
         
         with st.expander("➕ Créer Nouveau Devis"):
-            with st.form("form_devis", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                client = c1.text_input("Client")
-                tel = c2.text_input("Téléphone", value="+243...")
-                
-                types_dispo = []
-                if peut_industriel: types_dispo.append("Industriel")
-                if peut_batiment: types_dispo.append("Bâtiment & Génie Civil")
-                
-                type_devis = c1.selectbox("Type Devis", types_dispo)
-                devise = c2.selectbox("Devise", ["$", "€", "FC"])
-                
-                st.markdown("### Détails Matériaux / Prestations")
-                if 'lignes_devis' not in st.session_state:
-                    st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
-                
-                total_matieres = 0
-                for i, ligne in enumerate(st.session_state.lignes_devis):
-                    c1, c2, c3, c4 = st.columns([4,1,2,1])
-                    ligne['nom'] = c1.text_input(f"Designation {i+1}", value=ligne['nom'], key=f"nom_d_{i}")
-                    ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=ligne['qte'], key=f"qte_d_{i}")
-                    ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=ligne['pu'], key=f"pu_d_{i}")
-                    if c4.button("❌", key=f"del_ligne_{i}") and len(st.session_state.lignes_devis) > 1:
-                        st.session_state.lignes_devis.pop(i)
-                        st.rerun()
-                    total_matieres += ligne['qte'] * ligne['pu']
-                
-                if st.form_submit_button("➕ Ajouter Ligne"):
-                    st.session_state.lignes_devis.append({"nom": "", "qte": 1, "pu": 0.0})
+            if 'lignes_devis' not in st.session_state:
+                st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
+            
+            c1, c2 = st.columns(2)
+            client = c1.text_input("Client", key="client_devis")
+            tel = c2.text_input("Téléphone", value="+243...", key="tel_devis")
+            
+            types_dispo = []
+            if peut_industriel: types_dispo.append("Industriel")
+            if peut_batiment: types_dispo.append("Bâtiment & Génie Civil")
+            
+            c1, c2 = st.columns(2)
+            type_devis = c1.selectbox("Type Devis", types_dispo, key="type_devis")
+            devise = c2.selectbox("Devise", ["$", "€", "FC"], key="devise_devis")
+            
+            st.markdown("### Détails Matériaux / Prestations")
+            
+            # BOUTONS HORS DU FORM
+            col_btn1, col_btn2 = st.columns([3,1])
+            if col_btn1.button("➕ Ajouter Ligne", key="add_ligne_devis"):
+                st.session_state.lignes_devis.append({"nom": "", "qte": 1, "pu": 0.0})
+                st.rerun()
+            
+            total_matieres = 0
+            for i, ligne in enumerate(st.session_state.lignes_devis):
+                c1, c2, c3, c4 = st.columns([4,1,2,1])
+                ligne['nom'] = c1.text_input(f"Designation {i+1}", value=ligne['nom'], key=f"nom_d_{i}")
+                ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=ligne['qte'], key=f"qte_d_{i}")
+                ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=ligne['pu'], key=f"pu_d_{i}")
+                if c4.button("❌", key=f"del_ligne_{i}") and len(st.session_state.lignes_devis) > 1:
+                    st.session_state.lignes_devis.pop(i)
                     st.rerun()
-                
-                st.divider()
+                total_matieres += ligne['qte'] * ligne['pu']
+            
+            st.divider()
+            
+            # FORM UNIQUEMENT POUR LA VALIDATION FINALE
+            with st.form("form_devis_final", clear_on_submit=True):
                 main_oeuvre = st.number_input("💪 Main d'Oeuvre", min_value=0.0, value=0.0)
                 montant_global = total_matieres + main_oeuvre
                 
                 st.metric("💰 COUT GLOBAL", f"{montant_global:,.2f} {devise}")
+                st.info(f"Total matériaux: {total_matieres:,.2f} {devise} + Main d'oeuvre: {main_oeuvre:,.2f} {devise}")
                 
                 if st.form_submit_button("💾 GÉNÉRER DEVIS PDF", type="primary"):
                     try:
