@@ -1257,7 +1257,7 @@ if "💰 Comptabilité" in tab_map:
                     total_cat = df_cat['montant'].sum()
                     with st.expander(f"📁 {cat} - Total: {total_cat:,.0f} FC ({len(df_cat)} opérations)"):
                         for idx, row in df_cat.iterrows():
-                            c1, c2, c3, c4 = st.columns([3,2,2])
+                            c1, c2, c3, c4 = st.columns([3,2,2,2])
                             c1.write(f"**{row['date']}** | {row.get('description','')}")
                             c2.write(f"{row['montant']:,.0f} {row.get('devise','FC')}")
                             c3.write(f"Par: {row.get('utilisateur','')}")
