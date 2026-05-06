@@ -204,6 +204,103 @@ Tel: +243 995 105 623"""
     pdf.cell(140, 5, "ASYMAS BUSINESS - Beni, Nord-Kivu, RDC", ln=False)
     return bytes(pdf.output(dest='S'))
 
+def generer_pdf_devis(numero, type_devis, client, details_list, montant_global, main_oeuvre, devise="$", tel_client="+243..."):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.set_fill_color(20, 50, 40)
+    pdf.rect(0, 0, 210, 35, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 20)
+    pdf.set_xy(10, 8)
+    pdf.cell(0, 10, "ASYMAS BUSINESS", ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(10, 16)
+    pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_xy(150, 8)
+    pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
+    pdf.set_font("Arial", "", 10)
+    pdf.set_xy(150, 14)
+    pdf.cell(50, 6, safe_pdf_txt(numero), ln=True, align="R")
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(150, 20)
+    pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
+    pdf.ln(15)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_fill_color(255, 204, 0)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, f"DEVIS {safe_pdf_txt(type_devis.upper())}", ln=True, fill=True)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 7, "CLIENT:", ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(0, 6, f"Nom: {safe_pdf_txt(client)}", ln=True)
+    pdf.cell(0, 6, f"Tel: {safe_pdf_txt(tel_client)}", ln=True)
+    pdf.ln(5)
+    
+    pdf.set_fill_color(0, 102, 0)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(115, 8, "DESIGNATION", 1, 0, 'C', True)
+    pdf.cell(25, 8, "QTE", 1, 0, 'C', True)
+    pdf.cell(40, 8, f"MONTANT ({safe_pdf_txt(devise)})", 1, 1, 'C', True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", "", 9)
+    
+    total_matieres = 0
+    if isinstance(details_list, list) and details_list:
+        for item in details_list:
+            nom = safe_pdf_txt(item.get('nom', ''))
+            qte = item.get('qte', 1)
+            pu = item.get('pu', 0)
+            montant_item = pu * qte
+            total_matieres += montant_item
+            pdf.cell(115, 7, nom, 1, 0, 'L')
+            pdf.cell(25, 7, str(qte), 1, 0, 'C')
+            pdf.cell(40, 7, f"{montant_item:,.2f}", 1, 1, 'R')
+    
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(140, 8, "MAIN D'OEUVRE", 1, 0, 'R')
+    pdf.cell(40, 8, f"{main_oeuvre:,.2f}", 1, 1, 'R')
+    
+    pdf.set_fill_color(255, 204, 0)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(140, 10, "COUT GLOBAL", 1, 0, 'R', True)
+    pdf.cell(40, 10, f"{montant_global:,.2f} {safe_pdf_txt(devise)}", 1, 1, 'R', True)
+    pdf.ln(15)
+    
+    pdf.set_font("Arial", "B", 10)
+    if type_devis == "Industriel":
+        pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+        pdf.ln(3)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+        pdf.set_font("Arial", "", 9)
+        pdf.set_xy(10, pdf.get_y() + 1)
+        pdf.cell(90, 5, "Ing. SAMY TSANGYA", ln=True)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.cell(90, 5, "Tel: +243 995 105 623", ln=True)
+    else:
+        pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+        pdf.ln(3)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+        pdf.set_font("Arial", "", 9)
+        pdf.set_xy(10, pdf.get_y() + 1)
+        pdf.cell(90, 5, "Ing. ESDRAS TSANGYA", ln=True)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.cell(90, 5, "Tel: +243 972 888 690", ln=True)
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", "I", 9)
+    pdf.set_text_color(0, 102, 0)
+    pdf.cell(0, 6, "Devis International - Valable 30 jours", ln=True, align="C")
+    pdf.set_text_color(0, 0, 0)
+    
+    return bytes(pdf.output(dest='S'))
+
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode=""):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
@@ -384,6 +481,7 @@ df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
 df_factures = load_table("factures_proforma")
+df_devis = load_table("devis")
 df_utilisateurs = load_table("utilisateurs")
 
 if 'montant' not in df_compta.columns:
@@ -397,7 +495,7 @@ st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.0")
+    st.info("ASYMAS BUSINESS v2.1")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -424,6 +522,8 @@ if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
     tabs_dispo.append("💰 Comptabilité")
 if st.session_state.user_role == "PDG" or perms.get('factures', False):
     tabs_dispo.append("📄 Factures")
+if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
+    tabs_dispo.append("📋 Devis")
 if st.session_state.user_role == "PDG" or perms.get('users', False):
     tabs_dispo.append("👥 Utilisateurs")
 
@@ -480,7 +580,6 @@ if "🛍️ Commerce" in tab_map:
                 with col_scan2:
                     recherche_manuelle = st.text_input("🔍 QR Code ou Nom", placeholder="Scanne ou tape le nom...", key="search_c").strip()
 
-                # CORRECTION QR : Force rerun si nouveau QR
                 if qr_code and qr_code!= st.session_state.last_qr:
                     st.session_state.last_qr = qr_code
                     st.rerun()
@@ -1140,9 +1239,8 @@ if "💰 Comptabilité" in tab_map:
                     total_cat = total_cat_fc + total_cat_usd + total_cat_eur
 
                     with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
-                        # CORRECTION BOUTON SUPPRIMER PDG - Affichage ligne par ligne
                         for idx, row in df_cat.iterrows():
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,1,0.5])
                             col_a.write(f"**{row.get('date','')}**")
                             col_b.write(f"{row.get('type','')}")
                             col_c.write(f"{row.get('description','')}")
@@ -1234,6 +1332,134 @@ if "💰 Comptabilité" in tab_map:
                             key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
 
+if "📋 Devis" in tab_map:
+    with tab_map["📋 Devis"]:
+        st.markdown("## 📋 Devis International")
+        
+        peut_industriel = st.session_state.user_role == "PDG" or perms.get('devis_industriel', False)
+        peut_batiment = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
+        
+        if not peut_industriel and not peut_batiment:
+            st.error("🔒 Accès non autorisé - Contacte le PDG")
+            st.stop()
+        
+        with st.expander("➕ Créer Nouveau Devis"):
+            with st.form("form_devis", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                client = c1.text_input("Client")
+                tel = c2.text_input("Téléphone", value="+243...")
+                
+                types_dispo = []
+                if peut_industriel: types_dispo.append("Industriel")
+                if peut_batiment: types_dispo.append("Bâtiment & Génie Civil")
+                
+                type_devis = c1.selectbox("Type Devis", types_dispo)
+                devise = c2.selectbox("Devise", ["$", "€", "FC"])
+                
+                st.markdown("### Détails Matériaux / Prestations")
+                if 'lignes_devis' not in st.session_state:
+                    st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
+                
+                total_matieres = 0
+                for i, ligne in enumerate(st.session_state.lignes_devis):
+                    c1, c2, c3, c4 = st.columns([4,1,2,1])
+                    ligne['nom'] = c1.text_input(f"Designation {i+1}", value=ligne['nom'], key=f"nom_d_{i}")
+                    ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=ligne['qte'], key=f"qte_d_{i}")
+                    ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=ligne['pu'], key=f"pu_d_{i}")
+                    if c4.button("❌", key=f"del_ligne_{i}") and len(st.session_state.lignes_devis) > 1:
+                        st.session_state.lignes_devis.pop(i)
+                        st.rerun()
+                    total_matieres += ligne['qte'] * ligne['pu']
+                
+                if st.form_submit_button("➕ Ajouter Ligne"):
+                    st.session_state.lignes_devis.append({"nom": "", "qte": 1, "pu": 0.0})
+                    st.rerun()
+                
+                st.divider()
+                main_oeuvre = st.number_input("💪 Main d'Oeuvre", min_value=0.0, value=0.0)
+                montant_global = total_matieres + main_oeuvre
+                
+                st.metric("💰 COUT GLOBAL", f"{montant_global:,.2f} {devise}")
+                
+                if st.form_submit_button("💾 GÉNÉRER DEVIS PDF", type="primary"):
+                    try:
+                        numero = f"DEV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        ingenieur = "SAMY TSANGYA" if type_devis == "Industriel" else "ESDRAS TSANGYA"
+                        tel_ing = "+243 995 105 623" if type_devis == "Industriel" else "+243 972 888 690"
+                        
+                        supabase.table("devis").insert({
+                            "numero": numero,
+                            "client": client,
+                            "telephone": tel,
+                            "type_devis": type_devis,
+                            "montant_global": float(montant_global),
+                            "main_oeuvre": float(main_oeuvre),
+                            "devise": devise,
+                            "ingenieur": ingenieur,
+                            "telephone_ingenieur": tel_ing,
+                            "details": json.dumps(st.session_state.lignes_devis),
+                            "utilisateur": st.session_state.user_name,
+                            "statut": "Brouillon"
+                        }).execute()
+                        
+                        pdf_bytes = generer_pdf_devis(numero, type_devis, client, st.session_state.lignes_devis, montant_global, main_oeuvre, devise, tel)
+                        st.success(f"✅ Devis {numero} généré - Signé par Ing. {ingenieur}")
+                        st.download_button(
+                            label="📥 Télécharger Devis PDF",
+                            data=bytes(pdf_bytes),
+                            file_name=f"{numero}.pdf",
+                            mime="application/pdf",
+                            width="stretch"
+                        )
+                        st.session_state.lignes_devis = [{"nom": "", "qte": 1, "pu": 0.0}]
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error("Erreur création devis")
+                        st.code(repr(e))
+        
+        st.divider()
+        st.subheader("📋 Liste des Devis")
+        if df_devis.empty:
+            st.info("Aucun devis")
+        else:
+            df_devis_filtre = df_devis.copy()
+            if st.session_state.user_role!= "PDG":
+                types_autorises = []
+                if peut_industriel: types_autorises.append("Industriel")
+                if peut_batiment: types_autorises.append("Bâtiment & Génie Civil")
+                df_devis_filtre = df_devis_filtre[df_devis_filtre['type_devis'].isin(types_autorises)]
+            
+            for _, row in df_devis_filtre.iterrows():
+                with st.expander(f"{row['numero']} - {row['client']} - {row['type_devis']} - {row.get('montant_global',0):,.2f} {row.get('devise','$')}"):
+                    st.write(f"**Client:** {row['client']} | **Tel:** {row.get('telephone','')}")
+                    st.write(f"**Ingénieur:** {row.get('ingenieur','')} | **Tel:** {row.get('telephone_ingenieur','')}")
+                    st.write(f"**Main d'oeuvre:** {row.get('main_oeuvre',0):,.2f} {row.get('devise','$')}")
+                    st.write(f"**Statut:** {row.get('statut','')}")
+                    
+                    c1, c2, c3 = st.columns(3)
+                    if c1.button("📄 Télécharger PDF", key=f"dl_devis_{row['id']}", width="stretch"):
+                        details = json.loads(row.get('details', '[]'))
+                        pdf_bytes = generer_pdf_devis(
+                            row['numero'], row['type_devis'], row['client'], details,
+                            row.get('montant_global',0), row.get('main_oeuvre',0), 
+                            row.get('devise','$'), row.get('telephone','')
+                        )
+                        st.download_button(
+                            label="📥 Download",
+                            data=bytes(pdf_bytes),
+                            file_name=f"{row['numero']}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_btn_{row['id']}"
+                        )
+                    
+                    if st.session_state.user_role == "PDG":
+                        if c3.button("🗑️ Supprimer", key=f"del_devis_{row['id']}", width="stretch"):
+                            supabase.table("devis").delete().eq("id", int(row['id'])).execute()
+                            st.success("Devis supprimé")
+                            st.cache_data.clear()
+                            st.rerun()
+
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs")
@@ -1246,7 +1472,7 @@ if "👥 Utilisateurs" in tab_map:
                     nom_u = c1.text_input("Nom")
                     role_u = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR"])
                     pwd_u = c1.text_input("Mot de passe", type="password")
-                    perms_u = c2.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer"])
+                    perms_u = c2.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer", "devis_industriel", "devis_batiment"])
                     cats_u = c1.text_input("Catégories autorisées", placeholder="Loyer,Vente Auto")
                     if st.form_submit_button("💾 Ajouter Utilisateur"):
                         try:
@@ -1283,7 +1509,7 @@ if "👥 Utilisateurs" in tab_map:
                                 try: perms_actuelles = json.loads(perms_actuelles)
                                 except: perms_actuelles = {}
                             perms_list = [k for k, v in perms_actuelles.items() if v]
-                            new_perms = st.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer"], default=perms_list, key=f"perms_u_{row['id']}")
+                            new_perms = st.multiselect("Permissions", ["dashboard", "commerce", "stock", "immobilier", "automobile", "parc", "comptabilite", "factures", "users", "supprimer", "devis_industriel", "devis_batiment"], default=perms_list, key=f"perms_u_{row['id']}")
                             cats_actuelles = row.get('categories_autorisees', [])
                             if isinstance(cats_actuelles, str):
                                 try: cats_actuelles = json.loads(cats_actuelles)
