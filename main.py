@@ -1314,74 +1314,52 @@ if "📄 Factures" in tab_map:
         peut_industriel = st.session_state.user_role == "PDG" or perms.get('devis_industriel', False)
         peut_batiment = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
 
-        # === CRÉER FACTURE PROFORMA TECHNIQUE ===
-        with st.expander("➕ Créer Facture Proforma Technique"):
-            if not peut_industriel and not peut_batiment:
-                st.error("🔒 Accès non autorisé - Contacte le PDG")
-                st.stop()
+ if df_proforma_filtre.empty:
+    st.info("Aucune proforma pour cette période")
+else:
+    types_prof = df_proforma_filtre['type_proforma'].dropna().unique() if 'type_proforma' in df_proforma_filtre.columns else ['Proforma']
+    for type_p in types_prof:
+        df_type = df_proforma_filtre[df_proforma_filtre['type_proforma'] == type_p] if 'type_proforma' in df_proforma_filtre.columns else df_proforma_filtre
+        total_type = df_type['montant'].sum()
 
-            if 'lignes_proforma' not in st.session_state:
-                st.session_state.lignes_proforma = [{"nom": "", "qte": 1, "pu": 0.0}]
+        with st.expander(f"📁 Proforma {type_p} - Total: {total_type:,.2f} ({len(df_type)} proforma)"):
+            for idx, row in df_type.iterrows():
+                # TOUJOURS 4 COLONNES, MÊME SI PAS PDG
+                col_info, col_btn1, col_btn2, col_btn3 = st.columns([3,1,1,1])
+                col_info.markdown(f"**{row['numero']}** | {row.get('date','')} | {row['client']} | **{row.get('montant',0):,.0f} {row.get('devise','$')}** | Ing: {row.get('ingenieur','')}")
 
-            types_dispo = []
-            if peut_industriel: types_dispo.append("Industriel")
-            if peut_batiment: types_dispo.append("Bâtiment & Génie Civil")
+                if col_btn1.button("👁️ Voir", key=f"voir_prof_{row['id']}", width="stretch"):
+                    st.json(json.loads(row.get('details','[]')))
 
-            c1, c2, c3 = st.columns(3)
-            if len(types_dispo) == 1:
-                type_proforma = types_dispo[0]
-                c1.info(f"Type autorisé : {type_proforma}")
-            else:
-                type_proforma = c1.selectbox("Type Proforma", types_dispo, key="type_proforma")
-
-            client_proforma = c2.text_input("Client", key="client_proforma")
-            tel_proforma = c3.text_input("Téléphone", value="+243...", key="tel_proforma")
-
-            c1, c2 = st.columns(2)
-            devise_proforma = c1.selectbox("Devise", ["$", "€", "FC"], key="devise_proforma")
-            date_validite = c2.date_input("Valable jusqu'au", value=date.today() + timedelta(days=30), key="date_validite_proforma")
-
-            titre_projet = st.text_input("Titre du projet", value="FOURNITURE MATÉRIELS", key="titre_projet_proforma")
-            localisation = st.text_input("Localisation", value="Beni, Nord-Kivu", key="localisation_proforma")
-
-            st.markdown("### Détails Matériaux / Prestations")
-
-            col_btn1, col_btn2 = st.columns([3,1])
-            if col_btn1.button("➕ Ajouter Ligne", key="add_ligne_proforma"):
-                st.session_state.lignes_proforma.append({"nom": "", "qte": 1, "pu": 0.0})
-                st.rerun()
-
-            total_proforma = 0
-            for i, ligne in enumerate(st.session_state.lignes_proforma):
-                c1, c2, c3, c4 = st.columns([4,1,2,1])
-                ligne['nom'] = c1.text_input(f"Designation {i+1}", value=ligne['nom'], key=f"nom_prof_{i}")
-                ligne['qte'] = c2.number_input(f"Qté {i+1}", min_value=1, value=ligne['qte'], key=f"qte_prof_{i}")
-                ligne['pu'] = c3.number_input(f"PU {i+1}", min_value=0.0, value=ligne['pu'], key=f"pu_prof_{i}")
-                if c4.button("❌", key=f"del_prof_{i}") and len(st.session_state.lignes_proforma) > 1:
-                    st.session_state.lignes_proforma.pop(i)
-                    st.rerun()
-                total_proforma += ligne['qte'] * ligne['pu']
-
-            main_oeuvre_prof = st.number_input("💪 Main d'Oeuvre", min_value=0.0, value=0.0, key="mo_proforma")
-            montant_global_prof = total_proforma + main_oeuvre_prof
-
-            st.metric("💰 COUT GLOBAL PROFORMA", f"{montant_global_prof:,.2f} {devise_proforma}")
-            st.info(f"Total matériaux: {total_proforma:,.2f} + Main d'oeuvre: {main_oeuvre_prof:,.2f}")
-
-            if st.button("💾 GÉNÉRER PROFORMA TECHNIQUE", type="primary", width="stretch"):
-                if not client_proforma:
-                    st.error("⚠️ Nom du client obligatoire")
-                    st.stop()
-                try:
-                    numero_proforma = f"PRO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    ingenieur = "SAMY TSANGYA" if type_proforma == "Industriel" else "ESDRAS TSANGYA"
-                    tel_ing = "+243 995 105 623" if type_proforma == "Industriel" else "+243 972 888 690"
-
+                if col_btn2.button("📥 PDF", key=f"dl_prof_{row['id']}", width="stretch"):
+                    details = json.loads(row.get('details', '[]'))
                     details_sections = [{
                         "numero": "I",
                         "titre": "MATERIAUX / PRESTATIONS",
-                        "items": [{"num": f"{i+1}", "designation": l['nom'], "unite": "U", "qte": l['qte'], "pu": l['pu']} for i, l in enumerate(st.session_state.lignes_proforma) if l['nom']]
+                        "items": [{"num": f"{i+1}", "designation": d['nom'], "unite": "U", "qte": d['qte'], "pu": d['pu']} for i, d in enumerate(details)]
                     }]
+                    pdf_bytes = generer_pdf_devis_consulting(
+                        row['numero'], row.get('type_proforma','Industriel'), row['client'],
+                        row.get('titre_projet','PROJET'), "", row.get('localisation',''), details_sections,
+                        row.get('devise','$'), row.get('telephone',''), row.get('main_oeuvre',0)
+                    )
+                    st.download_button(
+                        label="💾 Télécharger",
+                        data=bytes(pdf_bytes),
+                        file_name=f"{row['numero']}.pdf",
+                        mime="application/pdf",
+                        key=f"dl_btn_prof_{row['id']}"
+                    )
+
+                # BOUTON SUPPRIMER SEULEMENT SI PDG OU PERM SUPPRIMER
+                if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                    if col_btn3.button("🗑️", key=f"del_prof_{row['id']}", width="stretch"):
+                        supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
+                        st.success("Proforma supprimée")
+                        st.cache_data.clear()
+                        st.rerun()
+                else:
+                    col_btn3.write("")  # Colonne vide si pas le droit
 
                     supabase.table("factures_proforma").insert({
                         "numero": numero_proforma,
