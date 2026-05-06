@@ -1686,7 +1686,7 @@ if "📋 Devis" in tab_map:
                         st.code(repr(e))
 
         # Tab Devis Vide - Industriel/Bâtiment
-  with tab2:
+ with tab2:
     st.markdown("### 📝 Devis Vide - Choisis le type")
     
     if 'devis_pdf_bytes' not in st.session_state:
