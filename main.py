@@ -594,7 +594,6 @@ if "📦 Gestion Stock" in tab_map:
                             st.error("Erreur modif")
                             st.code(repr(e))
                     if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
                         if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", width="stretch"):
                             try:
                                 supabase.table("articles").delete().eq("id", int(row['id'])).execute()
