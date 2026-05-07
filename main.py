@@ -1688,16 +1688,15 @@ if "📋 Devis" in tab_map:
                 elif tri_par == "Montant asc":
                     query = query.order("total", desc=False)
 
-                devis_list = query.execute().data
-            except:
-                devis_list = []
+                # Filtre les devis valides seulement
+                devis_list = [d for d in devis_list if d.get('numero') and d.get('client') and d.get('total') is not None]
 
-            if not devis_list:
-                st.info("Aucun devis enregistré")
-            else:
-                for d in devis_list:
-                    with st.expander(f"{d['numero']} - {d['client']} - {d['total']:,.0f} {d['devise']} - {d['created_at'][:10]}"):
-                        col_info1, col_info2, col_info3 = st.columns(3)
+                if not devis_list:
+                   st.info("Aucun devis enregistré")
+                 else:
+                   for d in devis_list:
+                     with st.expander(f"{d['numero']} - {d['client']} - {d['total']:,.0f} {d['devise']} - {d.get('created_at','')[:10]}"):
+            
                         with col_info1:
                             st.write(f"**Type:** {d['type']}")
                             st.write(f"**Client:** {d['client']}")
