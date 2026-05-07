@@ -1641,7 +1641,7 @@ if "📋 Devis" in tab_map:
 
             total_general = 0
             
-            col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5,4,1.5,0.5])
+            col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
             col_h1.markdown("**no**")
             col_h2.markdown("**désignation**")
             col_h3.markdown("**unité**")
@@ -1656,7 +1656,7 @@ if "📋 Devis" in tab_map:
                 
                 sous_total_sec = 0
                 for i, item in enumerate(section['items']):
-                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,0.5])
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
                     with col1:
                         new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
                         section['items'][i]['num'] = new_num
@@ -1684,7 +1684,7 @@ if "📋 Devis" in tab_map:
                             section['items'].pop(i)
                             st.rerun()
 
-                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,0.5])
+                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
                 with col1:
                     num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
                 with col2:
