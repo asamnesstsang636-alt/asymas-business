@@ -12,10 +12,6 @@ st.markdown("""
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, TableStyle
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import cm
 import base64
 import io
 import qrcode
@@ -231,9 +227,126 @@ Tel: +243 995 105 623"""
     return bytes(pdf.output(dest='S'))
 
 def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=3*cm)
-
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=False, margin=10)
+    
+    # En-tête
+    pdf.set_fill_color(20, 50, 40)
+    pdf.rect(0, 0, 210, 35, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 20)
+    pdf.set_xy(10, 8)
+    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(10, 16)
+    pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
+    pdf.set_xy(10, 21)
+    pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_xy(150, 8)
+    pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
+    pdf.set_font("Arial", "", 10)
+    pdf.set_xy(150, 14)
+    pdf.cell(50, 6, safe_pdf_txt(numero), ln=True, align="R")
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(150, 20)
+    pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
+    
+    y_pos = 45
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", "B", 12)
+    pdf.set_xy(10, y_pos)
+    pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
+    y_pos = pdf.get_y() + 3
+    
+    # Infos client
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_xy(10, y_pos)
+    if parcelle:
+        pdf.cell(0, 6, f"PARCELLE N {safe_pdf_txt(parcelle)}", ln=True)
+        y_pos += 6
+    pdf.set_xy(10, y_pos)
+    if localisation:
+        pdf.cell(0, 6, f"LOCALISATION: {safe_pdf_txt(localisation)}", ln=True)
+        y_pos += 6
+    pdf.set_xy(10, y_pos)
+    pdf.cell(0, 6, f"CLIENT: {safe_pdf_txt(client)}", ln=True)
+    y_pos += 6
+    if tel_client:
+        pdf.set_xy(10, y_pos)
+        pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True)
+        y_pos += 6
+    y_pos += 5
+    
+    # Tableau 6 colonnes SANS AV NI Q
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.set_xy(10, y_pos)
+    pdf.cell(12, 7, "N", 1, 0, 'C', True)
+    pdf.cell(85, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
+    pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
+    pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
+    pdf.cell(23, 7, "Prix U", 1, 0, 'C', True)
+    pdf.cell(25, 7, "Prix total", 1, 1, 'C', True)
+    y_pos += 7
+    
+    pdf.set_font("Arial", "", 8)
+    grand_total = 0
+    
+    for section in details_sections:
+        if y_pos > 240:
+            pdf.add_page()
+            y_pos = 30
+        pdf.set_font("Arial", "B", 9)
+        pdf.set_fill_color(200, 200, 200)
+        pdf.set_xy(10, y_pos)
+        pdf.cell(12, 6, section['numero'], 1, 0, 'L', True)
+        pdf.cell(168, 6, safe_pdf_txt(section['titre']), 1, 1, 'L', True)
+        y_pos += 6
+        pdf.set_font("Arial", "", 8)
+        sous_total = 0
+        for item in section['items']:
+            if y_pos > 250:
+                pdf.add_page()
+                y_pos = 30
+            qte = item.get('qte', 0)
+            pu = item.get('pu', 0)
+            total_item = qte * pu
+            sous_total += total_item
+            pdf.set_xy(10, y_pos)
+            pdf.cell(12, 5, str(item.get('num', '')), 1, 0, 'C')
+            pdf.cell(85, 5, safe_pdf_txt(item.get('designation', '')), 1, 0, 'L')
+            pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C')
+            pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
+            pdf.cell(23, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R')
+            pdf.cell(25, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R')
+            y_pos += 5
+        pdf.set_font("Arial", "B", 8)
+        pdf.set_xy(10, y_pos)
+        pdf.cell(155, 6, "SOUS-TOTAL", 1, 0, 'R', True)
+        pdf.cell(25, 6, f"{sous_total:,.0f}", 1, 1, 'R', True)
+        y_pos += 6
+        grand_total += sous_total
+    
+    if main_oeuvre > 0:
+        if y_pos > 250:
+            pdf.add_page()
+            y_pos = 30
+        pdf.set_xy(10, y_pos)
+        pdf.cell(155, 6, "MAIN D'OEUVRE", 1, 0, 'R')
+        pdf.cell(25, 6, f"{main_oeuvre:,.0f}", 1, 1, 'R')
+        y_pos += 6
+        grand_total += main_oeuvre
+    
+    pdf.set_fill_color(255, 204, 0)
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_xy(10, y_pos)
+    pdf.cell(155, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(25, 8, f"{grand_total:,.0f}", 1, 1, 'R', True)
+    y_pos += 15
+    
+    # Signature en bas de page - seulement dernière page avec FPDF
     if type_devis == "Industriel":
         ingenieur = "SAMY TSANGYA"
         tel_ing = "+243 995 105 623"
@@ -242,99 +355,30 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
         ingenieur = "ESDRAS TSANGYA"
         tel_ing = "+243 972 888 690"
         adresse_ing = "Beni, Nord-Kivu, RDC | Av. du 30 Juin, Q. Malepe | esdrastsangya@gmail.com"
-
-    def pied_de_page(canvas, doc):
-        canvas.saveState()
-        canvas.setFont('Helvetica-Bold', 9)
-        y = 2.5*cm
-        canvas.drawString(2*cm, y, "SIGNATURE INGENIEUR RESPONSABLE:")
-        y -= 0.4*cm
-        canvas.setFont('Helvetica', 8)
-        canvas.drawString(2*cm, y, f"Ing. {ingenieur}")
-        y -= 0.4*cm
-        canvas.drawString(2*cm, y, f"Tel: {tel_ing}")
-        y -= 0.4*cm
-        canvas.drawString(2*cm, y, f"Adresse: {adresse_ing}")
-        canvas.setFont('Helvetica-Oblique', 7)
-        canvas.drawRightString(19*cm, 1*cm, "Devis estimatif - Valable 30 jours")
-        canvas.drawRightString(19*cm, 28*cm, f"Page {doc.page}")
-        canvas.restoreState()
-
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph("ASYMAS CONSULTING", ParagraphStyle('Titre', fontSize=16, textColor=colors.HexColor('#1e3a8a'), fontName='Helvetica-Bold', alignment=1)))
-    elements.append(Spacer(1, 0.3*cm))
-    elements.append(Paragraph(f"DEVIS N° {numero}", ParagraphStyle('Num', fontSize=12, alignment=1)))
-    elements.append(Spacer(1, 0.5*cm))
-
-    info_data = [
-        ["Client:", client, "Titre:", titre_projet],
-        ["Téléphone:", tel_client, "Parcelle:", parcelle],
-        ["Localisation:", localisation, "Date:", date.today().strftime('%d/%m/%Y')]
-    ]
-    info_table = Table(info_data, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
-    info_table.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,0), (-1,-1), 9),
-        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
-        ('FONTNAME', (2,0), (2,-1), 'Helvetica-Bold'),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 0.5*cm))
-
-    # TABLEAU 6 COLONNES SANS AV NI Q
-    data = [['N°', 'DÉSIGNATION DES OUVRAGES', 'Unité', 'Qté', 'Prix U', 'Prix total']]
-    grand_total = 0
-
-    for section in details_sections:
-        data.append([section['numero'], section['titre'].upper(), '', '', '', ''])
-        sous_total = 0
-        for item in section['items']:
-            qte = item.get('qte', 0)
-            pu = item.get('pu', 0)
-            total_item = qte * pu
-            sous_total += total_item
-            data.append([
-                item.get('num', ''),
-                item.get('designation', ''),
-                item.get('unite', ''),
-                f"{qte:,.2f}" if qte else "",
-                f"{pu:,.0f}" if pu else "",
-                f"{total_item:,.0f}" if total_item else ""
-            ])
-        data.append(['', 'SOUS-TOTAL', '', '', '', f"{sous_total:,.0f}"])
-        grand_total += sous_total
-        data.append(['', '', '', '', '', ''])
-
-    if main_oeuvre > 0:
-        data.append(['', "MAIN D'OEUVRE", '', '', '', f"{main_oeuvre:,.0f}"])
-        grand_total += main_oeuvre
-
-    data.append(['', f'TOTAL GENERAL ({devise})', '', '', '', f"{grand_total:,.0f}"])
-
-    table = Table(data, colWidths=[1.2*cm, 8.5*cm, 1.5*cm, 2*cm, 2.3*cm, 2.5*cm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('ALIGN', (1,1), (1,-1), 'LEFT'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
-        ('GRID', (0,0), (-1,-2), 0.5, colors.grey),
-        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#fbbf24')),
-        ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,-1), (-1,-1), 10),
-    ]))
-    elements.append(table)
-
-    doc.build(elements, onFirstPage=pied_de_page, onLaterPages=pied_de_page)
-    buffer.seek(0)
-    return buffer.getvalue()
+    
+    pdf.set_xy(10, y_pos)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    y_pos += 11
+    pdf.set_draw_color(0, 0, 0)
+    pdf.line(10, y_pos, 100, y_pos)
+    y_pos += 1
+    pdf.set_font("Arial", "", 9)
+    pdf.set_xy(10, y_pos)
+    pdf.cell(90, 5, f"Ing. {ingenieur}", ln=True)
+    y_pos += 5
+    pdf.set_xy(10, y_pos)
+    pdf.cell(90, 5, f"Tel: {tel_ing}", ln=True)
+    y_pos += 5
+    pdf.set_xy(10, y_pos)
+    pdf.cell(90, 5, f"Adresse: {safe_pdf_txt(adresse_ing)}", ln=True)
+    y_pos += 8
+    pdf.set_font("Arial", "I", 9)
+    pdf.set_text_color(0, 102, 0)
+    pdf.set_xy(10, y_pos)
+    pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align="C")
+    
+    return bytes(pdf.output(dest='S'))
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode="", type_facture="Simple"):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
