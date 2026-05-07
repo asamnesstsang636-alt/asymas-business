@@ -346,7 +346,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
     else:
         ingenieur = "ESDRAS TSANGYA"
         tel_ing = "+243 972 888 690"
-        adresse_ing = "Beni, Nord-Kivu, RDC | Av. du 30 Juin, Q. Malepe | esdrastsangya@gmail.com"
+        adresse_ing = "Beni, Nord-Kivu, RDC | esdrastsangya@gmail.com"
     pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
     y_pos += 11
     pdf.set_draw_color(0, 0, 0)
