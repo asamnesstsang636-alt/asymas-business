@@ -1659,7 +1659,7 @@ if "📋 Devis" in tab_map:
                     else:
                         st.error("Client et Titre requis")
 
-        with tab_historique:
+          with tab_historique:
             st.subheader("📚 Historique des Devis - Opérations")
 
             col_f1, col_f2, col_f3 = st.columns(3)
@@ -1672,7 +1672,7 @@ if "📋 Devis" in tab_map:
 
             try:
                 query = supabase.table('devis').select("*")
-                if filtre_type!= "Tous":
+                if filtre_type != "Tous":
                     query = query.eq("type", filtre_type)
                 if recherche:
                     query = query.or_(f"client.ilike.%{recherche}%,titre.ilike.%{recherche}%")
@@ -1688,49 +1688,59 @@ if "📋 Devis" in tab_map:
                 elif tri_par == "Montant asc":
                     query = query.order("total", desc=False)
 
-                # Filtre les devis valides seulement
-                devis_list = [d for d in devis_list if d.get('numero') and d.get('client') and d.get('total') is not None]
+                devis_list = query.execute().data
+            except:
+                devis_list = []
 
-                if not devis_list:
-                   st.info("Aucun devis enregistré")
-                 else:
-                   for d in devis_list:
-                     with st.expander(f"{d['numero']} - {d['client']} - {d['total']:,.0f} {d['devise']} - {d.get('created_at','')[:10]}"):
-            
+            # Filtre les devis invalides pour éviter KeyError
+            devis_list = [d for d in devis_list if d.get('numero') and d.get('client')]
+
+            if not devis_list:
+                st.info("Aucun devis enregistré")
+            else:
+                for d in devis_list:
+                    numero = d.get('numero', 'N/A')
+                    client = d.get('client', 'N/A')
+                    total = d.get('total', 0)
+                    devise = d.get('devise', 'USD')
+                    created_at = d.get('created_at', '')
+                    
+                    with st.expander(f"{numero} - {client} - {total:,.0f} {devise} - {created_at[:10]}"):
+                        col_info1, col_info2, col_info3 = st.columns(3)
                         with col_info1:
-                            st.write(f"**Type:** {d['type']}")
-                            st.write(f"**Client:** {d['client']}")
-                            st.write(f"**Tél:** {d['telephone']}")
+                            st.write(f"**Type:** {d.get('type','N/A')}")
+                            st.write(f"**Client:** {client}")
+                            st.write(f"**Tél:** {d.get('telephone','N/A')}")
                         with col_info2:
-                            st.write(f"**Projet:** {d['titre']}")
-                            st.write(f"**Parcelle:** {d['parcelle']}")
-                            st.write(f"**Localisation:** {d['localisation']}")
+                            st.write(f"**Projet:** {d.get('titre','N/A')}")
+                            st.write(f"**Parcelle:** {d.get('parcelle','N/A')}")
+                            st.write(f"**Localisation:** {d.get('localisation','N/A')}")
                         with col_info3:
-                            st.write(f"**Main d'oeuvre:** {d['main_oeuvre']:,.0f} {d['devise']}")
-                            st.write(f"**TOTAL:** {d['total']:,.0f} {d['devise']}")
-                            st.write(f"**Par:** {d['created_by']}")
+                            st.write(f"**Main d'oeuvre:** {d.get('main_oeuvre',0):,.0f} {devise}")
+                            st.write(f"**TOTAL:** {total:,.0f} {devise}")
+                            st.write(f"**Par:** {d.get('created_by','N/A')}")
 
                         st.divider()
                         col_btn1, col_btn2, col_btn3 = st.columns(3)
 
                         with col_btn1:
                             pdf_bytes = generer_pdf_devis_consulting(
-                                d['numero'], d['type'], d['client'], d['titre'],
-                                d['parcelle'], d['localisation'], d['sections'],
-                                d['devise'], d['telephone'], d['main_oeuvre']
+                                numero, d.get('type','Industriel'), client, d.get('titre',''),
+                                d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                devise, d.get('telephone',''), d.get('main_oeuvre',0)
                             )
                             st.download_button(
                                 label="📥 Télécharger PDF",
                                 data=pdf_bytes,
-                                file_name=f"{d['numero']}.pdf",
+                                file_name=f"{numero}.pdf",
                                 mime="application/pdf",
-                                key=f"dl_{d['numero']}",
+                                key=f"dl_{numero}",
                                 width="stretch"
                             )
 
                         with col_btn2:
                             pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                            safe_id = d['numero'].replace('-', '_')
+                            safe_id = numero.replace('-', '_')
                             st.components.v1.html(f"""
                                 <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
                                     🖨️ IMPRIMER
@@ -1748,9 +1758,9 @@ if "📋 Devis" in tab_map:
 
                         with col_btn3:
                             if st.session_state.user_role in ["PDG", "admin"] or st.session_state.user_perms.get('supprimer', False):
-                                if st.button("🗑️ Supprimer", key=f"del_devis_{d['numero']}", width="stretch"):
+                                if st.button("🗑️ Supprimer", key=f"del_devis_{numero}", width="stretch"):
                                     try:
-                                        supabase.table('devis').delete().eq("numero", d['numero']).execute()
+                                        supabase.table('devis').delete().eq("numero", numero).execute()
                                         st.success("Devis supprimé")
                                         st.cache_data.clear()
                                         st.rerun()
@@ -1759,7 +1769,6 @@ if "📋 Devis" in tab_map:
                                         st.code(repr(e))
                             else:
                                 st.info("🔒 Suppression non autorisée")
-
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion des Utilisateurs")
