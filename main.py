@@ -12,6 +12,10 @@ st.markdown("""
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, TableStyle
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 import base64
 import io
 import qrcode
@@ -116,7 +120,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.set_xy(150, 20)
     pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
     y_pos = 45
-    pdf.set_text_color(0, 0, 0)
+    pdf.set_text_color(0, 0)
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 14)
     pdf.set_xy(10, y_pos)
@@ -167,7 +171,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
             pdf.set_xy(10, y_pos)
             pdf.cell(115, 7, nom, 1, 0, 'L')
             pdf.cell(25, 7, str(qte), 1, 0, 'C')
-            pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 1, 'R')
+            pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 'R')
             y_pos += 7
     else:
         pdf.set_xy(10, y_pos)
@@ -227,118 +231,9 @@ Tel: +243 995 105 623"""
     return bytes(pdf.output(dest='S'))
 
 def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=False, margin=10)
-    pdf.set_fill_color(20, 50, 40)
-    pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", "B", 20)
-    pdf.set_xy(10, 8)
-    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(10, 16)
-    pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-    pdf.set_xy(10, 21)
-    pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(150, 8)
-    pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
-    pdf.set_font("Arial", "", 10)
-    pdf.set_xy(150, 14)
-    pdf.cell(50, 6, safe_pdf_txt(numero), ln=True, align="R")
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(150, 20)
-    pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-    y_pos = 45
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_xy(10, y_pos)
-    pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
-    y_pos = pdf.get_y() + 3
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(10, y_pos)
-    if parcelle:
-        pdf.cell(0, 6, f"PARCELLE N {safe_pdf_txt(parcelle)}", ln=True)
-        y_pos += 6
-    pdf.set_xy(10, y_pos)
-    if localisation:
-        pdf.cell(0, 6, f"LOCALISATION: {safe_pdf_txt(localisation)}", ln=True)
-        y_pos += 6
-    pdf.set_xy(10, y_pos)
-    pdf.cell(0, 6, f"CLIENT: {safe_pdf_txt(client)}", ln=True)
-    y_pos += 6
-    if tel_client:
-        pdf.set_xy(10, y_pos)
-        pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True)
-        y_pos += 6
-    y_pos += 5
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(220, 220, 220)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(10, 7, "N", 1, 0, 'C', True)
-    pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
-    pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
-    pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
-    pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
-    pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
-    y_pos += 7
-    pdf.set_font("Arial", "", 8)
-    grand_total = 0
-    for section in details_sections:
-        if y_pos > 240:
-            pdf.add_page()
-            y_pos = 30
-        pdf.set_font("Arial", "B", 9)
-        pdf.set_fill_color(200, 200, 200)
-        pdf.set_xy(10, y_pos)
-        pdf.cell(10, 6, section['numero'], 1, 0, 'L', True)
-        pdf.cell(180, 6, safe_pdf_txt(section['titre']), 1, 1, 'L', True)
-        y_pos += 6
-        pdf.set_font("Arial", "", 8)
-        sous_total = 0
-        for item in section['items']:
-            if y_pos > 250:
-                pdf.add_page()
-                y_pos = 30
-            qte = item.get('qte', 0)
-            pu = item.get('pu', 0)
-            total_item = qte * pu
-            sous_total += total_item
-            pdf.set_xy(10, y_pos)
-            pdf.cell(10, 5, item.get('num', ''), 1, 0, 'C')
-            pdf.cell(90, 5, safe_pdf_txt(item.get('designation', '')), 1, 0, 'L')
-            pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C')
-            pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
-            pdf.cell(25, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R')
-            pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R')
-            y_pos += 5
-        pdf.set_font("Arial", "B", 8)
-        pdf.set_xy(10, y_pos)
-        pdf.cell(160, 6, "Sous Total", 1, 0, 'R', True)
-        pdf.cell(30, 6, f"{sous_total:,.0f}", 1, 1, 'R', True)
-        y_pos += 6
-        grand_total += sous_total
-    if main_oeuvre > 0:
-        if y_pos > 250:
-            pdf.add_page()
-            y_pos = 30
-        pdf.set_xy(10, y_pos)
-        pdf.cell(160, 6, "MAIN D'OEUVRE", 1, 0, 'R')
-        pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 1, 'R')
-        y_pos += 6
-        grand_total += main_oeuvre
-    pdf.set_fill_color(255, 204, 0)
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(160, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(30, 8, f"{grand_total:,.0f}", 1, 1, 'R', True)
-    y_pos += 15
-    if y_pos > 220:
-        pdf.add_page()
-        y_pos = 30
-    pdf.set_xy(10, y_pos)
-    pdf.set_font("Arial", "B", 10)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=3*cm)
+
     if type_devis == "Industriel":
         ingenieur = "SAMY TSANGYA"
         tel_ing = "+243 995 105 623"
@@ -347,26 +242,99 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
         ingenieur = "ESDRAS TSANGYA"
         tel_ing = "+243 972 888 690"
         adresse_ing = "Beni, Nord-Kivu, RDC | Av. du 30 Juin, Q. Malepe | esdrastsangya@gmail.com"
-    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-    y_pos += 11
-    pdf.set_draw_color(0, 0, 0)
-    pdf.line(10, y_pos, 100, y_pos)
-    y_pos += 1
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Ing. {ingenieur}", ln=True)
-    y_pos += 5
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Tel: {tel_ing}", ln=True)
-    y_pos += 5
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Adresse: {safe_pdf_txt(adresse_ing)}", ln=True)
-    y_pos += 8
-    pdf.set_font("Arial", "I", 9)
-    pdf.set_text_color(0, 102, 0)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align="C")
-    return bytes(pdf.output(dest='S'))
+
+    def pied_de_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica-Bold', 9)
+        y = 2.5*cm
+        canvas.drawString(2*cm, y, "SIGNATURE INGENIEUR RESPONSABLE:")
+        y -= 0.4*cm
+        canvas.setFont('Helvetica', 8)
+        canvas.drawString(2*cm, y, f"Ing. {ingenieur}")
+        y -= 0.4*cm
+        canvas.drawString(2*cm, y, f"Tel: {tel_ing}")
+        y -= 0.4*cm
+        canvas.drawString(2*cm, y, f"Adresse: {adresse_ing}")
+        canvas.setFont('Helvetica-Oblique', 7)
+        canvas.drawRightString(19*cm, 1*cm, "Devis estimatif - Valable 30 jours")
+        canvas.drawRightString(19*cm, 28*cm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("ASYMAS CONSULTING", ParagraphStyle('Titre', fontSize=16, textColor=colors.HexColor('#1e3a8a'), fontName='Helvetica-Bold', alignment=1)))
+    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Paragraph(f"DEVIS N° {numero}", ParagraphStyle('Num', fontSize=12, alignment=1)))
+    elements.append(Spacer(1, 0.5*cm))
+
+    info_data = [
+        ["Client:", client, "Titre:", titre_projet],
+        ["Téléphone:", tel_client, "Parcelle:", parcelle],
+        ["Localisation:", localisation, "Date:", date.today().strftime('%d/%m/%Y')]
+    ]
+    info_table = Table(info_data, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
+    info_table.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTNAME', (2,0), (2,-1), 'Helvetica-Bold'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.5*cm))
+
+    # TABLEAU 6 COLONNES SANS AV NI Q
+    data = [['N°', 'DÉSIGNATION DES OUVRAGES', 'Unité', 'Qté', 'Prix U', 'Prix total']]
+    grand_total = 0
+
+    for section in details_sections:
+        data.append([section['numero'], section['titre'].upper(), '', '', '', ''])
+        sous_total = 0
+        for item in section['items']:
+            qte = item.get('qte', 0)
+            pu = item.get('pu', 0)
+            total_item = qte * pu
+            sous_total += total_item
+            data.append([
+                item.get('num', ''),
+                item.get('designation', ''),
+                item.get('unite', ''),
+                f"{qte:,.2f}" if qte else "",
+                f"{pu:,.0f}" if pu else "",
+                f"{total_item:,.0f}" if total_item else ""
+            ])
+        data.append(['', 'SOUS-TOTAL', '', '', '', f"{sous_total:,.0f}"])
+        grand_total += sous_total
+        data.append(['', '', '', '', '', ''])
+
+    if main_oeuvre > 0:
+        data.append(['', "MAIN D'OEUVRE", '', '', '', f"{main_oeuvre:,.0f}"])
+        grand_total += main_oeuvre
+
+    data.append(['', f'TOTAL GENERAL ({devise})', '', '', '', f"{grand_total:,.0f}"])
+
+    table = Table(data, colWidths=[1.2*cm, 8.5*cm, 1.5*cm, 2*cm, 2.3*cm, 2.5*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN', (1,1), (1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('GRID', (0,0), (-1,-2), 0.5, colors.grey),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#fbbf24')),
+        ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,-1), (-1,-1), 10),
+    ]))
+    elements.append(table)
+
+    doc.build(elements, onFirstPage=pied_de_page, onLaterPages=pied_de_page)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode="", type_facture="Simple"):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -1060,7 +1028,7 @@ if "🚗 Automobile" in tab_map:
                     st.info("Panier vide")
                 else:
                     for idx, item in enumerate(st.session_state.panier_voiture):
-                        col1, col2, col3, col4 = st.columns([3,1,1,1])
+                        col1, col2, col3, col4 = st.columns([3,1,1])
                         col1.write(f"**{item['nom']}** | {item.get('qualite','')} | {item['plaque']}")
                         col2.write(f"Qté: {item['qte']}")
                         col3.write(f"{item['pu'] * item['qte']:,.2f} $")
@@ -1256,193 +1224,97 @@ if "💰 Comptabilité" in tab_map:
                         st.error("Erreur ajout")
                         st.code(repr(e))
         st.divider()
+        st.subheader("📊 Relevé par Catégorie")
         if df_compta.empty:
-            st.info("Aucune opération")
+            st.info("Aucune opération enregistrée")
         else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
             col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_compta")
-            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_compta")
-            filtre_nom = col_f3.text_input("👤 Nom Client", placeholder="Tape un nom...", key="filtre_nom_compta")
+            with col_f1:
+                type_filtre = st.selectbox("Type", ["Tous", "Revenu", "Dépense"], key="filtre_type_compta")
+            with col_f2:
+                cat_filtre = st.text_input("Filtrer Catégorie", key="filtre_cat_compta")
+            with col_f3:
+                date_debut = st.date_input("Du", value=date.today() - timedelta(days=30), key="date_debut_compta")
+                date_fin = st.date_input("Au", value=date.today(), key="date_fin_compta")
 
-            df_filtre_compta = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-            if filtre_nom:
-                df_filtre_compta = df_filtre_compta[df_filtre_compta['description'].str.contains(filtre_nom, case=False, na=False)]
+            df_filtre = df_compta.copy()
+            if type_filtre!= "Tous":
+                df_filtre = df_filtre[df_filtre['type'] == type_filtre]
+            if cat_filtre:
+                df_filtre = df_filtre[df_filtre['categorie'].str.contains(cat_filtre, case=False, na=False)]
+            if 'date' in df_filtre.columns:
+                df_filtre = df_filtre[(df_filtre['date'] >= pd.to_datetime(date_debut)) & (df_filtre['date'] <= pd.to_datetime(date_fin))]
 
-            col_t1, col_t2, col_t3 = st.columns(3)
-            total_fc = df_filtre_compta[df_filtre_compta.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_filtre_compta[df_filtre_compta.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_filtre_compta[df_filtre_compta.get('devise','FC')=='€']['montant'].sum()
-            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
-            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
-            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            st.dataframe(df_filtre, use_container_width=True, hide_index=True)
+
+            if not df_filtre.empty and 'montant' in df_filtre.columns:
+                total_rev = df_filtre[df_filtre['type']=='Revenu']['montant'].sum()
+                total_dep = df_filtre[df_filtre['type']=='Dépense']['montant'].sum()
+                solde = total_rev - total_dep
+                col1, col2, col3 = st.columns(3)
+                col1.metric("💰 Total Revenus", f"{total_rev:,.0f} FC")
+                col2.metric("💸 Total Dépenses", f"{total_dep:,.0f} FC")
+                col3.metric("💵 Solde", f"{solde:,.0f} FC", delta=f"{solde:,.0f}")
+
+                excel_bytes = generer_excel_pro(df_filtre, "Relevé Comptable", total_rev, total_dep, solde)
+                st.download_button(
+                    label="📥 Télécharger Excel",
+                    data=excel_bytes,
+                    file_name=f"releve_compta_{date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
             st.divider()
-
-            categories = df_filtre_compta.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) == 0:
-                st.info("Aucune opération trouvée avec ces filtres")
+            st.subheader("🗑️ Supprimer une Opération")
+            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                if not df_filtre.empty:
+                    for _, row in df_filtre.iterrows():
+                        with st.expander(f"{row['date'].strftime('%d/%m/%Y')} - {row['type']} - {row.get('categorie','')} - {row['montant']:,.0f} FC"):
+                            st.write(f"**Description:** {row.get('description','')}")
+                            st.write(f"**Utilisateur:** {row.get('utilisateur','')}")
+                            if st.button("🗑️ Supprimer cette opération", key=f"del_compta_{row['id']}"):
+                                try:
+                                    supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                    st.success("Opération supprimée")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
             else:
-                for cat in sorted(categories):
-                    df_cat = df_filtre_compta[df_filtre_compta.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    total_cat = total_cat_fc + total_cat_usd + total_cat_eur
-
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations - Total: {total_cat:,.0f}", expanded=False):
-                        colonnes_affiche = ['date', 'type', 'description', 'montant', 'devise']
-                        if 'utilisateur' in df_cat.columns:
-                            colonnes_affiche.append('utilisateur')
-                        st.dataframe(df_cat[colonnes_affiche], use_container_width=True, hide_index=True)
-
-                        col_dl1, col_dl2 = st.columns(2)
-                        excel_bytes_cat = generer_excel_pro(
-                            df_cat,
-                            f"Releve {cat} {date_debut}-{date_fin}",
-                            df_cat[df_cat['type']=='Revenu']['montant'].sum(),
-                            df_cat[df_cat['type']=='Dépense']['montant'].sum(),
-                            df_cat[df_cat['type']=='Revenu']['montant'].sum() - df_cat[df_cat['type']=='Dépense']['montant'].sum()
-                        )
-                        safe_cat = str(cat).replace(" ", "_").replace("/", "_")
-                        col_dl1.download_button(
-                            label=f"📥 {cat} - EXCEL",
-                            data=excel_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            width="stretch",
-                            key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}"
-                        )
-
-                        pdf_cat = FPDF()
-                        pdf_cat.add_page()
-                        pdf_cat.set_fill_color(20, 50, 40)
-                        pdf_cat.rect(0, 0, 210, 35, 'F')
-                        pdf_cat.set_text_color(255, 255, 255)
-                        pdf_cat.set_font("Arial", "B", 20)
-                        pdf_cat.set_xy(10, 8)
-                        pdf_cat.cell(0, 10, "ASYMAS BUSINESS", ln=True)
-                        pdf_cat.set_font("Arial", "", 9)
-                        pdf_cat.set_xy(10, 16)
-                        pdf_cat.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-                        pdf_cat.set_font("Arial", "B", 10)
-                        pdf_cat.set_xy(150, 8)
-                        filtre_txt = f"Filtre: {filtre_nom}" if filtre_nom else "Tous"
-                        pdf_cat.cell(50, 6, f"Periode: {date_debut} au {date_fin}", ln=True, align="R")
-                        pdf_cat.set_xy(150, 14)
-                        pdf_cat.cell(50, 6, filtre_txt, ln=True, align="R")
-                        pdf_cat.ln(15)
-                        pdf_cat.set_text_color(0, 0, 0)
-                        pdf_cat.set_fill_color(255, 204, 0)
-                        pdf_cat.set_font("Arial", "B", 14)
-                        pdf_cat.cell(0, 10, f"RELEVE COMPTABLE - {safe_pdf_txt(cat).upper()}", ln=True, fill=True)
-                        pdf_cat.ln(5)
-                        pdf_cat.set_font("Arial", "B", 11)
-                        pdf_cat.cell(0, 8, f"Total FC: {total_cat_fc:,.0f} | USD: {total_cat_usd:,.0f} | EUR: {total_cat_eur:,.0f}", ln=True)
-                        pdf_cat.ln(3)
-                        pdf_cat.set_font("Arial", "B", 9)
-                        pdf_cat.cell(20, 7, "Date", 1)
-                        pdf_cat.cell(20, 7, "Type", 1)
-                        pdf_cat.cell(70, 7, "Description", 1)
-                        pdf_cat.cell(25, 7, "Montant", 1)
-                        pdf_cat.cell(15, 7, "Dev", 1)
-                        pdf_cat.cell(30, 7, "Utilisateur", 1, ln=True)
-                        pdf_cat.set_font("Arial", "", 8)
-                        for _, row in df_cat.iterrows():
-                            try:
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('date','')), 1)
-                                pdf_cat.cell(20, 6, safe_pdf_txt(row.get('type','')), 1)
-                                desc = safe_pdf_txt(row.get('description',''))[:35]
-                                pdf_cat.cell(70, 6, desc, 1)
-                                pdf_cat.cell(25, 6, f"{row.get('montant',0):,.0f}", 1)
-                                pdf_cat.cell(15, 6, safe_pdf_txt(row.get('devise','FC')), 1)
-                                pdf_cat.cell(30, 6, safe_pdf_txt(row.get('utilisateur','N/A')), 1, ln=True)
-                            except:
-                                continue
-                        pdf_bytes_cat = bytes(pdf_cat.output(dest='S'))
-                        col_dl2.download_button(
-                            label=f"📥 {cat} - PDF",
-                            data=pdf_bytes_cat,
-                            file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.pdf",
-                            mime="application/pdf",
-                            width="stretch",
-                            key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
-                        )
+                st.info("🔒 Suppression réservée au PDG/Admin")
 
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Historique des Factures")
-        df_factures_hist = df_compta[df_compta.get('numero_facture', pd.Series()).notna() & (df_compta.get('numero_facture', '')!= '')].copy()
-        if df_factures_hist.empty:
-            st.info("Aucune facture générée")
-        else:
-            col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut_fact = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
-            date_fin_fact = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
-            filtre_client = col_f3.text_input("👤 Client", placeholder="Nom client...", key="filtre_client_fact")
+        st.markdown("## 📄 Factures Proforma")
+        st.info("Génère des factures depuis les onglets Commerce, Immobilier, Automobile")
 
-            df_factures_hist = df_factures_hist[(df_factures_hist['date'] >= str(date_debut_fact)) & (df_factures_hist['date'] <= str(date_fin_fact))]
-            if filtre_client:
-                df_factures_hist = df_factures_hist[df_factures_hist['description'].str.contains(filtre_client, case=False, na=False)]
-
-            st.info(f"📊 {len(df_factures_hist)} facture(s) trouvée(s)")
-
-            for _, row in df_factures_hist.iterrows():
-                client_nom = row.get('client', row.get('description','Inconnu').split(' - ')[0] if ' - ' in str(row.get('description','')) else 'Inconnu')
-                with st.expander(f"{row.get('numero_facture', row.get('numero','N/A'))} - {client_nom} - {row['montant']:,.0f} {row.get('devise','FC')} - {row.get('statut','')}"):
-                    col1, col2 = st.columns([2,1])
+        if not df_factures.empty:
+            st.subheader("📚 Historique des Factures")
+            for _, row in df_factures.iterrows():
+                with st.expander(f"{row['numero']} - {row['client']} - {row['montant']:,.0f} {row['devise']}"):
+                    col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.write(f"**Client:** {client_nom} | **Tel:** {row.get('telephone','')}")
-                        st.write(f"**Type:** {row.get('categorie', row.get('type',''))} | **Montant:** {row['montant']:,.0f} {row.get('devise','FC')}")
-                        st.write(f"**Description:** {row.get('description','')}")
-                        st.write(f"**Date:** {row.get('date','')} | **Par:** {row.get('utilisateur','')}")
-
+                        st.write(f"**Type:** {row['type']}")
+                        st.write(f"**Date:** {row['date']}")
                     with col2:
-                        if st.button(f"📥 Télécharger PDF", key=f"dl_old_{row['id']}", width="stretch"):
-                            details_list = []
-                            if row.get('details'):
+                        st.write(f"**Client:** {row['client']}")
+                        st.write(f"**Total:** {row['montant']:,.0f} {row['devise']}")
+                    with col3:
+                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                            if st.button("🗑️ Supprimer Facture", key=f"del_fact_{row['id']}", width="stretch"):
                                 try:
-                                    details_list = json.loads(row['details']) if isinstance(row['details'], str) else row['details']
-                                except:
-                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
-                            else:
-                                details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
-
-                            type_pdf = "Simple" if "Simple" in str(row.get('statut','')) else "Proforma"
-                            pdf_bytes = generer_pdf_facture(
-                                row.get('numero_facture', row.get('numero','N/A')),
-                                row.get('categorie', row.get('type','')),
-                                client_nom,
-                                details_list,
-                                row['montant'],
-                                row.get('devise','FC'),
-                                row.get('telephone','+243...'),
-                                "",
-                                type_pdf
-                            )
-                            st.download_button(
-                                "💾 Sauvegarder PDF",
-                                data=pdf_bytes,
-                                file_name=f"{row.get('numero_facture', row.get('numero','facture'))}.pdf",
-                                mime="application/pdf",
-                                key=f"save_pdf_{row['id']}",
-                                width="stretch"
-                            )
-
-                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                            st.components.v1.html(f"""
-                                <button onclick="printPDF()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
-                                    🖨️ IMPRIMER
-                                </button>
-                                <script>
-                                function printPDF() {{
-                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                    const win = window.open('', '_blank');
-                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                    win.document.close();
-                                    setTimeout(() => {{ win.print(); }}, 1000);
-                                }}
-                                </script>
-                            """, height=50)
+                                    supabase.table("factures_proforma").delete().eq("id", int(row['id'])).execute()
+                                    st.success("Facture supprimée")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
+                        else:
+                            st.info("🔒 Suppression non autorisée")
+        else:
+            st.info("Aucune facture générée")
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
@@ -1457,131 +1329,124 @@ if "📋 Devis" in tab_map:
         if 'devis_bat_main_oeuvre' not in st.session_state:
             st.session_state.devis_bat_main_oeuvre = 1173.0
 
-        tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
+        tab_nouveau, tab_historique = st.tabs(["➕ Nouveau Devis", "📚 Historique & Opérations"])
 
-        with tab_industriel:
-            st.session_state.devis_type = "Industriel"
-            st.subheader("🏭 Nouveau Devis Industriel")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                client_devis = st.text_input("👤 Client", key="client_devis_ind")
-                tel_client_devis = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_ind")
-            with col2:
-                titre_devis = st.text_input("📋 Titre Projet", key="titre_devis_ind")
-                parcelle_devis = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_ind")
-            with col3:
-                localisation_devis = st.text_input("📍 Localisation", key="loc_devis_ind")
-                devise_devis = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_ind")
+        with tab_nouveau:
+            tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
-            st.divider()
-            st.subheader("📊 Sections du Devis")
+            with tab_industriel:
+                st.session_state.devis_type = "Industriel"
+                st.subheader("🏭 Nouveau Devis Industriel")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    client_devis = st.text_input("👤 Client", key="client_devis_ind")
+                    tel_client_devis = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_ind")
+                with col2:
+                    titre_devis = st.text_input("📋 Titre Projet", key="titre_devis_ind")
+                    parcelle_devis = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_ind")
+                with col3:
+                    localisation_devis = st.text_input("📍 Localisation", key="loc_devis_ind")
+                    devise_devis = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_ind")
 
-            col_add1, col_add2 = st.columns([3,1])
-            with col_add1:
-                new_section_titre = st.text_input("Nouvelle Section", placeholder="Ex: TRAVAUX DE CONSTRUCTION", key="new_sec_titre")
-            with col_add2:
-                new_section_num = st.text_input("N°", placeholder="A", key="new_sec_num")
-            if st.button("➕ Ajouter Section", key="add_section_ind"):
-                if new_section_titre:
-                    st.session_state.devis_sections.append({
-                        "numero": new_section_num,
-                        "titre": new_section_titre,
-                        "items": []
-                    })
-                    st.rerun()
+                st.divider()
+                st.subheader("📊 Sections du Devis")
 
-            for idx, section in enumerate(st.session_state.devis_sections):
-                with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2])
-                    with col1:
-                        num_item = st.text_input("N°", key=f"num_{idx}")
-                    with col2:
-                        design = st.text_input("Désignation", key=f"des_{idx}")
-                    with col3:
-                        unite = st.text_input("Unité", key=f"unit_{idx}")
-                    with col4:
-                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_{idx}")
-                    with col5:
-                        pu = st.number_input("Prix U", min_value=0.0, key=f"pu_{idx}")
-                    with col6:
-                        if st.button("➕ Ligne", key=f"add_item_{idx}"):
-                            if design:
-                                section['items'].append({
-                                    "num": num_item,
-                                    "designation": design,
-                                    "unite": unite,
-                                    "qte": qte,
-                                    "pu": pu
-                                })
-                                st.rerun()
-
-                    if section['items']:
-                        df_items = pd.DataFrame(section['items'])
-                        df_items['total'] = df_items['qte'] * df_items['pu']
-                        st.dataframe(df_items, use_container_width=True, hide_index=True)
-                        st.write(f"**Sous-total: {df_items['total'].sum():,.0f} {devise_devis}**")
-
-                    col_del, col_space = st.columns([1,5])
-                    if col_del.button("🗑️ Supprimer Section", key=f"del_sec_{idx}"):
-                        st.session_state.devis_sections.pop(idx)
+                col_add1, col_add2 = st.columns([3,1])
+                with col_add1:
+                    new_section_titre = st.text_input("Nouvelle Section", placeholder="Ex: TRAVAUX DE CONSTRUCTION", key="new_sec_titre")
+                with col_add2:
+                    new_section_num = st.text_input("N°", placeholder="A", key="new_sec_num")
+                if st.button("➕ Ajouter Section", key="add_section_ind"):
+                    if new_section_titre:
+                        st.session_state.devis_sections.append({
+                            "numero": new_section_num,
+                            "titre": new_section_titre,
+                            "items": []
+                        })
                         st.rerun()
 
-            st.divider()
-            main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_ind")
+                for idx, section in enumerate(st.session_state.devis_sections):
+                    with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
+                        col1, col2, col3, col4, col5, col6 = st.columns([1,4,2])
+                        with col1:
+                            num_item = st.text_input("N°", key=f"num_{idx}")
+                        with col2:
+                            design = st.text_input("Désignation", key=f"des_{idx}")
+                        with col3:
+                            unite = st.text_input("Unité", key=f"unit_{idx}")
+                        with col4:
+                            qte = st.number_input("Qté", min_value=0.0, key=f"qte_{idx}")
+                        with col5:
+                            pu = st.number_input("Prix U", min_value=0.0, key=f"pu_{idx}")
+                        with col6:
+                            if st.button("➕ Ligne", key=f"add_item_{idx}"):
+                                if design:
+                                    section['items'].append({
+                                        "num": num_item,
+                                        "designation": design,
+                                        "unite": unite,
+                                        "qte": qte,
+                                        "pu": pu
+                                    })
+                                    st.rerun()
 
-            if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
-                if client_devis and titre_devis and st.session_state.devis_sections:
-                    numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    pdf_bytes = generer_pdf_devis_consulting(
-                        numero_devis, "Industriel", client_devis, titre_devis,
-                        parcelle_devis, localisation_devis, st.session_state.devis_sections,
-                        devise_devis, tel_client_devis, main_oeuvre
-                    )
-                    st.success(f"✅ Devis généré : {numero_devis}")
-                    st.download_button(
-                        label="📥 Télécharger Devis PDF",
-                        data=pdf_bytes,
-                        file_name=f"{numero_devis}.pdf",
-                        mime="application/pdf",
-                        width="stretch",
-                        key="dl_devis_ind"
-                    )
-                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LE DEVIS
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
-                else:
-                    st.error("Client, Titre et au moins 1 section requis")
+                        if section['items']:
+                            df_items = pd.DataFrame(section['items'])
+                            df_items['total'] = df_items['qte'] * df_items['pu']
+                            st.dataframe(df_items, use_container_width=True, hide_index=True)
+                            st.write(f"**Sous-total: {df_items['total'].sum():,.0f} {devise_devis}**")
 
-        with tab_batiment:
-            st.session_state.devis_type = "Bâtiment"
-            st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
-            
-            if not st.session_state.devis_bat_sections:
-                st.session_state.devis_bat_sections = [
-                    {
-                        "numero": "I",
-                        "titre": "Installation chantier / Demolitions",
-                        "items": [
+                        col_del, col_space = st.columns([1,5])
+                        if col_del.button("🗑️ Supprimer Section", key=f"del_sec_{idx}"):
+                            st.session_state.devis_sections.pop(idx)
+                            st.rerun()
+
+                st.divider()
+                main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_ind")
+
+                if st.button("📄 GÉNÉRER & ENREGISTRER DEVIS", type="primary", width="stretch", key="gen_devis_ind"):
+                    if client_devis and titre_devis and st.session_state.devis_sections:
+                        numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        total_devis = sum(item['qte']*item['pu'] for sec in st.session_state.devis_sections for item in sec['items']) + main_oeuvre
+
+                        try:
+                            supabase.table('devis').insert({
+                                "numero": numero_devis,
+                                "type": "Industriel",
+                                "client": client_devis,
+                                "titre": titre_devis,
+                                "parcelle": parcelle_devis,
+                                "localisation": localisation_devis,
+                                "devise": devise_devis,
+                                "telephone": tel_client_devis,
+                                "main_oeuvre": float(main_oeuvre),
+                                "sections": st.session_state.devis_sections,
+                                "total": float(total_devis),
+                                "created_by": st.session_state.get('user_name'),
+                                "created_at": datetime.now().isoformat()
+                            }).execute()
+
+                            st.success(f"✅ Devis enregistré : {numero_devis}")
+                            st.session_state.devis_sections = []
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+                    else:
+                        st.error("Client, Titre et au moins 1 section requis")
+
+            with tab_batiment:
+                st.session_state.devis_type = "Bâtiment"
+                st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
+
+                if not st.session_state.devis_bat_sections:
+                    st.session_state.devis_bat_sections = [
+                        {"numero": "I", "titre": "Installation chantier / Demolitions", "items": [
                             {"num": "", "designation": "Installationchantier", "unite": "ff", "qte": 1, "pu": 200},
                             {"num": "", "designation": "Demolitions", "unite": "ff", "qte": 1, "pu": 70}
-                        ]
-                    },
-                    {
-                        "numero": "II",
-                        "titre": "fondation",
-                        "items": [
+                        ]},
+                        {"numero": "II", "titre": "fondation", "items": [
                             {"num": "1", "designation": "moellon", "unite": "Canters", "qte": 9, "pu": 50},
                             {"num": "2", "designation": "sable", "unite": "Canters", "qte": 4, "pu": 40},
                             {"num": "3", "designation": "ciment", "unite": "sac", "qte": 23, "pu": 13.5},
@@ -1590,285 +1455,394 @@ if "📋 Devis" in tab_map:
                             {"num": "", "designation": "armature de 8", "unite": "pièce", "qte": 4, "pu": 8},
                             {"num": "6", "designation": "armature de 6", "unite": "pièce", "qte": 12, "pu": 3.5},
                             {"num": "7", "designation": "Fil à ligature", "unite": "kg", "qte": 16, "pu": 2.5}
-                        ]
-                    },
-                    {
-                        "numero": "III",
-                        "titre": "Élévation de mur et corniche",
-                        "items": [
+                        ]},
+                        {"numero": "III", "titre": "Élévation de mur et corniche", "items": [
                             {"num": "1", "designation": "bloc ciment", "unite": "pièce", "qte": 987, "pu": 1},
                             {"num": "2", "designation": "sable", "unite": "Canters", "qte": 5, "pu": 40},
                             {"num": "3", "designation": "ciment", "unite": "sac", "qte": 15, "pu": 13.5},
                             {"num": "4", "designation": "gravier", "unite": "Canters", "qte": 0.5, "pu": 70},
                             {"num": "5", "designation": "Barre Corniche de6", "unite": "pièce", "qte": 8, "pu": 3},
                             {"num": "6", "designation": "Fil à ligature", "unite": "kg", "qte": 6, "pu": 2}
-                        ]
-                    },
-                    {
-                        "numero": "IV",
-                        "titre": "Coffrage Colonne, Cornice et Socle",
-                        "items": [
+                        ]},
+                        {"numero": "IV", "titre": "Coffrage Colonne, Cornice et Socle", "items": [
                             {"num": "1", "designation": "socle et longrine", "unite": "pièce", "qte": 8, "pu": 7},
                             {"num": "2", "designation": "Colonne", "unite": "pièce", "qte": 18, "pu": 7},
                             {"num": "3", "designation": "Corniche", "unite": "pièce", "qte": 6, "pu": 7},
                             {"num": "4", "designation": "clous de8", "unite": "kg", "qte": 15, "pu": 2},
                             {"num": "5", "designation": "clous de10", "unite": "kg", "qte": 10, "pu": 2}
-                        ]
-                    },
-                    {
-                        "numero": "V",
-                        "titre": "Finissage",
-                        "items": [
+                        ]},
+                        {"numero": "V", "titre": "Finissage", "items": [
                             {"num": "", "designation": "ciment", "unite": "sac", "qte": 20, "pu": 13.5},
                             {"num": "", "designation": "sable", "unite": "Canters", "qte": 7, "pu": 40}
-                        ]
-                    }
-                ]
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
-                tel_client_devis_bat = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_bat")
-            with col2:
-                st.session_state.devis_bat_titre = st.text_input("📋 Titre du Devis", value=st.session_state.devis_bat_titre, key="titre_devis_bat")
-                parcelle_devis_bat = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_bat")
-            with col3:
-                localisation_devis_bat = st.text_input("📍 Localisation", key="loc_devis_bat")
-                devise_devis_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_bat")
+                        ]}
+                    ]
 
-            st.divider()
-            st.markdown("### 📊 Tableau Complet Éditable")
-
-            total_general = 0
-            
-            col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
-            col_h1.markdown("**no**")
-            col_h2.markdown("**désignation**")
-            col_h3.markdown("**unité**")
-            col_h4.markdown("**quantité**")
-            col_h5.markdown("**pu USD**")
-            col_h6.markdown("**PT USD**")
-            col_h7.markdown("")
-            st.divider()
-
-            for idx, section in enumerate(st.session_state.devis_bat_sections):
-                st.markdown(f"**{section['numero']}. {section['titre']}**")
-                
-                sous_total_sec = 0
-                for i, item in enumerate(section['items']):
-                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
-                    with col1:
-                        new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
-                        section['items'][i]['num'] = new_num
-                    with col2:
-                        new_des = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{i}", label_visibility="collapsed")
-                        section['items'][i]['designation'] = new_des
-                    with col3:
-                        options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
-                        new_unit = st.selectbox("Unité", options_unit, 
-                                               index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
-                                               key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
-                        section['items'][i]['unite'] = new_unit
-                    with col4:
-                        new_qte = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
-                        section['items'][i]['qte'] = new_qte
-                    with col5:
-                        new_pu = st.number_input("PU", value=float(item['pu']), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
-                        section['items'][i]['pu'] = new_pu
-                    with col6:
-                        pt = new_qte * new_pu
-                        st.markdown(f"**{pt:,.2f}**")
-                        sous_total_sec += pt
-                    with col7:
-                        if st.button("❌", key=f"del_item_bat_{idx}_{i}", help="Supprimer"):
-                            section['items'].pop(i)
-                            st.rerun()
-
-                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
+                    client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
+                    tel_client_devis_bat = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_bat")
                 with col2:
-                    design = st.text_input("Désignation", key=f"des_bat_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
+                    st.session_state.devis_bat_titre = st.text_input("📋 Titre du Devis", value=st.session_state.devis_bat_titre, key="titre_devis_bat")
+                    parcelle_devis_bat = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_bat")
                 with col3:
-                    unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"], key=f"unit_bat_{idx}_new", label_visibility="collapsed")
-                with col4:
-                    qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
-                with col5:
-                    pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
-                with col6:
-                    st.markdown(f"**{qte*pu:,.2f}**")
-                with col7:
-                    if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
-                        if design:
-                            section['items'].append({"num": num_item, "designation": design, "unite": unite, "qte": qte, "pu": pu})
-                            st.rerun()
+                    localisation_devis_bat = st.text_input("📍 Localisation", key="loc_devis_bat")
+                    devise_devis_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_bat")
 
-                col_st1, col_st2, col_st3 = st.columns([6.5, 1.5, 0.5])
-                col_st1.markdown(f"**sous-total**")
-                col_st2.markdown(f"**{sous_total_sec:,.2f}**")
-                total_general += sous_total_sec
+                st.divider()
+                st.markdown("### 📊 Tableau Complet Éditable")
+
+                total_general = 0
+
+                col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                col_h1.markdown("**no**")
+                col_h2.markdown("**désignation**")
+                col_h3.markdown("**unité**")
+                col_h4.markdown("**quantité**")
+                col_h5.markdown("**pu USD**")
+                col_h6.markdown("**PT USD**")
+                col_h7.markdown("")
                 st.divider()
 
-            col_add1, col_add2, col_add3 = st.columns([1,4,1])
-            with col_add1:
-                new_section_num_bat = st.text_input("N° Section", placeholder="VI", key="new_sec_num_bat", label_visibility="collapsed")
-            with col_add2:
-                new_section_titre_bat = st.text_input("Titre Section", placeholder="Nouvelle section...", key="new_sec_titre_bat", label_visibility="collapsed")
-            with col_add3:
-                if st.button("➕ Section", key="add_section_bat", width="stretch"):
-                    if new_section_titre_bat:
-                        st.session_state.devis_bat_sections.append({"numero": new_section_num_bat, "titre": new_section_titre_bat, "items": []})
-                        st.rerun()
+                for idx, section in enumerate(st.session_state.devis_bat_sections):
+                    st.markdown(f"**{section['numero']}. {section['titre']}**")
 
-            st.divider()
-            col_mo1, col_mo2, col_mo3 = st.columns(3)
-            with col_mo1:
-                st.metric("TOTAL MATERIAUX", f"{total_general:,.2f} {devise_devis_bat}")
-            with col_mo2:
-                st.session_state.devis_bat_main_oeuvre = st.number_input("Main d'oeuvre", value=st.session_state.devis_bat_main_oeuvre, min_value=0.0, key="mo_devis_bat", format="%.2f")
-            with col_mo3:
-                cout_total = total_general + st.session_state.devis_bat_main_oeuvre
-                st.metric("COUT TOTAL DU PROJET", f"{cout_total:,.2f} {devise_devis_bat}")
+                    sous_total_sec = 0
+                    for i, item in enumerate(section['items']):
+                        col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                        with col1:
+                            new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['num'] = new_num
+                        with col2:
+                            new_des = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['designation'] = new_des
+                        with col3:
+                            options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
+                            new_unit = st.selectbox("Unité", options_unit,
+                                                   index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
+                                                   key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['unite'] = new_unit
+                        with col4:
+                            new_qte = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['qte'] = new_qte
+                        with col5:
+                            new_pu = st.number_input("PU", value=float(item['pu']), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['pu'] = new_pu
+                        with col6:
+                            pt = new_qte * new_pu
+                            st.markdown(f"**{pt:,.2f}**")
+                            sous_total_sec += pt
+                        with col7:
+                            if st.button("❌", key=f"del_item_bat_{idx}_{i}", help="Supprimer"):
+                                section['items'].pop(i)
+                                st.rerun()
 
-            st.markdown("**Architecte VINCENT KALAVI**")
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                    with col1:
+                        num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
+                    with col2:
+                        design = st.text_input("Désignation", key=f"des_bat_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
+                    with col3:
+                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"], key=f"unit_bat_{idx}_new", label_visibility="collapsed")
+                    with col4:
+                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col5:
+                        pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col6:
+                        st.markdown(f"**{qte*pu:,.2f}**")
+                    with col7:
+                        if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
+                            if design:
+                                section['items'].append({"num": num_item, "designation": design, "unite": unite, "qte": qte, "pu": pu})
+                                st.rerun()
 
-            st.divider()
-            col_btn1, col_btn2, col_btn3 = st.columns(3)
-            with col_btn1:
-                if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_bat"):
+                    col_st1, col_st2, col_st3 = st.columns([6.5, 1.5, 0.5])
+                    col_st1.markdown(f"**sous-total**")
+                    col_st2.markdown(f"**{sous_total_sec:,.2f}**")
+                    total_general += sous_total_sec
+                    st.divider()
+
+                col_add1, col_add2, col_add3 = st.columns([1,4,1])
+                with col_add1:
+                    new_section_num_bat = st.text_input("N° Section", placeholder="VI", key="new_sec_num_bat", label_visibility="collapsed")
+                with col_add2:
+                    new_section_titre_bat = st.text_input("Titre Section", placeholder="Nouvelle section...", key="new_sec_titre_bat", label_visibility="collapsed")
+                with col_add3:
+                    if st.button("➕ Section", key="add_section_bat", width="stretch"):
+                        if new_section_titre_bat:
+                            st.session_state.devis_bat_sections.append({"numero": new_section_num_bat, "titre": new_section_titre_bat, "items": []})
+                            st.rerun()
+
+                st.divider()
+                col_mo1, col_mo2, col_mo3 = st.columns(3)
+                with col_mo1:
+                    st.metric("TOTAL MATERIAUX", f"{total_general:,.2f} {devise_devis_bat}")
+                with col_mo2:
+                    st.session_state.devis_bat_main_oeuvre = st.number_input("Main d'oeuvre", value=st.session_state.devis_bat_main_oeuvre, min_value=0.0, key="mo_devis_bat", format="%.2f")
+                with col_mo3:
+                    cout_total = total_general + st.session_state.devis_bat_main_oeuvre
+                    st.metric("COUT TOTAL DU PROJET", f"{cout_total:,.2f} {devise_devis_bat}")
+
+                st.divider()
+                if st.button("📄 GÉNÉRER & ENREGISTRER DEVIS", type="primary", width="stretch", key="gen_devis_bat"):
                     if client_devis_bat and st.session_state.devis_bat_titre:
                         numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        pdf_bytes = generer_pdf_devis_consulting(
-                            numero_devis, "Bâtiment", client_devis_bat, st.session_state.devis_bat_titre,
-                            parcelle_devis_bat, localisation_devis_bat, st.session_state.devis_bat_sections,
-                            devise_devis_bat, tel_client_devis_bat, st.session_state.devis_bat_main_oeuvre
-                        )
-                        st.session_state.pdf_devis_bat = pdf_bytes
-                        st.session_state.num_devis_bat = numero_devis
-                        st.success(f"✅ Devis généré : {numero_devis}")
-                        st.rerun()
+                        total_devis = sum(item['qte']*item['pu'] for sec in st.session_state.devis_bat_sections for item in sec['items']) + st.session_state.devis_bat_main_oeuvre
+
+                        try:
+                            supabase.table('devis').insert({
+                                "numero": numero_devis,
+                                "type": "Bâtiment",
+                                "client": client_devis_bat,
+                                "titre": st.session_state.devis_bat_titre,
+                                "parcelle": parcelle_devis_bat,
+                                "localisation": localisation_devis_bat,
+                                "devise": devise_devis_bat,
+                                "telephone": tel_client_devis_bat,
+                                "main_oeuvre": float(st.session_state.devis_bat_main_oeuvre),
+                                "sections": st.session_state.devis_bat_sections,
+                                "total": float(total_devis),
+                                "created_by": st.session_state.get('user_name'),
+                                "created_at": datetime.now().isoformat()
+                            }).execute()
+
+                            st.success(f"✅ Devis enregistré : {numero_devis}")
+                            st.session_state.devis_bat_sections = []
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
                     else:
                         st.error("Client et Titre requis")
 
-            with col_btn2:
-                if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat:
-                    st.download_button(
-                        label="📥 Télécharger PDF",
-                        data=st.session_state.pdf_devis_bat,
-                        file_name=f"{st.session_state.num_devis_bat}.pdf",
-                        mime="application/pdf",
-                        width="stretch",
-                        key="dl_devis_bat"
-                    )
+        with tab_historique:
+            st.subheader("📚 Historique des Devis - Opérations")
 
-            with col_btn3:
-                if st.button("🔄 Réinitialiser", key="reset_devis_bat", width="stretch"):
-                    st.session_state.devis_bat_sections = []
-                    if 'pdf_devis_bat' in st.session_state:
-                        del st.session_state.pdf_devis_bat
-                    st.rerun()
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
+                tri_par = st.selectbox("Trier par", ["Date desc", "Date asc", "Client A-Z", "Montant desc", "Montant asc"], key="tri_devis")
+            with col_f2:
+                filtre_type = st.selectbox("Type", ["Tous", "Industriel", "Bâtiment"], key="filtre_type_devis")
+            with col_f3:
+                recherche = st.text_input("🔍 Rechercher client/projet", key="search_devis")
 
-            if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat:
-                pdf_b64 = base64.b64encode(st.session_state.pdf_devis_bat).decode()
-                st.components.v1.html(f"""
-                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                        🖨️ IMPRIMER LE DEVIS
-                    </button>
-                    <script>
-                    function printPDF() {{
-                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                        const win = window.open('', '_blank');
-                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                        win.document.close();
-                        setTimeout(() => {{ win.print(); }}, 1000);
-                    }}
-                    </script>
-                """, height=60)
+            try:
+                query = supabase.table('devis').select("*")
+                if filtre_type!= "Tous":
+                    query = query.eq("type", filtre_type)
+                if recherche:
+                    query = query.or_(f"client.ilike.%{recherche}%,titre.ilike.%{recherche}%")
+
+                if tri_par == "Date desc":
+                    query = query.order("created_at", desc=True)
+                elif tri_par == "Date asc":
+                    query = query.order("created_at", desc=False)
+                elif tri_par == "Client A-Z":
+                    query = query.order("client", desc=False)
+                elif tri_par == "Montant desc":
+                    query = query.order("total", desc=True)
+                elif tri_par == "Montant asc":
+                    query = query.order("total", desc=False)
+
+                devis_list = query.execute().data
+            except:
+                devis_list = []
+
+            if not devis_list:
+                st.info("Aucun devis enregistré")
+            else:
+                for d in devis_list:
+                    with st.expander(f"{d['numero']} - {d['client']} - {d['total']:,.0f} {d['devise']} - {d['created_at'][:10]}"):
+                        col_info1, col_info2, col_info3 = st.columns(3)
+                        with col_info1:
+                            st.write(f"**Type:** {d['type']}")
+                            st.write(f"**Client:** {d['client']}")
+                            st.write(f"**Tél:** {d['telephone']}")
+                        with col_info2:
+                            st.write(f"**Projet:** {d['titre']}")
+                            st.write(f"**Parcelle:** {d['parcelle']}")
+                            st.write(f"**Localisation:** {d['localisation']}")
+                        with col_info3:
+                            st.write(f"**Main d'oeuvre:** {d['main_oeuvre']:,.0f} {d['devise']}")
+                            st.write(f"**TOTAL:** {d['total']:,.0f} {d['devise']}")
+                            st.write(f"**Par:** {d['created_by']}")
+
+                        st.divider()
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+
+                        with col_btn1:
+                            pdf_bytes = generer_pdf_devis_consulting(
+                                d['numero'], d['type'], d['client'], d['titre'],
+                                d['parcelle'], d['localisation'], d['sections'],
+                                d['devise'], d['telephone'], d['main_oeuvre']
+                            )
+                            st.download_button(
+                                label="📥 Télécharger PDF",
+                                data=pdf_bytes,
+                                file_name=f"{d['numero']}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_{d['numero']}",
+                                width="stretch"
+                            )
+
+                        with col_btn2:
+                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                            safe_id = d['numero'].replace('-', '_')
+                            st.components.v1.html(f"""
+                                <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                    🖨️ IMPRIMER
+                                </button>
+                                <script>
+                                function printPDF_{safe_id}() {{
+                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                    const win = window.open('', '_blank');
+                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                    win.document.close();
+                                    setTimeout(() => {{ win.print(); }}, 1000);
+                                }}
+                                </script>
+                            """, height=45)
+
+                        with col_btn3:
+                            if st.session_state.user_role in ["PDG", "admin"] or st.session_state.user_perms.get('supprimer', False):
+                                if st.button("🗑️ Supprimer", key=f"del_devis_{d['numero']}", width="stretch"):
+                                    try:
+                                        supabase.table('devis').delete().eq("numero", d['numero']).execute()
+                                        st.success("Devis supprimé")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                                        st.code(repr(e))
+                            else:
+                                st.info("🔒 Suppression non autorisée")
+
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs & Permissions")
-        if st.session_state.user_role!= "PDG":
-            st.error("🔒 Accès réservé au PDG uniquement")
-        else:
-            with st.expander("➕ Créer Nouvel Utilisateur"):
-                with st.form("form_user", clear_on_submit=True):
-                    c1, c2, c3 = st.columns(3)
-                    nom_user = c1.text_input("Nom Utilisateur")
-                    role_user = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "VENDEUR"])
-                    pwd_user = c3.text_input("Mot de passe", type="password")
+        st.markdown("## 👥 Gestion des Utilisateurs")
 
-                    st.markdown("**🔐 Permissions d'accès aux rubriques :**")
-                    col_p1, col_p2, col_p3 = st.columns(3)
-                    with col_p1:
-                        perm_dash = st.checkbox("📊 Dashboard", value=True, key="perm_dash")
-                        perm_com = st.checkbox("🛍️ Commerce", value=True, key="perm_com")
-                        perm_stock = st.checkbox("📦 Gestion Stock", key="perm_stock")
-                    with col_p2:
-                        perm_immo = st.checkbox("🏠 Immobilier", key="perm_immo")
-                        perm_auto = st.checkbox("🚗 Automobile", key="perm_auto")
-                        perm_parc = st.checkbox("🚘 Gestion Parc", key="perm_parc")
-                    with col_p3:
-                        perm_compta = st.checkbox("💰 Comptabilité", key="perm_compta")
-                        perm_fact = st.checkbox("📄 Factures", key="perm_fact")
-                        perm_devis = st.checkbox("📋 Devis", key="perm_devis")
+        st.info(f"Rôle actuel : {st.session_state.get('user_role')} | Nom : {st.session_state.get('user_name')}")
 
-                    cats_autorisees = st.multiselect("📂 Catégories autorisées", ["Immobilier", "Commerce", "Automobile", "Agriculture"])
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
+            with st.form("form_user", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom = c1.text_input("Nom complet")
+                role = c2.selectbox("Rôle", ["PDG", "admin", "ingénieur", "comptable", "commercial", "UTILISATEUR"])
+                password = c3.text_input("Mot de passe", type="password")
 
-                    if st.form_submit_button("💾 Créer Utilisateur"):
+                st.markdown("**Permissions par module :**")
+                c1, c2, c3, c4 = st.columns(4)
+                perm_dashboard = c1.checkbox("Dashboard", value=True)
+                perm_commerce = c1.checkbox("Commerce", value=True)
+                perm_stock = c1.checkbox("Stock", value=False)
+                perm_immobilier = c2.checkbox("Immobilier", value=False)
+                perm_automobile = c2.checkbox("Automobile", value=False)
+                perm_parc = c2.checkbox("Gestion Parc", value=False)
+                perm_comptabilite = c3.checkbox("Comptabilité", value=False)
+                perm_factures = c3.checkbox("Factures", value=False)
+                perm_devis = c3.checkbox("Devis", value=False)
+                perm_users = c4.checkbox("Utilisateurs", value=False)
+                perm_supprimer = c4.checkbox("Droit Suppression", value=False)
+
+                if st.form_submit_button("💾 Créer Utilisateur", type="primary"):
+                    if nom and password:
+                        permissions = {
+                            "dashboard": perm_dashboard,
+                            "commerce": perm_commerce,
+                            "stock": perm_stock,
+                            "immobilier": perm_immobilier,
+                            "automobile": perm_automobile,
+                            "parc": perm_parc,
+                            "comptabilite": perm_comptabilite,
+                            "factures": perm_factures,
+                            "devis_industriel": perm_devis,
+                            "devis_batiment": perm_devis,
+                            "users": perm_users,
+                            "supprimer": perm_supprimer
+                        }
                         try:
-                            perms_dict = {
-                                "dashboard": perm_dash,
-                                "commerce": perm_com,
-                                "stock": perm_stock,
-                                "immobilier": perm_immo,
-                                "automobile": perm_auto,
-                                "parc": perm_parc,
-                                "comptabilite": perm_compta,
-                                "factures": perm_fact,
-                                "devis_industriel": perm_devis,
-                                "devis_batiment": perm_devis,
-                                "supprimer": role_user == "PDG"
-                            }
                             supabase.table("utilisateurs").insert({
-                                "nom": nom_user,
-                                "role": role_user,
-                                "password": pwd_user,
-                                "permissions": perms_dict,
-                                "categories_autorisees": cats_autorisees
+                                "nom": nom,
+                                "role": role,
+                                "password": password,
+                                "permissions": permissions,
+                                "categories_autorisees": []
                             }).execute()
-                            st.success(f"✅ Utilisateur {nom_user} créé")
+                            st.success(f"Utilisateur {nom} créé avec rôle {role}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur création")
                             st.code(repr(e))
+                    else:
+                        st.error("Nom et mot de passe obligatoires")
 
-            st.divider()
-            st.subheader("📋 Liste des Utilisateurs")
-            if df_utilisateurs.empty:
-                st.info("Aucun utilisateur")
-            else:
-                for _, user in df_utilisateurs.iterrows():
-                    with st.expander(f"👤 {user['nom']} - {user['role']}"):
-                        perms_user = user.get('permissions', {})
-                        if isinstance(perms_user, str):
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+
+        if df_utilisateurs.empty:
+            st.warning("Aucun utilisateur dans la base. Crée ton premier compte PDG ci-dessus.")
+        else:
+            for _, row in df_utilisateurs.iterrows():
+                with st.expander(f"{row['nom']} - {row['role']}"):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_user_{row['id']}")
+                        new_role = st.selectbox("Rôle", ["PDG", "admin", "ingénieur", "comptable", "commercial", "UTILISATEUR"],
+                                               index=["PDG", "admin", "ingénieur", "comptable", "commercial", "UTILISATEUR"].index(row['role']) if row['role'] in ["PDG", "admin", "ingénieur", "comptable", "commercial", "UTILISATEUR"] else 0,
+                                               key=f"role_user_{row['id']}")
+                    with c2:
+                        new_password = st.text_input("Nouveau MDP", type="password", key=f"pwd_user_{row['id']}", help="Laisser vide pour ne pas changer")
+
+                    perms = row.get('permissions', {})
+                    if isinstance(perms, str):
+                        try: perms = json.loads(perms)
+                        except: perms = {}
+
+                    st.markdown("**Permissions :**")
+                    c1, c2, c3, c4 = st.columns(4)
+                    perm_dashboard = c1.checkbox("Dashboard", value=perms.get('dashboard', True), key=f"perm_dash_{row['id']}")
+                    perm_commerce = c1.checkbox("Commerce", value=perms.get('commerce', True), key=f"perm_com_{row['id']}")
+                    perm_stock = c1.checkbox("Stock", value=perms.get('stock', False), key=f"perm_stock_{row['id']}")
+                    perm_immobilier = c2.checkbox("Immobilier", value=perms.get('immobilier', False), key=f"perm_immo_{row['id']}")
+                    perm_automobile = c2.checkbox("Automobile", value=perms.get('automobile', False), key=f"perm_auto_{row['id']}")
+                    perm_parc = c2.checkbox("Gestion Parc", value=perms.get('parc', False), key=f"perm_parc_{row['id']}")
+                    perm_comptabilite = c3.checkbox("Comptabilité", value=perms.get('comptabilite', False), key=f"perm_compta_{row['id']}")
+                    perm_factures = c3.checkbox("Factures", value=perms.get('factures', False), key=f"perm_fact_{row['id']}")
+                    perm_devis = c3.checkbox("Devis", value=perms.get('devis_industriel', False), key=f"perm_devis_{row['id']}")
+                    perm_users = c4.checkbox("Utilisateurs", value=perms.get('users', False), key=f"perm_users_{row['id']}")
+                    perm_supprimer = c4.checkbox("Droit Suppression", value=perms.get('supprimer', False), key=f"perm_del_{row['id']}")
+
+                    c1, c2 = st.columns(2)
+                    if c1.button("✏️ Modifier", key=f"mod_user_{row['id']}", width="stretch"):
+                        try:
+                            new_permissions = {
+                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
+                                "comptabilite": perm_comptabilite, "factures": perm_factures,
+                                "devis_industriel": perm_devis, "devis_batiment": perm_devis,
+                                "users": perm_users, "supprimer": perm_supprimer
+                            }
+                            data_update = {"nom": new_nom, "role": new_role, "permissions": new_permissions}
+                            if new_password:
+                                data_update["password"] = new_password
+
+                            supabase.table("utilisateurs").update(data_update).eq("id", int(row['id'])).execute()
+                            st.success("Modifié")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur modification")
+                            st.code(repr(e))
+
+                    if row['nom']!= st.session_state.get('user_name'):
+                        if c2.button("🗑️ Supprimer", key=f"del_user_{row['id']}", width="stretch"):
                             try:
-                                perms_user = json.loads(perms_user)
-                            except:
-                                perms_user = {}
-
-                        st.write("**Permissions actives :**")
-                        cols = st.columns(3)
-                        perms_list = [k for k, v in perms_user.items() if v]
-                        for i, perm in enumerate(perms_list):
-                            cols[i % 3].write(f"✅ {perm}")
-
-                        if st.button("🗑️ Supprimer", key=f"del_user_{user['id']}", width="stretch"):
-                            try:
-                                supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
-                                st.success("Utilisateur supprimé")
+                                supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
+                                st.success("Supprimé")
                                 st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
                                 st.error("Erreur suppression")
-                                st.code(repr(e))
+                    else:
+                        c2.info("🔒 Ton compte")                                                                                                   
