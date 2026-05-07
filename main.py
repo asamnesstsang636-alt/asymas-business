@@ -1560,7 +1560,7 @@ if "📋 Devis" in tab_map:
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
-         with tab_batiment:
+          with tab_batiment:
             st.session_state.devis_type = "Bâtiment"
             st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
             
