@@ -1471,6 +1471,7 @@ if "📋 Devis" in tab_map:
 
             with tab_industriel:
                 st.subheader("Devis Industriel")
+
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
                     client_devis_ind = st.text_input("Client", key="client_devis_ind")
@@ -1502,7 +1503,7 @@ if "📋 Devis" in tab_map:
                             with c2:
                                 item['designation'] = st.text_input("Désignation", value=item['designation'], key=f"des_ind_{idx}_{item_idx}")
                             with c3:
-                                item['unite'] = st.selectbox("Unité", ["pcs", "kg", "m", "m²", "m³", "lot"], index=["pcs", "kg", "m", "m²", "m³", "lot"].index(item['unite']) if item['unite'] in ["pcs", "kg", "m", "m²", "m³", "lot"] else 0, key=f"unit_ind_{idx}_{item_idx}")
+                                item['unite'] = st.selectbox("Unité", ["pcs", "kg", "m²", "m³", "lot"], index=["pcs", "kg", "m", "m²", "m³", "lot"].index(item['unite']) if item['unite'] in ["pcs", "kg", "m", "m²", "m³", "lot"] else 0, key=f"unit_ind_{idx}_{item_idx}")
                             with c4:
                                 item['qte'] = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_ind_{idx}_{item_idx}")
                             with c5:
@@ -1544,6 +1545,7 @@ if "📋 Devis" in tab_map:
 
             with tab_batiment:
                 st.subheader("Devis Bâtiment")
+
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
                     client_devis_bat = st.text_input("Client", key="client_devis_bat")
@@ -1575,7 +1577,7 @@ if "📋 Devis" in tab_map:
                             with c2:
                                 item['designation'] = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{item_idx}")
                             with c3:
-                                item['unite'] = st.selectbox("Unité", ["pcs", "kg", "m", "m²", "m³", "lot"], index=["pcs", "kg", "m", "m²", "m³", "lot"].index(item['unite']) if item['unite'] in ["pcs", "kg", "m", "m²", "m³", "lot"] else 0, key=f"unit_bat_{idx}_{item_idx}")
+                                item['unite'] = st.selectbox("Unité", ["pcs", "kg", "m", "m²", "m³", "lot"], index=["pcs", "kg", "m²", "m³", "lot"].index(item['unite']) if item['unite'] in ["pcs", "kg", "m²", "m³", "lot"] else 0, key=f"unit_bat_{idx}_{item_idx}")
                             with c4:
                                 item['qte'] = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{item_idx}")
                             with c5:
@@ -1628,7 +1630,7 @@ if "📋 Devis" in tab_map:
 
             try:
                 query = supabase.table('devis').select("*")
-                if filtre_type != "Tous":
+                if filtre_type!= "Tous":
                     query = query.eq("type", filtre_type)
                 if recherche:
                     query = query.or_(f"client.ilike.%{recherche}%,titre.ilike.%{recherche}%")
