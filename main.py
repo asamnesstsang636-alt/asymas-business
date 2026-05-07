@@ -1490,7 +1490,7 @@ if "📋 Devis" in tab_map:
 
             for idx, section in enumerate(st.session_state.devis_sections):
                 with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2,2,1])
+                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_{idx}")
                     with col2:
@@ -1582,9 +1582,9 @@ if "📋 Devis" in tab_map:
 
             col_add1, col_add2 = st.columns([4,1])
             with col_add1:
-                new_section_titre_bat = st.text_input("Titre Section", placeholder="Ex: II. FONDATION", key="new_sec_titre_bat")
+                new_section_titre_bat = st.text_input("Titre Section", placeholder="Ex: II. FONDATION", key="new_sec_titre_bat", label_visibility="collapsed")
             with col_add2:
-                new_section_num_bat = st.text_input("N°", placeholder="II", key="new_sec_num_bat")
+                new_section_num_bat = st.text_input("N°", placeholder="II", key="new_sec_num_bat", label_visibility="collapsed")
             if st.button("➕ Ajouter Section", key="add_section_bat", width="stretch"):
                 if new_section_titre_bat:
                     st.session_state.devis_bat_sections.append({
@@ -1597,17 +1597,18 @@ if "📋 Devis" in tab_map:
             total_general = 0
             for idx, section in enumerate(st.session_state.devis_bat_sections):
                 with st.expander(f"**{section['numero']}. {section['titre']}**", expanded=True):
-                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,1.5,1.5,0.8])
+                    # Ligne d'ajout
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,1.5,0.5])
                     with col1:
-                        num_item = st.text_input("N°", key=f"num_bat_{idx}", label_visibility="collapsed", placeholder="1")
+                        num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
                     with col2:
-                        design = st.text_input("Désignation", key=f"des_bat_{idx}", label_visibility="collapsed", placeholder="moellon")
+                        design = st.text_input("Désignation", key=f"des_bat_{idx}_new", label_visibility="collapsed", placeholder="Désignation")
                     with col3:
-                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t"], key=f"unit_bat_{idx}", label_visibility="collapsed")
+                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"], key=f"unit_bat_{idx}_new", label_visibility="collapsed")
                     with col4:
-                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}", label_visibility="collapsed", format="%.2f")
+                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
                     with col5:
-                        pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}", label_visibility="collapsed", format="%.2f")
+                        pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
                     with col6:
                         st.metric("PT", f"{qte*pu:,.2f}", label_visibility="collapsed")
                     with col7:
@@ -1622,16 +1623,39 @@ if "📋 Devis" in tab_map:
                                 })
                                 st.rerun()
 
-                    if section['items']:
-                        df_items = pd.DataFrame(section['items'])
-                        df_items['total'] = df_items['qte'] * df_items['pu']
-                        st.dataframe(df_items[['num','designation','unite','qte','pu','total']], use_container_width=True, hide_index=True,
-                                   column_config={"num":"N°", "designation":"Désignation", "unite":"Unité", "qte":"Quantité", "pu":"PU USD", "total":"PT USD"})
-                        sous_total_sec = df_items['total'].sum()
-                        st.markdown(f"**Sous-total {section['numero']} : {sous_total_sec:,.2f} {devise_devis_bat}**")
-                        total_general += sous_total_sec
-                    else:
-                        st.caption("Aucun article dans cette section")
+                    st.divider()
+
+                    # Lignes existantes éditables avec bouton X comme ta capture
+                    sous_total_sec = 0
+                    for i, item in enumerate(section['items']):
+                        col1, col2, col3, col4, col5, col6 = st.columns([0.5,4,1.5,0.5])
+                        with col1:
+                            new_num = st.text_input("N°", value=item['num'], key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['num'] = new_num
+                        with col2:
+                            new_des = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['designation'] = new_des
+                        with col3:
+                            options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
+                            new_unit = st.selectbox("Unité", options_unit, 
+                                                   index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
+                                                   key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['unite'] = new_unit
+                        with col4:
+                            new_qte = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['qte'] = new_qte
+                        with col5:
+                            new_pu = st.number_input("PU", value=float(item['pu']), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['pu'] = new_pu
+                        with col6:
+                            if st.button("❌", key=f"del_item_bat_{idx}_{i}", help="Supprimer"):
+                                section['items'].pop(i)
+                                st.rerun()
+                        
+                        sous_total_sec += new_qte * new_pu
+
+                    st.markdown(f"**Sous-total {section['titre']}: {sous_total_sec:,.2f} {devise_devis_bat}**")
+                    total_general += sous_total_sec
 
                     col_del, col_space = st.columns([2,8])
                     if col_del.button("🗑️ Supprimer cette section", key=f"del_sec_bat_{idx}"):
