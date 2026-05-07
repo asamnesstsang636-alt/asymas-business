@@ -1299,21 +1299,84 @@ if "💰 Comptabilité" in tab_map:
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
         st.markdown("## 📄 Historique Factures & Proforma")
-        if df_factures.empty:
+
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            tri_par = st.selectbox("Trier par", ["Date desc", "Date asc", "Client A-Z", "Montant desc"], key="tri_fact")
+        with col_f2:
+            filtre_type = st.selectbox("Type", ["Tous", "Vente Commerce", "Vente Voiture", "Loyer"], key="filtre_type_fact")
+        with col_f3:
+            recherche = st.text_input("🔍 Rechercher client/numéro", key="search_fact")
+
+        # On lit depuis la table compta car creer_facture_auto enregistre dedans
+        try:
+            query = supabase.table('compta').select("*").eq("type", "Revenu").not_.is_("numero_facture", "null")
+            if filtre_type!= "Tous":
+                query = query.ilike("description", f"%{filtre_type}%")
+            if recherche:
+                query = query.or_(f"numero_facture.ilike.%{recherche}%,description.ilike.%{recherche}%")
+
+            if tri_par == "Date desc":
+                query = query.order("date", desc=True)
+            elif tri_par == "Date asc":
+                query = query.order("date", desc=False)
+            elif tri_par == "Client A-Z":
+                query = query.order("description", desc=False)
+            elif tri_par == "Montant desc":
+                query = query.order("montant", desc=True)
+
+            factures_list = query.execute().data
+        except Exception as e:
+            factures_list = []
+            st.error("Erreur chargement factures")
+            st.code(repr(e))
+
+        if not factures_list:
             st.info("Aucune facture enregistrée")
         else:
-            for _, row in df_factures.iterrows():
-                numero = row.get('numero', 'N/A')
-                client = row.get('client', 'N/A')
-                montant = row.get('montant', 0)
-                devise = row.get('devise', 'FC')
-                date_fac = row.get('date', '')
-                with st.expander(f"{numero} - {client} - {montant:,.0f} {devise} - {date_fac}"):
-                    st.write(f"**Type:** {row.get('type','N/A')}")
-                    st.write(f"**Description:** {row.get('description','N/A')}")
-                    st.write(f"**Montant:** {montant:,.0f} {devise}")
-                    st.write(f"**Créé par:** {row.get('utilisateur','N/A')}")
+            for f in factures_list:
+                numero = f.get('numero_facture', 'N/A')
+                desc = f.get('description', 'N/A')
+                montant = f.get('montant', 0)
+                devise = f.get('devise', 'FC')
+                date_fac = f.get('date', '')
 
+                # Extrait le nom client de la description "Type - Client - Details"
+                try:
+                    client = desc.split(' - ')[1] if ' - ' in desc else 'N/A'
+                except:
+                    client = 'N/A'
+
+                with st.expander(f"{numero} - {client} - {montant:,.0f} {devise} - {date_fac[:10] if date_fac else ''}"):
+                    col_info1, col_info2 = st.columns(2)
+                    with col_info1:
+                        st.write(f"**Numéro:** {numero}")
+                        st.write(f"**Client:** {client}")
+                        st.write(f"**Date:** {date_fac[:10] if date_fac else 'N/A'}")
+                    with col_info2:
+                        st.write(f"**Montant:** {montant:,.0f} {devise}")
+                        st.write(f"**Par:** {f.get('utilisateur','N/A')}")
+                        st.write(f"**Détails:** {desc}")
+
+                    # Régénérer le PDF
+                    if f.get('details'):
+                        try:
+                            details_list = json.loads(f['details'])
+                            pdf_bytes = generer_pdf_facture(
+                                numero, desc.split(' - ')[0], client,
+                                details_list, montant, devise,
+                                "+243...", "", "Proforma" if "Proforma" in desc else "Simple"
+                            )
+                            st.download_button(
+                                label="📥 Télécharger PDF",
+                                data=pdf_bytes,
+                                file_name=f"{numero}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_fact_{numero}",
+                                width="stretch"
+                            )
+                        except:
+                            st.warning("Impossible de régénérer le PDF")
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.header("📋 Gestion des Devis")
