@@ -1371,78 +1371,181 @@ if "💰 Comptabilité" in tab_map:
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
         st.markdown("## 📄 Historique des Factures")
-        df_factures_hist = df_compta[df_compta.get('numero_facture', pd.Series()).notna() & (df_compta.get('numero_facture', '')!= '')].copy()
-        if df_factures_hist.empty:
-            st.info("Aucune facture générée")
+
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        with col_f1:
+            date_debut = st.date_input("Date début", value=date.today() - timedelta(days=30), key="date_deb_fact")
+        with col_f2:
+            date_fin = st.date_input("Date fin", value=date.today(), key="date_fin_fact")
+        with col_f3:
+            client_filtre = st.text_input("Client", placeholder="Nom client...", key="client_fact")
+        with col_f4:
+            tri_par = st.selectbox("Trier", ["Date desc", "Date asc", "Montant desc", "Client A-Z"], key="tri_fact")
+
+        try:
+            query = supabase.table('compta').select("*").eq("type", "Revenu").not_.is_("numero_facture", "null")
+
+            if client_filtre:
+                query = query.ilike("description", f"%{client_filtre}%")
+
+            if 'date' in get_table_columns("compta"):
+                query = query.gte("date", str(date_debut)).lte("date", str(date_fin))
+
+            if tri_par == "Date desc":
+                query = query.order("date", desc=True)
+            elif tri_par == "Date asc":
+                query = query.order("date", desc=False)
+            elif tri_par == "Montant desc":
+                query = query.order("montant", desc=True)
+            elif tri_par == "Client A-Z":
+                query = query.order("description", desc=False)
+
+            factures_list = query.execute().data
+        except Exception as e:
+            factures_list = []
+            st.error("Erreur chargement factures")
+
+        if not factures_list:
+            st.info("Aucune facture trouvée sur cette période")
         else:
-            col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut_fact = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
-            date_fin_fact = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
-            filtre_client = col_f3.text_input("👤 Client", placeholder="Nom client...", key="filtre_client_fact")
+            # Grouper par type d'action
+            types_op = {
+                '🛍️ Vente Commerce': [],
+                '🚗 Vente Voiture': [],
+                '🏠 Loyer Immobilier': [],
+                '📄 Autres Factures': []
+            }
 
-            df_factures_hist = df_factures_hist[(df_factures_hist['date'] >= str(date_debut_fact)) & (df_factures_hist['date'] <= str(date_fin_fact))]
-            if filtre_client:
-                df_factures_hist = df_factures_hist[df_factures_hist['description'].str.contains(filtre_client, case=False, na=False)]
+            for f in factures_list:
+                desc = f.get('description', '')
+                if 'Vente Commerce' in desc or desc.startswith('Vente -'):
+                    types_op['🛍️ Vente Commerce'].append(f)
+                elif 'Vente Voiture' in desc:
+                    types_op['🚗 Vente Voiture'].append(f)
+                elif 'Loyer' in desc:
+                    types_op['🏠 Loyer Immobilier'].append(f)
+                else:
+                    types_op['📄 Autres Factures'].append(f)
 
-            st.info(f"📊 {len(df_factures_hist)} facture(s) trouvée(s)")
+            total_general = sum(f.get('montant', 0) for f in factures_list)
+            st.success(f"📊 {len(factures_list)} facture(s) trouvée(s) - Total: {total_general:,.0f} FC")
 
-            for _, row in df_factures_hist.iterrows():
-                client_nom = row.get('client', row.get('description','Inconnu').split(' - ')[0] if ' - ' in str(row.get('description','')) else 'Inconnu')
-                with st.expander(f"{row.get('numero_facture', row.get('numero','N/A'))} - {client_nom} - {row['montant']:,.0f} {row.get('devise','FC')} - {row.get('statut','')}"):
-                    col1, col2 = st.columns([2,1])
-                    with col1:
-                        st.write(f"**Client:** {client_nom} | **Tel:** {row.get('telephone','')}")
-                        st.write(f"**Type:** {row.get('categorie', row.get('type',''))} | **Montant:** {row['montant']:,.0f} {row.get('devise','FC')}")
-                        st.write(f"**Description:** {row.get('description','')}")
-                        st.write(f"**Date:** {row.get('date','')} | **Par:** {row.get('utilisateur','')}")
+            for type_op, factures in types_op.items():
+                if not factures:
+                    continue
 
-                    with col2:
-                        if st.button(f"📥 Télécharger PDF", key=f"dl_old_{row['id']}", width="stretch"):
-                            details_list = []
-                            if row.get('details'):
+                total_type = sum(f.get('montant', 0) for f in factures)
+
+                # Couleur par type
+                if 'Commerce' in type_op:
+                    color = "#00ff41"
+                elif 'Voiture' in type_op:
+                    color = "#2196F3"
+                elif 'Loyer' in type_op:
+                    color = "#FF9800"
+                else:
+                    color = "#9E9E9E"
+
+                st.markdown(f"### {type_op} - {len(factures)} facture(s) - {total_type:,.0f} FC")
+
+                for f in factures:
+                    numero = f.get('numero_facture', 'N/A')
+                    desc = f.get('description', 'N/A')
+                    montant = f.get('montant', 0)
+                    devise = f.get('devise', 'FC')
+                    date_fac = f.get('date', '')
+
+                    try:
+                        client = desc.split(' - ')[1] if ' - ' in desc else 'N/A'
+                        type_detail = desc.split(' - ')[0]
+                    except:
+                        client = 'N/A'
+                        type_detail = 'N/A'
+
+                    with st.expander(f"{numero} - {client} - {montant:,.0f} {devise}"):
+                        col_info1, col_info2, col_info3 = st.columns(3)
+                        with col_info1:
+                            st.markdown(f"**Numéro:** `{numero}`")
+                            st.markdown(f"**Client:** {client}")
+                            st.markdown(f"**Date:** {date_fac[:10] if date_fac else 'N/A'}")
+                        with col_info2:
+                            st.markdown(f"**Type:** {type_detail}")
+                            st.markdown(f"**Montant:** {montant:,.0f} {devise}")
+                            st.markdown(f"**Par:** {f.get('utilisateur','N/A')}")
+                        with col_info3:
+                            st.markdown(f"**Devise:** {devise}")
+                            st.markdown(f"**ID:** {f.get('id','N/A')}")
+
+                        # Détails articles
+                        if f.get('details'):
+                            try:
+                                details_list = json.loads(f['details'])
+                                st.divider()
+                                st.markdown("**Détail articles:**")
+                                df_detail = pd.DataFrame(details_list)
+                                if not df_detail.empty:
+                                    df_detail['total'] = df_detail['qte'] * df_detail['pu']
+                                    st.dataframe(df_detail[['nom','qte','pu','total']], hide_index=True, width='stretch')
+                            except:
+                                st.write(f"**Détails:** {desc}")
+
+                        st.divider()
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+
+                        with col_btn1:
+                            if f.get('details'):
                                 try:
-                                    details_list = json.loads(row['details']) if isinstance(row['details'], str) else row['details']
+                                    details_list = json.loads(f['details'])
+                                    pdf_bytes = generer_pdf_facture(
+                                        numero, type_detail, client,
+                                        details_list, montant, devise,
+                                        "+243...", "", "Proforma" if "Proforma" in desc else "Simple"
+                                    )
+                                    st.download_button(
+                                        label="📥 Télécharger",
+                                        data=pdf_bytes,
+                                        file_name=f"{numero}.pdf",
+                                        mime="application/pdf",
+                                        key=f"dl_fact_{numero}",
+                                        width="stretch"
+                                    )
                                 except:
-                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
+                                    st.error("Erreur PDF")
+
+                        with col_btn2:
+                            if f.get('details'):
+                                try:
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = numero.replace('-', '_').replace('.', '_')
+                                    st.components.v1.html(f"""
+                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:{color}; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                            🖨️ IMPRIMER
+                                        </button>
+                                        <script>
+                                        function printPDF_{safe_id}() {{
+                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                            const win = window.open('', '_blank');
+                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                            win.document.close();
+                                            setTimeout(() => {{ win.print(); }}, 1000);
+                                        }}
+                                        </script>
+                                    """, height=45)
+                                except:
+                                    st.info("Génère le PDF d'abord")
+
+                        with col_btn3:
+                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                                if st.button("🗑️ Supprimer", key=f"del_fact_{numero}", width="stretch"):
+                                    try:
+                                        supabase.table('compta').delete().eq("numero_facture", numero).execute()
+                                        st.success("Facture supprimée")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except:
+                                        st.error("Erreur suppression")
                             else:
-                                details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row['montant']}]
-
-                            type_pdf = "Simple" if "Simple" in str(row.get('statut','')) else "Proforma"
-                            pdf_bytes = generer_pdf_facture(
-                                row.get('numero_facture', row.get('numero','N/A')),
-                                row.get('categorie', row.get('type','')),
-                                client_nom,
-                                details_list,
-                                row['montant'],
-                                row.get('devise','FC'),
-                                row.get('telephone','+243...'),
-                                "",
-                                type_pdf
-                            )
-                            st.download_button(
-                                "💾 Sauvegarder PDF",
-                                data=pdf_bytes,
-                                file_name=f"{row.get('numero_facture', row.get('numero','facture'))}.pdf",
-                                mime="application/pdf",
-                                key=f"save_pdf_{row['id']}",
-                                width="stretch"
-                            )
-
-                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                            st.components.v1.html(f"""
-                                <button onclick="printPDF()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
-                                    🖨️ IMPRIMER
-                                </button>
-                                <script>
-                                function printPDF() {{
-                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                    const win = window.open('', '_blank');
-                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                    win.document.close();
-                                    setTimeout(() => {{ win.print(); }}, 1000);
-                                }}
-                                </script>
-                            """, height=50)
+                                st.info("🔒 Non autorisé")
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
