@@ -1654,22 +1654,21 @@ if "📋 Devis" in tab_map:
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
-                            st.error("Erreur enregistrement")
-                            st.code(repr(e))
-                    else:
-                        st.error("Client et Titre requis")
+                st.error("Erreur enregistrement")
+                st.code(repr(e))
+            else:
+                st.error("Client et Titre requis")
 
-           with tab_historique:
-            st.subheader("📚 Historique des Devis - Opérations")
+    with tab_historique:
+        st.subheader("📚 Historique des Devis - Opérations")
 
-            col_f1, col_f2, col_f3 = st.columns(3)
-            with col_f1:
-                tri_par = st.selectbox("Trier par", ["Date desc", "Date asc", "Client A-Z", "Montant desc", "Montant asc"], key="tri_devis")
-            with col_f2:
-                filtre_type = st.selectbox("Type", ["Tous", "Industriel", "Bâtiment"], key="filtre_type_devis")
-            with col_f3:
-                recherche = st.text_input("🔍 Rechercher client/projet", key="search_devis")
-
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            tri_par = st.selectbox("Trier par", ["Date desc", "Date asc", "Client A-Z", "Montant desc", "Montant asc"], key="tri_devis")
+        with col_f2:
+            filtre_type = st.selectbox("Type", ["Tous", "Industriel", "Bâtiment"], key="filtre_type_devis")
+        with col_f3:
+            recherche = st.text_input("🔍 Rechercher client/projet", key="search_devis")
             try:
                 query = supabase.table('devis').select("*")
                 if filtre_type != "Tous":
