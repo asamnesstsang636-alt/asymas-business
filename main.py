@@ -1450,8 +1450,10 @@ if "📋 Devis" in tab_map:
 
         if 'devis_sections' not in st.session_state:
             st.session_state.devis_sections = []
-        if 'devis_type' not in st.session_state:
-            st.session_state.devis_type = "Industriel"
+        if 'devis_bat_sections' not in st.session_state:
+            st.session_state.devis_bat_sections = []
+        if 'devis_bat_titre' not in st.session_state:
+            st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE"
 
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
@@ -1488,7 +1490,7 @@ if "📋 Devis" in tab_map:
 
             for idx, section in enumerate(st.session_state.devis_sections):
                 with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2])
+                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2,2,1])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_{idx}")
                     with col2:
@@ -1560,15 +1562,10 @@ if "📋 Devis" in tab_map:
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
-          with tab_batiment:
+        with tab_batiment:
             st.session_state.devis_type = "Bâtiment"
             st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
             
-            if 'devis_bat_sections' not in st.session_state:
-                st.session_state.devis_bat_sections = []
-            if 'devis_bat_titre' not in st.session_state:
-                st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE"
-
             col1, col2, col3 = st.columns(3)
             with col1:
                 client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
@@ -1600,13 +1597,13 @@ if "📋 Devis" in tab_map:
             total_general = 0
             for idx, section in enumerate(st.session_state.devis_bat_sections):
                 with st.expander(f"**{section['numero']}. {section['titre']}**", expanded=True):
-                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,1.5,0.8])
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,1.5,1.5,0.8])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_bat_{idx}", label_visibility="collapsed", placeholder="1")
                     with col2:
                         design = st.text_input("Désignation", key=f"des_bat_{idx}", label_visibility="collapsed", placeholder="moellon")
                     with col3:
-                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml"], key=f"unit_bat_{idx}", label_visibility="collapsed")
+                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t"], key=f"unit_bat_{idx}", label_visibility="collapsed")
                     with col4:
                         qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}", label_visibility="collapsed", format="%.2f")
                     with col5:
@@ -1665,6 +1662,7 @@ if "📋 Devis" in tab_map:
                         st.session_state.pdf_devis_bat = pdf_bytes
                         st.session_state.num_devis_bat = numero_devis
                         st.success(f"✅ Devis généré : {numero_devis}")
+                        st.rerun()
                     else:
                         st.error("Client, Titre et au moins 1 section requis")
 
