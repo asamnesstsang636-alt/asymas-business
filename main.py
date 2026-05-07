@@ -1308,7 +1308,6 @@ if "📄 Factures" in tab_map:
         with col_f3:
             recherche = st.text_input("🔍 Rechercher client/numéro", key="search_fact")
 
-        # On lit depuis la table compta car creer_facture_auto enregistre dedans
         try:
             query = supabase.table('compta').select("*").eq("type", "Revenu").not_.is_("numero_facture", "null")
             if filtre_type!= "Tous":
@@ -1334,49 +1333,133 @@ if "📄 Factures" in tab_map:
         if not factures_list:
             st.info("Aucune facture enregistrée")
         else:
+            # Grouper par type d'opération
+            types_op = {}
             for f in factures_list:
-                numero = f.get('numero_facture', 'N/A')
-                desc = f.get('description', 'N/A')
-                montant = f.get('montant', 0)
-                devise = f.get('devise', 'FC')
-                date_fac = f.get('date', '')
+                desc = f.get('description', '')
+                if 'Vente Commerce' in desc or 'Vente -' in desc:
+                    type_op = '🛍️ Commerce'
+                elif 'Vente Voiture' in desc:
+                    type_op = '🚗 Automobile'
+                elif 'Loyer' in desc:
+                    type_op = '🏠 Immobilier'
+                else:
+                    type_op = '📄 Autre'
 
-                # Extrait le nom client de la description "Type - Client - Details"
-                try:
-                    client = desc.split(' - ')[1] if ' - ' in desc else 'N/A'
-                except:
-                    client = 'N/A'
+                if type_op not in types_op:
+                    types_op[type_op] = []
+                types_op[type_op].append(f)
 
-                with st.expander(f"{numero} - {client} - {montant:,.0f} {devise} - {date_fac[:10] if date_fac else ''}"):
-                    col_info1, col_info2 = st.columns(2)
-                    with col_info1:
-                        st.write(f"**Numéro:** {numero}")
-                        st.write(f"**Client:** {client}")
-                        st.write(f"**Date:** {date_fac[:10] if date_fac else 'N/A'}")
-                    with col_info2:
-                        st.write(f"**Montant:** {montant:,.0f} {devise}")
-                        st.write(f"**Par:** {f.get('utilisateur','N/A')}")
-                        st.write(f"**Détails:** {desc}")
+            for type_op, factures in types_op.items():
+                st.markdown(f"### {type_op}")
+                for f in factures:
+                    numero = f.get('numero_facture', 'N/A')
+                    desc = f.get('description', 'N/A')
+                    montant = f.get('montant', 0)
+                    devise = f.get('devise', 'FC')
+                    date_fac = f.get('date', '')
 
-                    # Régénérer le PDF
-                    if f.get('details'):
-                        try:
-                            details_list = json.loads(f['details'])
-                            pdf_bytes = generer_pdf_facture(
-                                numero, desc.split(' - ')[0], client,
-                                details_list, montant, devise,
-                                "+243...", "", "Proforma" if "Proforma" in desc else "Simple"
-                            )
-                            st.download_button(
-                                label="📥 Télécharger PDF",
-                                data=pdf_bytes,
-                                file_name=f"{numero}.pdf",
-                                mime="application/pdf",
-                                key=f"dl_fact_{numero}",
-                                width="stretch"
-                            )
-                        except:
-                            st.warning("Impossible de régénérer le PDF")
+                    try:
+                        client = desc.split(' - ')[1] if ' - ' in desc else 'N/A'
+                        type_detail = desc.split(' - ')[0]
+                    except:
+                        client = 'N/A'
+                        type_detail = 'N/A'
+
+                    # Couleur selon le type
+                    if 'Commerce' in type_op:
+                        color = "#00ff41"
+                    elif 'Automobile' in type_op:
+                        color = "#2196F3"
+                    elif 'Immobilier' in type_op:
+                        color = "#FF9800"
+                    else:
+                        color = "#9E9E9E"
+
+                    with st.expander(f"{numero} - {client} - {montant:,.0f} {devise} - {date_fac[:10] if date_fac else ''}"):
+                        col_info1, col_info2, col_info3 = st.columns(3)
+                        with col_info1:
+                            st.markdown(f"**Numéro:** `{numero}`")
+                            st.markdown(f"**Client:** {client}")
+                            st.markdown(f"**Date:** {date_fac[:10] if date_fac else 'N/A'}")
+                        with col_info2:
+                            st.markdown(f"**Type:** {type_detail}")
+                            st.markdown(f"**Montant:** {montant:,.0f} {devise}")
+                            st.markdown(f"**Par:** {f.get('utilisateur','N/A')}")
+                        with col_info3:
+                            st.markdown(f"**Devise:** {devise}")
+                            st.markdown(f"**ID:** {f.get('id','N/A')}")
+
+                        # Détails articles si disponibles
+                        if f.get('details'):
+                            try:
+                                details_list = json.loads(f['details'])
+                                st.divider()
+                                st.markdown("**Détail articles:**")
+                                for item in details_list:
+                                    st.write(f"- {item.get('qte',1)}x {item.get('nom','N/A')} @ {item.get('pu',0):,.0f} = {item.get('qte',1)*item.get('pu',0):,.0f}")
+                            except:
+                                st.write(f"**Détails:** {desc}")
+
+                        st.divider()
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+
+                        with col_btn1:
+                            if f.get('details'):
+                                try:
+                                    details_list = json.loads(f['details'])
+                                    pdf_bytes = generer_pdf_facture(
+                                        numero, type_detail, client,
+                                        details_list, montant, devise,
+                                        "+243...", "", "Proforma" if "Proforma" in desc else "Simple"
+                                    )
+                                    st.download_button(
+                                        label="📥 Télécharger PDF",
+                                        data=pdf_bytes,
+                                        file_name=f"{numero}.pdf",
+                                        mime="application/pdf",
+                                        key=f"dl_fact_{numero}",
+                                        width="stretch"
+                                    )
+                                except Exception as e:
+                                    st.error("PDF erreur")
+                            else:
+                                st.warning("Pas de détails PDF")
+
+                        with col_btn2:
+                            if f.get('details'):
+                                try:
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = numero.replace('-', '_').replace('.', '_')
+                                    st.components.v1.html(f"""
+                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:{color}; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                            🖨️ IMPRIMER
+                                        </button>
+                                        <script>
+                                        function printPDF_{safe_id}() {{
+                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                            const win = window.open('', '_blank');
+                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                            win.document.close();
+                                            setTimeout(() => {{ win.print(); }}, 1000);
+                                        }}
+                                        </script>
+                                    """, height=45)
+                                except:
+                                    st.info("Génère le PDF d'abord")
+
+                        with col_btn3:
+                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                                if st.button("🗑️ Supprimer", key=f"del_fact_{numero}", width="stretch"):
+                                    try:
+                                        supabase.table('compta').delete().eq("numero_facture", numero).execute()
+                                        st.success("Facture supprimée")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                            else:
+                                st.info("🔒 Non autorisé")
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.header("📋 Gestion des Devis")
