@@ -1659,7 +1659,7 @@ if "📋 Devis" in tab_map:
                     else:
                         st.error("Client et Titre requis")
 
-          with tab_historique:
+         with tab_historique:
             st.subheader("📚 Historique des Devis - Opérations")
 
             col_f1, col_f2, col_f3 = st.columns(3)
