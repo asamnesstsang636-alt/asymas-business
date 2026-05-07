@@ -1850,16 +1850,15 @@ if "📋 Devis" in tab_map:
                                 st.info("🔒 Suppression non autorisée")
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion des Utilisateurs")
+        st.write("### TEST - SI TU VOIS CA LE CODE MARCHE")
+        st.write(f"Rôle : {st.session_state.get('user_role')}")
+        st.write(f"Nom : {st.session_state.get('user_name')}")
+        st.write(f"Nombre utilisateurs chargés : {len(df_utilisateurs)}")
         
+        st.markdown("## 👥 Gestion des Utilisateurs")
+        # ... reste du code
         # Affichage debug pour voir ton rôle actuel
         st.info(f"Rôle actuel : {st.session_state.get('user_role')} | Nom : {st.session_state.get('user_name')}")
-        
-        # Contrôle accès désactivé temporairement - à réactiver après test
-        # if st.session_state.get('user_role') not in ['PDG', 'admin']:
-        #     st.error("⛔ Accès réservé au PDG/Admin")
-        #     st.stop()
-
         with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
             with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
