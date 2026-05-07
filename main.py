@@ -1560,42 +1560,147 @@ if "📋 Devis" in tab_map:
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
-        with tab_batiment:
+          with tab_batiment:
             st.session_state.devis_type = "Bâtiment"
-            st.subheader("🏗️ Nouveau Devis Bâtiment")
-            st.info("Même système que Devis Industriel - Ingénieur ESDRAS TSANGYA")
+            st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
+            
+            if 'devis_bat_sections' not in st.session_state:
+                st.session_state.devis_bat_sections = []
+            if 'devis_bat_titre' not in st.session_state:
+                st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE"
 
             col1, col2, col3 = st.columns(3)
             with col1:
                 client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
                 tel_client_devis_bat = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_bat")
             with col2:
-                titre_devis_bat = st.text_input("📋 Titre Projet", key="titre_devis_bat")
+                st.session_state.devis_bat_titre = st.text_input("📋 Titre du Devis", value=st.session_state.devis_bat_titre, key="titre_devis_bat")
                 parcelle_devis_bat = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_bat")
             with col3:
                 localisation_devis_bat = st.text_input("📍 Localisation", key="loc_devis_bat")
                 devise_devis_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_bat")
 
-            if st.button("📄 GÉNÉRER DEVIS BÂTIMENT", type="primary", width="stretch", key="gen_devis_bat"):
-                if client_devis_bat and titre_devis_bat:
-                    numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    pdf_bytes = generer_pdf_devis_consulting(
-                        numero_devis, "Bâtiment", client_devis_bat, titre_devis_bat,
-                        parcelle_devis_bat, localisation_devis_bat, [],
-                        devise_devis_bat, tel_client_devis_bat, 0
-                    )
-                    st.success(f"✅ Devis généré : {numero_devis}")
+            st.divider()
+            st.subheader("📊 Sections & Articles du Devis")
+
+            col_add1, col_add2 = st.columns([4,1])
+            with col_add1:
+                new_section_titre_bat = st.text_input("Titre Section", placeholder="Ex: II. FONDATION", key="new_sec_titre_bat")
+            with col_add2:
+                new_section_num_bat = st.text_input("N°", placeholder="II", key="new_sec_num_bat")
+            if st.button("➕ Ajouter Section", key="add_section_bat", width="stretch"):
+                if new_section_titre_bat:
+                    st.session_state.devis_bat_sections.append({
+                        "numero": new_section_num_bat,
+                        "titre": new_section_titre_bat,
+                        "items": []
+                    })
+                    st.rerun()
+
+            total_general = 0
+            for idx, section in enumerate(st.session_state.devis_bat_sections):
+                with st.expander(f"**{section['numero']}. {section['titre']}**", expanded=True):
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,1.5,0.8])
+                    with col1:
+                        num_item = st.text_input("N°", key=f"num_bat_{idx}", label_visibility="collapsed", placeholder="1")
+                    with col2:
+                        design = st.text_input("Désignation", key=f"des_bat_{idx}", label_visibility="collapsed", placeholder="moellon")
+                    with col3:
+                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml"], key=f"unit_bat_{idx}", label_visibility="collapsed")
+                    with col4:
+                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}", label_visibility="collapsed", format="%.2f")
+                    with col5:
+                        pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}", label_visibility="collapsed", format="%.2f")
+                    with col6:
+                        st.metric("PT", f"{qte*pu:,.2f}", label_visibility="collapsed")
+                    with col7:
+                        if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter ligne"):
+                            if design:
+                                section['items'].append({
+                                    "num": num_item,
+                                    "designation": design,
+                                    "unite": unite,
+                                    "qte": qte,
+                                    "pu": pu
+                                })
+                                st.rerun()
+
+                    if section['items']:
+                        df_items = pd.DataFrame(section['items'])
+                        df_items['total'] = df_items['qte'] * df_items['pu']
+                        st.dataframe(df_items[['num','designation','unite','qte','pu','total']], use_container_width=True, hide_index=True,
+                                   column_config={"num":"N°", "designation":"Désignation", "unite":"Unité", "qte":"Quantité", "pu":"PU USD", "total":"PT USD"})
+                        sous_total_sec = df_items['total'].sum()
+                        st.markdown(f"**Sous-total {section['numero']} : {sous_total_sec:,.2f} {devise_devis_bat}**")
+                        total_general += sous_total_sec
+                    else:
+                        st.caption("Aucun article dans cette section")
+
+                    col_del, col_space = st.columns([2,8])
+                    if col_del.button("🗑️ Supprimer cette section", key=f"del_sec_bat_{idx}"):
+                        st.session_state.devis_bat_sections.pop(idx)
+                        st.rerun()
+
+            st.divider()
+            col_mo1, col_mo2, col_mo3 = st.columns(3)
+            with col_mo1:
+                main_oeuvre_bat = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_bat", format="%.2f")
+            with col_mo2:
+                st.metric("TOTAL MATERIAUX", f"{total_general:,.2f} {devise_devis_bat}")
+            with col_mo3:
+                cout_total = total_general + main_oeuvre_bat
+                st.metric("COUT TOTAL DU PROJET", f"{cout_total:,.2f} {devise_devis_bat}")
+
+            st.divider()
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_bat"):
+                    if client_devis_bat and st.session_state.devis_bat_titre and st.session_state.devis_bat_sections:
+                        numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        pdf_bytes = generer_pdf_devis_consulting(
+                            numero_devis, "Bâtiment", client_devis_bat, st.session_state.devis_bat_titre,
+                            parcelle_devis_bat, localisation_devis_bat, st.session_state.devis_bat_sections,
+                            devise_devis_bat, tel_client_devis_bat, main_oeuvre_bat
+                        )
+                        st.session_state.pdf_devis_bat = pdf_bytes
+                        st.session_state.num_devis_bat = numero_devis
+                        st.success(f"✅ Devis généré : {numero_devis}")
+                    else:
+                        st.error("Client, Titre et au moins 1 section requis")
+
+            with col_btn2:
+                if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat:
                     st.download_button(
                         label="📥 Télécharger Devis PDF",
-                        data=pdf_bytes,
-                        file_name=f"{numero_devis}.pdf",
+                        data=st.session_state.pdf_devis_bat,
+                        file_name=f"{st.session_state.num_devis_bat}.pdf",
                         mime="application/pdf",
                         width="stretch",
                         key="dl_devis_bat"
                     )
-                else:
-                    st.error("Client et Titre requis")
 
+            if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat:
+                pdf_b64 = base64.b64encode(st.session_state.pdf_devis_bat).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LE DEVIS
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
+
+            if st.button("🔄 Réinitialiser le Devis", key="reset_devis_bat"):
+                st.session_state.devis_bat_sections = []
+                if 'pdf_devis_bat' in st.session_state:
+                    del st.session_state.pdf_devis_bat
+                st.rerun()
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs & Permissions")
