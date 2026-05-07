@@ -1453,7 +1453,9 @@ if "📋 Devis" in tab_map:
         if 'devis_bat_sections' not in st.session_state:
             st.session_state.devis_bat_sections = []
         if 'devis_bat_titre' not in st.session_state:
-            st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE"
+            st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE DE 23.5m"
+        if 'devis_bat_main_oeuvre' not in st.session_state:
+            st.session_state.devis_bat_main_oeuvre = 1173.0
 
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
@@ -1562,12 +1564,11 @@ if "📋 Devis" in tab_map:
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
-          with tab_batiment:
+        with tab_batiment:
             st.session_state.devis_type = "Bâtiment"
-            st.subheader("🏗️ Devis Bâtiment - ASYMAS CONSULTING")
+            st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
             
-            # Initialisation avec les données de ton image
-            if 'devis_bat_sections' not in st.session_state or not st.session_state.devis_bat_sections:
+            if not st.session_state.devis_bat_sections:
                 st.session_state.devis_bat_sections = [
                     {
                         "numero": "I",
@@ -1623,10 +1624,6 @@ if "📋 Devis" in tab_map:
                         ]
                     }
                 ]
-            if 'devis_bat_titre' not in st.session_state:
-                st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE DE 23.5m"
-            if 'devis_bat_main_oeuvre' not in st.session_state:
-                st.session_state.devis_bat_main_oeuvre = 1173.0
             
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -1644,8 +1641,7 @@ if "📋 Devis" in tab_map:
 
             total_general = 0
             
-            # En-tête du tableau
-            col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5,4,1.5,1.5,0.5])
+            col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5,4,1.5,0.5])
             col_h1.markdown("**no**")
             col_h2.markdown("**désignation**")
             col_h3.markdown("**unité**")
@@ -1656,13 +1652,11 @@ if "📋 Devis" in tab_map:
             st.divider()
 
             for idx, section in enumerate(st.session_state.devis_bat_sections):
-                # Titre section
                 st.markdown(f"**{section['numero']}. {section['titre']}**")
                 
                 sous_total_sec = 0
-                # Lignes existantes éditables
                 for i, item in enumerate(section['items']):
-                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,0.5])
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,0.5])
                     with col1:
                         new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
                         section['items'][i]['num'] = new_num
@@ -1690,8 +1684,7 @@ if "📋 Devis" in tab_map:
                             section['items'].pop(i)
                             st.rerun()
 
-                # Ligne d'ajout dans la section
-                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,1.5,0.5])
+                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5,4,1.5,0.5])
                 with col1:
                     num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
                 with col2:
@@ -1710,14 +1703,12 @@ if "📋 Devis" in tab_map:
                             section['items'].append({"num": num_item, "designation": design, "unite": unite, "qte": qte, "pu": pu})
                             st.rerun()
 
-                # Sous-total section
                 col_st1, col_st2, col_st3 = st.columns([6.5, 1.5, 0.5])
                 col_st1.markdown(f"**sous-total**")
                 col_st2.markdown(f"**{sous_total_sec:,.2f}**")
                 total_general += sous_total_sec
                 st.divider()
 
-            # Ajouter nouvelle section
             col_add1, col_add2, col_add3 = st.columns([1,4,1])
             with col_add1:
                 new_section_num_bat = st.text_input("N° Section", placeholder="VI", key="new_sec_num_bat", label_visibility="collapsed")
@@ -1730,7 +1721,6 @@ if "📋 Devis" in tab_map:
                         st.rerun()
 
             st.divider()
-            # Totaux finaux
             col_mo1, col_mo2, col_mo3 = st.columns(3)
             with col_mo1:
                 st.metric("TOTAL MATERIAUX", f"{total_general:,.2f} {devise_devis_bat}")
