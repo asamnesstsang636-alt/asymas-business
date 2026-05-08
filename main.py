@@ -1975,7 +1975,7 @@ if "📋 Devis" in tab_map:
                     total = d.get('total', 0)
                     devise = d.get('devise', 'USD')
 
-                    col1, col2, col3, col4 = st.columns([3,2,1])
+                    col1, col2, col3, col4 = st.columns([3,2,1,1])
                     with col1:
                         st.write(f"**{numero}** - {client}")
                     with col2:
