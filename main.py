@@ -636,7 +636,7 @@ if "🛍️ Commerce" in tab_map:
                     prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if 'prix_vente_usd' in p else ""
                     options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}")
                 article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
-                    if article_choisi:
+                 if article_choisi:
                     id_choisi = int(article_choisi.split("ID:")[1])
                     p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
                     c1, c2, c3 = st.columns(3)
