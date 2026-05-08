@@ -1507,6 +1507,11 @@ if "📋 Devis" in tab_map:
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
         with tab_industriel:
+            # VERIFIER PERMISSION CREATION
+            if st.session_state.user_role!= "PDG" and not perms.get('devis_industriel', False):
+                st.error("🔒 Vous n'avez pas l'autorisation de créer des devis industriels")
+                st.stop()
+
             st.session_state.devis_type = "Industriel"
             st.subheader("🏭 Nouveau Devis Industriel")
             col1, col2, col3 = st.columns(3)
@@ -1539,7 +1544,7 @@ if "📋 Devis" in tab_map:
 
             for idx, section in enumerate(st.session_state.devis_sections):
                 with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2])
+                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2,1])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_{idx}")
                     with col2:
@@ -1600,9 +1605,12 @@ if "📋 Devis" in tab_map:
                         }
                         supabase.table('devis').insert(data_devis).execute()
                         st.success(f"✅ Devis enregistré : {numero_devis}")
+                        st.session_state.devis_sections = []
+                        st.cache_data.clear()
                     except Exception as e:
                         st.error("Erreur enregistrement")
                         st.code(repr(e))
+                        st.stop()
 
                     pdf_bytes = generer_pdf_devis_consulting(
                         numero_devis, "Industriel", client_devis, titre_devis,
@@ -1632,6 +1640,7 @@ if "📋 Devis" in tab_map:
                         }}
                         </script>
                     """, height=60)
+                    st.rerun()
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
@@ -1711,6 +1720,11 @@ if "📋 Devis" in tab_map:
                                     st.rerun()
 
         with tab_batiment:
+            # VERIFIER PERMISSION CREATION
+            if st.session_state.user_role!= "PDG" and not perms.get('devis_batiment', False):
+                st.error("🔒 Vous n'avez pas l'autorisation de créer des devis bâtiment")
+                st.stop()
+
             st.session_state.devis_type = "Bâtiment"
             st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
 
@@ -1904,9 +1918,11 @@ if "📋 Devis" in tab_map:
                             }
                             supabase.table('devis').insert(data_devis).execute()
                             st.success(f"✅ Devis enregistré : {numero_devis}")
+                            st.cache_data.clear()
                         except Exception as e:
                             st.error("Erreur enregistrement")
                             st.code(repr(e))
+                            st.stop()
 
                         pdf_bytes = generer_pdf_devis_consulting(
                             numero_devis, "Bâtiment", client_devis_bat, st.session_state.devis_bat_titre,
