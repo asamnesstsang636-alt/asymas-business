@@ -1367,6 +1367,21 @@ if "💰 Comptabilité" in tab_map:
                             width="stretch",
                             key=f"dl_pdf_compta_{safe_cat}_{date_debut}_{filtre_nom}"
                         )
+                        pdf_b64 = base64.b64encode(pdf_bytes_cat).decode()
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF_{safe_cat}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                                🖨️ IMPRIMER LE RELEVÉ {cat}
+                            </button>
+                            <script>
+                            function printPDF_{safe_cat}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=60)
 
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
@@ -1436,14 +1451,6 @@ if "📄 Factures" in tab_map:
                                       st.rerun()
                                  else:
                                     col_g.write("")
-    
-            
-           
-                                     
-            
-           
-       
-
                             # === BOUTON TÉLÉCHARGER PDF ===
                             try:
                                 details_list = []
