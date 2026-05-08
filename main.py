@@ -1514,7 +1514,6 @@ if "📋 Devis" in tab_map:
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
         with tab_industriel:
-            # VERIFIER PERMISSION CREATION
             peut_creer_ind = st.session_state.user_role == "PDG" or perms.get('devis_industriel', False)
 
             if peut_creer_ind:
@@ -1532,66 +1531,149 @@ if "📋 Devis" in tab_map:
                     devise_devis = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_ind")
 
                 st.divider()
-                st.subheader("📊 Sections du Devis")
+                st.markdown("### 📊 Tableau Complet Éditable")
 
-                col_add1, col_add2 = st.columns([3,1])
-                with col_add1:
-                    new_section_titre = st.text_input("Nouvelle Section", placeholder="Ex: TRAVAUX DE CONSTRUCTION", key="new_sec_titre")
-                with col_add2:
-                    new_section_num = st.text_input("N°", placeholder="A", key="new_sec_num")
-                if st.button("➕ Ajouter Section", key="add_section_ind"):
-                    if new_section_titre:
-                        st.session_state.devis_sections.append({
-                            "numero": new_section_num,
-                            "titre": new_section_titre,
-                            "items": []
-                        })
-                        st.rerun()
+                if not st.session_state.devis_sections:
+                    st.session_state.devis_sections = [
+                        {
+                            "numero": "A",
+                            "titre": "ELECTRICITE",
+                            "items": [
+                                {"type": "cable", "designation": "Câble 2.5mm²", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 1, "pu": 1.2},
+                                {"type": "interrupteur", "designation": "Interrupteur", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 5, "pu": 3.5},
+                                {"type": "autre", "designation": "Goulotte 25x16", "unite": "m", "qte": 10, "pu": 2.5, "spec": ""}
+                            ]
+                        }
+                    ]
+
+                total_general_ind = 0
+
+                col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7, col_h8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
+                col_h1.markdown("**N°**")
+                col_h2.markdown("**Désignation**")
+                col_h3.markdown("**Type/Marque**")
+                col_h4.markdown("**Spécifications**")
+                col_h5.markdown("**Qté**")
+                col_h6.markdown("**PU**")
+                col_h7.markdown("**Total**")
+                col_h8.markdown("")
+                st.divider()
 
                 for idx, section in enumerate(st.session_state.devis_sections):
-                    with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                        col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2,1])
+                    st.markdown(f"**{section['numero']}. {section['titre']}**")
+                    sous_total_sec = 0
+
+                    for i, item in enumerate(section['items']):
+                        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
+
                         with col1:
-                            num_item = st.text_input("N°", key=f"num_{idx}")
+                            new_num = st.text_input("N°", value=str(item.get('num', '')), key=f"num_ind_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['num'] = new_num
+
                         with col2:
-                            design = st.text_input("Désignation", key=f"des_{idx}")
+                            new_des = st.text_input("Désignation", value=item.get('designation', ''), key=f"des_ind_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['designation'] = new_des
+
                         with col3:
-                            unite = st.text_input("Unité", key=f"unit_{idx}")
+                            type_item = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"],
+                                                    index=["cable", "interrupteur", "prise", "disjoncteur", "autre"].index(item.get('type', 'autre')),
+                                                    key=f"type_ind_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['type'] = type_item
+
                         with col4:
-                            qte = st.number_input("Qté", min_value=0.0, key=f"qte_{idx}")
+                            if type_item == "cable":
+                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
+                                section_cable = st.text_input("Section", value=item.get('section', ''), key=f"sec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="2.5mm²")
+                                longueur = st.number_input("Long", value=float(item.get('longueur', 0)), key=f"long_ind_{idx}_{i}", label_visibility="collapsed", format="%.1f")
+                                section['items'][i]['marque'] = marque
+                                section['items'][i]['section'] = section_cable
+                                section['items'][i]['longueur'] = longueur
+                                section['items'][i]['spec'] = f"{marque} - {section_cable} - {longueur}m"
+                            elif type_item == "interrupteur":
+                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_int_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
+                                couleur = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"],
+                                                      index=["Blanc", "Noir", "Gris", "Beige"].index(item.get('couleur', 'Blanc')) if item.get('couleur') in ["Blanc", "Noir", "Gris", "Beige"] else 0,
+                                                      key=f"coul_int_{idx}_{i}", label_visibility="collapsed")
+                                qualite = st.selectbox("Qualité", ["Standard", "Premium", "Pro"],
+                                                      index=["Standard", "Premium", "Pro"].index(item.get('qualite', 'Standard')) if item.get('qualite') in ["Standard", "Premium", "Pro"] else 0,
+                                                      key=f"qual_int_{idx}_{i}", label_visibility="collapsed")
+                                section['items'][i]['marque'] = marque
+                                section['items'][i]['couleur'] = couleur
+                                section['items'][i]['qualite'] = qualite
+                                section['items'][i]['spec'] = f"{marque} - {couleur} - {qualite}"
+                            else:
+                                spec = st.text_input("Détails", value=item.get('spec', ''), key=f"spec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Détails")
+                                section['items'][i]['spec'] = spec
+
                         with col5:
-                            pu = st.number_input("Prix U", min_value=0.0, key=f"pu_{idx}")
+                            unite = st.selectbox("Unité", ["m", "pc", "kg", "lot", "m²", "m³"],
+                                               index=["m", "pc", "kg", "lot", "m²", "m³"].index(item.get('unite', 'pc')) if item.get('unite') in ["m", "pc", "kg", "lot", "m²", "m³"] else 1,
+                                               key=f"unit_ind_{idx}_{i}", label_visibility="collapsed")
+                            new_qte = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['unite'] = unite
+                            section['items'][i]['qte'] = new_qte
+
                         with col6:
-                            if st.button("➕ Ligne", key=f"add_item_{idx}"):
-                                if design:
-                                    section['items'].append({
-                                        "num": num_item,
-                                        "designation": design,
-                                        "unite": unite,
-                                        "qte": qte,
-                                        "pu": pu
-                                    })
-                                    st.rerun()
+                            new_pu = st.number_input("PU", value=float(item.get('pu', 0)), min_value=0.0, key=f"pu_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['pu'] = new_pu
 
-                        if section['items']:
-                            df_items = pd.DataFrame(section['items'])
-                            df_items['total'] = df_items['qte'] * df_items['pu']
-                            st.dataframe(df_items, use_container_width=True, hide_index=True)
-                            st.write(f"**Sous-total: {df_items['total'].sum():,.0f} {devise_devis}**")
+                        with col7:
+                            pt = new_qte * new_pu
+                            st.markdown(f"**{pt:,.2f}**")
+                            sous_total_sec += pt
 
-                        col_del, col_space = st.columns([1,5])
-                        if col_del.button("🗑️ Supprimer Section", key=f"del_sec_{idx}"):
-                            st.session_state.devis_sections.pop(idx)
+                        with col8:
+                            if st.button("❌", key=f"del_item_ind_{idx}_{i}", help="Supprimer"):
+                                section['items'].pop(i)
+                                st.rerun()
+
+                    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
+                    with col1:
+                        num_item = st.text_input("N°", key=f"num_ind_{idx}_new", label_visibility="collapsed", placeholder="N°")
+                    with col2:
+                        design = st.text_input("Désignation", key=f"des_ind_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
+                    with col3:
+                        type_new = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"], key=f"type_ind_{idx}_new", label_visibility="collapsed")
+                    with col4:
+                        st.write("Spécifications")
+                    with col5:
+                        unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
+                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col6:
+                        pu = st.number_input("PU", min_value=0.0, key=f"pu_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col7:
+                        st.markdown(f"**{qte*pu:,.2f}**")
+                    with col8:
+                        if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
+                            if design:
+                                section['items'].append({"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu})
+                                st.rerun()
+
+                    col_st1, col_st2, col_st3 = st.columns([7.5, 1, 0.5])
+                    col_st1.markdown(f"**Sous-total {section['titre']}**")
+                    col_st2.markdown(f"**{sous_total_sec:,.2f}**")
+                    total_general_ind += sous_total_sec
+                    st.divider()
+
+                col_add1, col_add2, col_add3 = st.columns([1,4,1])
+                with col_add1:
+                    new_section_num = st.text_input("N° Section", placeholder="B", key="new_sec_num_ind", label_visibility="collapsed")
+                with col_add2:
+                    new_section_titre = st.text_input("Titre Section", placeholder="Nouvelle section...", key="new_sec_titre_ind", label_visibility="collapsed")
+                with col_add3:
+                    if st.button("➕ Section", key="add_section_ind", width="stretch"):
+                        if new_section_titre:
+                            st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": []})
                             st.rerun()
 
                 st.divider()
                 main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_ind")
+                cout_total_ind = total_general_ind + main_oeuvre
+                st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis}")
 
                 if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
                     if client_devis and titre_devis and st.session_state.devis_sections:
                         numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        total_devis = sum(sum(item['qte'] * item['pu'] for item in s['items']) for s in st.session_state.devis_sections) + main_oeuvre
-
                         try:
                             data_devis = {
                                 "numero": numero_devis,
@@ -1603,7 +1685,7 @@ if "📋 Devis" in tab_map:
                                 "localisation": localisation_devis,
                                 "sections": st.session_state.devis_sections,
                                 "main_oeuvre": main_oeuvre,
-                                "total": total_devis,
+                                "total": cout_total_ind,
                                 "devise": devise_devis,
                                 "created_by": st.session_state.user_name,
                                 "created_at": datetime.now().isoformat()
@@ -1612,53 +1694,21 @@ if "📋 Devis" in tab_map:
                             st.success(f"✅ Devis enregistré : {numero_devis}")
                             st.session_state.devis_sections = []
                             st.cache_data.clear()
+                            st.rerun()
                         except Exception as e:
                             st.error("Erreur enregistrement")
                             st.code(repr(e))
-                            st.stop()
-
-                        pdf_bytes = generer_pdf_devis_consulting(
-                            numero_devis, "Industriel", client_devis, titre_devis,
-                            parcelle_devis, localisation_devis, st.session_state.devis_sections,
-                            devise_devis, tel_client_devis, main_oeuvre
-                        )
-                        st.download_button(
-                            label="📥 Télécharger Devis PDF",
-                            data=pdf_bytes,
-                            file_name=f"{numero_devis}.pdf",
-                            mime="application/pdf",
-                            width="stretch",
-                            key="dl_devis_ind"
-                        )
-                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                        st.components.v1.html(f"""
-                            <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                                🖨️ IMPRIMER LE DEVIS
-                            </button>
-                            <script>
-                            function printPDF() {{
-                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                const win = window.open('', '_blank');
-                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                win.document.close();
-                                setTimeout(() => {{ win.print(); }}, 1000);
-                            }}
-                            </script>
-                        """, height=60)
-                        st.rerun()
                     else:
                         st.error("Client, Titre et au moins 1 section requis")
             else:
                 st.info("🔒 Vous n'avez pas l'autorisation de créer des devis industriels")
 
-            # === LISTE DES DEVIS INDUSTRIEL ENREGISTRES - TOUJOURS VISIBLE SI DROIT ===
             peut_telecharger_ind = st.session_state.user_role == "PDG" or perms.get('devis_industriel_download', False)
             peut_imprimer_ind = st.session_state.user_role == "PDG" or perms.get('devis_industriel_print', False)
 
             if peut_telecharger_ind or peut_imprimer_ind:
                 st.divider()
                 st.subheader("📚 Devis Industriel Enregistrés")
-
                 try:
                     devis_ind_list = supabase.table('devis').select("*").eq("type", "Industriel").order("created_at", desc=True).limit(10).execute().data
                 except:
@@ -1728,7 +1778,6 @@ if "📋 Devis" in tab_map:
                                         st.rerun()
 
         with tab_batiment:
-            # VERIFIER PERMISSION CREATION
             peut_creer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
 
             if peut_creer_bat:
@@ -1978,7 +2027,6 @@ if "📋 Devis" in tab_map:
             else:
                 st.info("🔒 Vous n'avez pas l'autorisation de créer des devis bâtiment")
 
-            # === LISTE DES DEVIS BATIMENT ENREGISTRES - TOUJOURS VISIBLE SI DROIT DOWNLOAD OU PRINT ===
             peut_telecharger_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_download', False)
             peut_imprimer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_print', False)
 
@@ -2046,6 +2094,11 @@ if "📋 Devis" in tab_map:
                                 """, height=40)
                             else:
                                 st.write("🔒")
+                        
+                        
+                        
+
+                        
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
