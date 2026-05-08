@@ -560,7 +560,7 @@ if 'date' in df_compta.columns:
     df_compta = df_compta.sort_values('date', ascending=False)
 
 st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
+st.markdown("### AFRICA INNOVATION INDUSTRIAL• Beni RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
