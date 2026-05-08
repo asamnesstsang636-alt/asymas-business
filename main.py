@@ -1784,6 +1784,74 @@ if "📋 Devis" in tab_map:
             with col_btn1:
                 if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_bat"):
                     if client_devis_bat and st.session_state.devis_bat_titre:
+                                # === HISTORIQUE DES DEVIS BATIMENT - A COLLER ICI ===
+        st.divider()
+        st.subheader("📚 Derniers Devis Bâtiment Enregistrés")
+        
+        try:
+            devis_bat_recent = supabase.table('devis').select("*").eq("type", "Bâtiment").order("created_at", desc=True).limit(5).execute().data
+        except:
+            devis_bat_recent = []
+        
+        if not devis_bat_recent:
+            st.info("Aucun devis bâtiment enregistré")
+        else:
+            peut_telecharger_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_download', False)
+            peut_imprimer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_print', False)
+            
+            for d in devis_bat_recent:
+                numero = d.get('numero', 'N/A')
+                client = d.get('client', 'N/A')
+                total = d.get('total', 0)
+                devise = d.get('devise', 'USD')
+                
+                col1, col2, col3, col4 = st.columns([3,2,1,1])
+                with col1:
+                    st.write(f"**{numero}** - {client}")
+                with col2:
+                    st.write(f"{total:,.0f} {devise}")
+                with col3:
+                    if peut_telecharger_bat:
+                        pdf_bytes = generer_pdf_devis_consulting(
+                            numero, "Bâtiment", client, d.get('titre',''),
+                            d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                            devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                        )
+                        st.download_button(
+                            label="📥",
+                            data=pdf_bytes,
+                            file_name=f"{numero}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_bat_bas_{numero}"
+                        )
+                    else:
+                        st.write("🔒")
+                with col4:
+                    if peut_imprimer_bat:
+                        pdf_bytes = generer_pdf_devis_consulting(
+                            numero, "Bâtiment", client, d.get('titre',''),
+                            d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                            devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                        )
+                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                        safe_id = numero.replace('-', '_')
+                        st.components.v1.html(f"""
+                            <button onclick="printPDF_{safe_id}()" style="width:100%; padding:6px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                🖨️
+                            </button>
+                            <script>
+                            function printPDF_{safe_id}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(() => {{ win.print(); }}, 1000);
+                            }}
+                            </script>
+                        """, height=40)
+                    else:
+                        st.write("🔒")
+        # === FIN HISTORIQUE ===
                         numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         pdf_bytes = generer_pdf_devis_consulting(
                             numero_devis, "Bâtiment", client_devis_bat, st.session_state.devis_bat_titre,
