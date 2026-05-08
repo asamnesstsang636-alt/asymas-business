@@ -486,7 +486,7 @@ if 'user_role' not in st.session_state:
     st.session_state.user_cats = []
 
 if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
+    st.markdown("# 🔐 ASYMAS COMPANY - CONNEXION")
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
@@ -559,13 +559,13 @@ if 'date' in df_compta.columns:
     df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
     df_compta = df_compta.sort_values('date', ascending=False)
 
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### AFRICA INNOVATION INDUSTRIAL• Beni RDC")
+st.markdown(f"# ASYMAS CAMPANY - {st.session_state.user_name}")
+st.markdown("### AFRICA INNOVATION• NORD-KIVU RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.6")
+    st.info("ASYMAS CAMPANY v2.6")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
