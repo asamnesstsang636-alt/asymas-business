@@ -1370,183 +1370,127 @@ if "💰 Comptabilité" in tab_map:
 
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Historique des Factures")
-
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-        with col_f1:
-            date_debut = st.date_input("Date début", value=date.today() - timedelta(days=30), key="date_deb_fact")
-        with col_f2:
-            date_fin = st.date_input("Date fin", value=date.today(), key="date_fin_fact")
-        with col_f3:
-            client_filtre = st.text_input("Client", placeholder="Nom client...", key="client_fact")
-        with col_f4:
-            tri_par = st.selectbox("Trier", ["Date desc", "Date asc", "Montant desc", "Client A-Z"], key="tri_fact")
-
-        try:
-            query = supabase.table('compta').select("*").eq("type", "Revenu").not_.is_("numero_facture", "null")
-
-            if client_filtre:
-                query = query.ilike("description", f"%{client_filtre}%")
-
-            if 'date' in get_table_columns("compta"):
-                query = query.gte("date", str(date_debut)).lte("date", str(date_fin))
-
-            if tri_par == "Date desc":
-                query = query.order("date", desc=True)
-            elif tri_par == "Date asc":
-                query = query.order("date", desc=False)
-            elif tri_par == "Montant desc":
-                query = query.order("montant", desc=True)
-            elif tri_par == "Client A-Z":
-                query = query.order("description", desc=False)
-
-            factures_list = query.execute().data
-        except Exception as e:
-            factures_list = []
-            st.error("Erreur chargement factures")
-
-        if not factures_list:
-            st.info("Aucune facture trouvée sur cette période")
+        st.markdown("## 📄 Factures - Relevé par Catégorie")
+        if df_compta.empty:
+            st.info("Aucune opération")
         else:
-            # Grouper par type d'action
-            types_op = {
-                '🛍️ Vente Commerce': [],
-                '🚗 Vente Voiture': [],
-                '🏠 Loyer Immobilier': [],
-                '📄 Autres Factures': []
-            }
+            df_compta_sorted = df_compta.sort_values('date', ascending=False)
+            col_f1, col_f2, col_f3 = st.columns(3)
+            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
+            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
+            col_f4, col_f5 = st.columns(2)
 
-            for f in factures_list:
-                desc = f.get('description', '')
-                if 'Vente Commerce' in desc or desc.startswith('Vente -'):
-                    types_op['🛍️ Vente Commerce'].append(f)
-                elif 'Vente Voiture' in desc:
-                    types_op['🚗 Vente Voiture'].append(f)
-                elif 'Loyer' in desc:
-                    types_op['🏠 Loyer Immobilier'].append(f)
+            # === FILTRE OBLIGATOIRE PAR CATÉGORIE AUTORISÉE ===
+            if st.session_state.user_role!= "PDG":
+                cats_user = st.session_state.get('user_cats', [])
+                if cats_user and "Toutes" not in cats_user:
+                    df_compta_sorted = df_compta_sorted[df_compta_sorted['categorie'].isin(cats_user)]
                 else:
-                    types_op['📄 Autres Factures'].append(f)
+                    # Si pas de catégorie définie et pas PDG = voit rien
+                    if not cats_user:
+                        st.error("⛔ Aucune catégorie autorisée. Contacte le PDG.")
+                        st.stop()
 
-            total_general = sum(f.get('montant', 0) for f in factures_list)
-            st.success(f"📊 {len(factures_list)} facture(s) trouvée(s) - Total: {total_general:,.0f} FC")
+            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
+            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
+            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
+            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
 
-            for type_op, factures in types_op.items():
-                if not factures:
-                    continue
+            if filtre_cat_fact!= "Toutes":
+                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
+            if filtre_client_fact:
+                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
 
-                total_type = sum(f.get('montant', 0) for f in factures)
+            col_t1, col_t2, col_t3 = st.columns(3)
+            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
+            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
+            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
+            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
+            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
+            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
+            st.divider()
 
-                # Couleur par type
-                if 'Commerce' in type_op:
-                    color = "#00ff41"
-                elif 'Voiture' in type_op:
-                    color = "#2196F3"
-                elif 'Loyer' in type_op:
-                    color = "#FF9800"
-                else:
-                    color = "#9E9E9E"
+            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
+            if len(categories) == 0:
+                st.info("Aucune catégorie trouvée dans la période sélectionnée")
+            else:
+                for cat in sorted(categories):
+                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
+                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
+                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
+                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
+                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
+                        for idx, row in df_cat.iterrows():
+                            # 7 COLONNES = 7 VARIABLES
+                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
+                            col_a.write(f"**{row.get('date','')}**")
+                            col_b.write(f"{row.get('type','')}")
+                            col_c.write(f"{row.get('description','')}")
+                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
+                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
+                            if st.session_state.user_role == "PDG":
+                                 if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
+                                      supabase.table("compta").delete().eq("id", int(row['id'])).execute()
+                                      st.success("Facture supprimée")
+                                      st.cache_data.clear()
+                                      st.rerun()
+                                 else:
+                                    col_g.write("")
+    
+            
+           
+                                     
+            
+           
+       
 
-                st.markdown(f"### {type_op} - {len(factures)} facture(s) - {total_type:,.0f} FC")
-
-                for f in factures:
-                    numero = f.get('numero_facture', 'N/A')
-                    desc = f.get('description', 'N/A')
-                    montant = f.get('montant', 0)
-                    devise = f.get('devise', 'FC')
-                    date_fac = f.get('date', '')
-
-                    try:
-                        client = desc.split(' - ')[1] if ' - ' in desc else 'N/A'
-                        type_detail = desc.split(' - ')[0]
-                    except:
-                        client = 'N/A'
-                        type_detail = 'N/A'
-
-                    with st.expander(f"{numero} - {client} - {montant:,.0f} {devise}"):
-                        col_info1, col_info2, col_info3 = st.columns(3)
-                        with col_info1:
-                            st.markdown(f"**Numéro:** `{numero}`")
-                            st.markdown(f"**Client:** {client}")
-                            st.markdown(f"**Date:** {date_fac[:10] if date_fac else 'N/A'}")
-                        with col_info2:
-                            st.markdown(f"**Type:** {type_detail}")
-                            st.markdown(f"**Montant:** {montant:,.0f} {devise}")
-                            st.markdown(f"**Par:** {f.get('utilisateur','N/A')}")
-                        with col_info3:
-                            st.markdown(f"**Devise:** {devise}")
-                            st.markdown(f"**ID:** {f.get('id','N/A')}")
-
-                        # Détails articles
-                        if f.get('details'):
+                            # === BOUTON TÉLÉCHARGER PDF ===
                             try:
-                                details_list = json.loads(f['details'])
-                                st.divider()
-                                st.markdown("**Détail articles:**")
-                                df_detail = pd.DataFrame(details_list)
-                                if not df_detail.empty:
-                                    df_detail['total'] = df_detail['qte'] * df_detail['pu']
-                                    st.dataframe(df_detail[['nom','qte','pu','total']], hide_index=True, width='stretch')
-                            except:
-                                st.write(f"**Détails:** {desc}")
+                                details_list = []
+                                if row.get('details') and str(row.get('details'))!= 'nan':
+                                    details_list = json.loads(row['details'])
+                                else:
+                                    details_list = [{"nom": row.get('description',''), "qte": 1, "pu": row.get('montant',0)}]
 
-                        st.divider()
-                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+                                client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
+                                pdf_bytes = generer_pdf_facture(
+                                    row.get('numero_facture', f"FACT-{row['id']}"),
+                                    row.get('categorie', 'Facture'),
+                                    client_nom,
+                                    details_list,
+                                    row.get('montant',0),
+                                    row.get('devise','FC'),
+                                    "+243...",
+                                    ""
+                                )
+                                col_f.download_button(
+                                    "📥",
+                                    data=pdf_bytes,
+                                    file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_fact_{row['id']}",
+                                    help="Télécharger PDF"
+                                )
 
-                        with col_btn1:
-                            if f.get('details'):
-                                try:
-                                    details_list = json.loads(f['details'])
-                                    pdf_bytes = generer_pdf_facture(
-                                        numero, type_detail, client,
-                                        details_list, montant, devise,
-                                        "+243...", "", "Proforma" if "Proforma" in desc else "Simple"
-                                    )
-                                    st.download_button(
-                                        label="📥 Télécharger",
-                                        data=pdf_bytes,
-                                        file_name=f"{numero}.pdf",
-                                        mime="application/pdf",
-                                        key=f"dl_fact_{numero}",
-                                        width="stretch"
-                                    )
-                                except:
-                                    st.error("Erreur PDF")
-
-                        with col_btn2:
-                            if f.get('details'):
-                                try:
-                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                    safe_id = numero.replace('-', '_').replace('.', '_')
-                                    st.components.v1.html(f"""
-                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:{color}; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
-                                            🖨️ IMPRIMER
-                                        </button>
-                                        <script>
-                                        function printPDF_{safe_id}() {{
-                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                            const win = window.open('', '_blank');
-                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                            win.document.close();
-                                            setTimeout(() => {{ win.print(); }}, 1000);
-                                        }}
-                                        </script>
-                                    """, height=45)
-                                except:
-                                    st.info("Génère le PDF d'abord")
-
-                        with col_btn3:
-                            if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                                if st.button("🗑️ Supprimer", key=f"del_fact_{numero}", width="stretch"):
-                                    try:
-                                        supabase.table('compta').delete().eq("numero_facture", numero).execute()
-                                        st.success("Facture supprimée")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except:
-                                        st.error("Erreur suppression")
-                            else:
-                                st.info("🔒 Non autorisé")
-
+                                # === BOUTON IMPRIMER ===
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                col_g.markdown(f"""
+                                    <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                                        🖨️
+                                    </button>
+                                    <script>
+                                    function printPDF_{row['id']}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, unsafe_allow_html=True)
+                            except Exception as e:
+                                col_f.write("❌")
+                                col_g.write("❌"
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
