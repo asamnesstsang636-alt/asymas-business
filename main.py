@@ -797,71 +797,119 @@ if "🛍️ Commerce" in tab_map:
                             st.error("Erreur finalisation vente")
                             st.code(repr(e))
 
-if "📦 Gestion" in tab_map:
-    with tab_map["📦 Gestion"]:
-        st.markdown("## 📦 Gestion Stock & Inventaire")
-
+if "📦 Gestion Stock" in tab_map:
+    with tab_map["📦 Gestion Stock"]:
+        st.markdown("## 📦 Gestion Stock Commerce - Articles & Pertes")
+        
         tab_stock, tab_ajout, tab_mvt, tab_pertes = st.tabs(["📊 Stock Actuel", "➕ Ajouter Article", "📈 Mouvements", "⚠️ Pertes & Casses"])
 
         with tab_stock:
-            st.subheader("📊 Stock Actuel")
-            try:
-                articles = supabase.table('articles').select("*").order("nom").execute().data
-            except:
-                articles = []
-            
-            if not articles:
+            st.subheader("📊 Stock Actuel Commerce")
+            if df_articles.empty:
                 st.info("Aucun article en stock")
             else:
-                for a in articles:
-                    col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+                for _, row in df_articles.iterrows():
+                    col1, col2, col3, col4 = st.columns([3,1,1,1])
                     with col1:
-                        st.write(f"**{a.get('nom','N/A')}** - {a.get('reference','')}")
+                        st.write(f"**{row['nom_article']}** - {row.get('categorie','')} - QR:{row.get('code_qr','N/A')}")
                     with col2:
-                        st.write(f"Stock: {a.get('quantite', 0)}")
-                    with col3:
-                        st.write(f"PA: {a.get('prix_achat', 0)}")
-                    with col4:
-                        st.write(f"PV: {a.get('prix_vente', 0)}")
-                    with col5:
-                        if a.get('quantite', 0) < 5:
-                            st.error("⚠️ Bas")
+                        stock_val = int(row.get('stock',0))
+                        if stock_val < 5:
+                            st.error(f"⚠️ Stock: {stock_val}")
                         else:
-                            st.success("✅ OK")
+                            st.success(f"✅ Stock: {stock_val}")
+                    with col3:
+                        st.write(f"PA: {row.get('prix_achat',0):,.0f}")
+                    with col4:
+                        st.write(f"PV: {row.get('prix_vente',0):,.0f} FC")
+                    
+                    with st.expander(f"Modifier/Supprimer {row['nom_article']}"):
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            new_nom = st.text_input("Nom", value=row['nom_article'], key=f"nom_art_{row['id']}")
+                            new_cat = st.text_input("Catégorie", value=row.get('categorie',''), key=f"cat_art_{row['id']}")
+                            new_code_qr = st.text_input("Code QR", value=row.get('code_qr',''), key=f"qr_art_{row['id']}")
+                        with c2:
+                            new_prix_a = st.number_input("Prix Achat FC", value=float(row.get('prix_achat',0)), key=f"pa_art_{row['id']}")
+                            new_prix_v = st.number_input("Prix Vente FC", value=float(row.get('prix_vente',0)), key=f"pv_art_{row['id']}")
+                            new_prix_usd = st.number_input("Prix Vente $", value=float(row.get('prix_vente_usd',0)), key=f"pusd_art_{row['id']}")
+                        with c3:
+                            new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_art_{row['id']}")
+                        
+                        c1, c2 = st.columns(2)
+                        if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
+                            try:
+                                data_update = {
+                                    "nom_article": str(new_nom),
+                                    "categorie": str(new_cat),
+                                    "prix_achat": float(new_prix_a),
+                                    "prix_vente": float(new_prix_v),
+                                    "stock": int(new_stock),
+                                    "code_qr": str(new_code_qr) if new_code_qr else None
+                                }
+                                colonnes_articles = get_table_columns("articles")
+                                if "prix_vente_usd" in colonnes_articles:
+                                    data_update["prix_vente_usd"] = float(new_prix_usd)
+                                supabase.table("articles").update(data_update).eq("id", int(row['id'])).execute()
+                                st.success("Modifié")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except Exception as e:
+                                st.error("Erreur modif")
+                                st.code(repr(e))
+                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                            if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", width="stretch"):
+                                try:
+                                    supabase.table("articles").delete().eq("id", int(row['id'])).execute()
+                                    st.success("Supprimé")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
 
         with tab_ajout:
-            st.subheader("➕ Ajouter Article/Voiture")
-            col1, col2 = st.columns(2)
-            with col1:
-                nom_art = st.text_input("Nom/Modèle")
-                ref_art = st.text_input("Référence/VIN")
-                cat_art = st.selectbox("Catégorie", ["Pièce", "Voiture", "Consommable", "Autre"])
-            with col2:
-                qte_art = st.number_input("Quantité", min_value=1, value=1)
-                pa_art = st.number_input("Prix Achat", min_value=0.0)
-                pv_art = st.number_input("Prix Vente", min_value=0.0)
-            
-            if st.button("➕ Ajouter au Stock", type="primary"):
-                if nom_art and qte_art > 0:
+            st.subheader("➕ Ajouter Nouvel Article Commerce")
+            qr_scan_ajout = qrcode_scanner(key='qr_add_article_com')
+            if qr_scan_ajout:
+                st.success(f"QR scanné : {qr_scan_ajout}")
+                st.session_state.qr_code_temp = qr_scan_ajout
+
+            with st.form("form_article_com", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom = c1.text_input("Nom Article")
+                cat = c2.text_input("Catégorie")
+                code_qr = c3.text_input("Code QR", value=st.session_state.get('qr_code_temp', ''))
+                c1, c2, c3 = st.columns(3)
+                prix_achat_fc = c1.number_input("Prix Achat FC", min_value=0.0)
+                prix_vente_fc = c2.number_input("Prix Vente FC", min_value=0.0)
+                prix_vente_usd = c3.number_input("Prix Vente $", min_value=0.0)
+                stock = c1.number_input("Stock Initial", min_value=0)
+                if st.form_submit_button("💾 Ajouter Article"):
                     try:
-                        supabase.table('articles').insert({
-                            "nom": nom_art,
-                            "reference": ref_art,
-                            "categorie": cat_art,
-                            "quantite": qte_art,
-                            "prix_achat": pa_art,
-                            "prix_vente": pv_art,
-                            "created_by": st.session_state.user_name,
-                            "created_at": datetime.now().isoformat()
-                        }).execute()
-                        st.success(f"✅ {nom_art} ajouté")
+                        data_insert = {
+                            "nom_article": str(nom),
+                            "categorie": str(cat),
+                            "prix_achat": float(prix_achat_fc),
+                            "prix_vente": float(prix_vente_fc),
+                            "stock": int(stock),
+                            "code_qr": str(code_qr) if code_qr else None
+                        }
+                        colonnes_articles = get_table_columns("articles")
+                        if "prix_vente_usd" in colonnes_articles:
+                            data_insert["prix_vente_usd"] = float(prix_vente_usd)
+                        supabase.table("articles").insert(data_insert).execute()
+                        st.success(f"Article {nom} ajouté")
+                        if 'qr_code_temp' in st.session_state:
+                            del st.session_state.qr_code_temp
+                        st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error("Erreur ajout")
                         st.code(repr(e))
 
         with tab_mvt:
-            st.subheader("📈 Mouvements de Stock")
+            st.subheader("📈 Mouvements de Stock Commerce")
             try:
                 mvts = supabase.table('mouvements_stock').select("*").order("created_at", desc=True).limit(50).execute().data
             except:
@@ -874,62 +922,49 @@ if "📦 Gestion" in tab_map:
                 st.dataframe(df_mvt[['article_nom', 'type', 'quantite', 'motif', 'created_by', 'created_at']], use_container_width=True, hide_index=True)
 
         with tab_pertes:
-            st.subheader("⚠️ Déclarer une Perte/Casse")
+            st.subheader("⚠️ Déclarer Perte/Casse Article Commerce")
             
-            try:
-                articles_list = supabase.table('articles').select("id,nom,quantite,prix_achat").gt("quantite", 0).execute().data
-            except:
-                articles_list = []
+            articles_dispo = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
             
-            if not articles_list:
+            if articles_dispo.empty:
                 st.warning("Aucun article en stock pour déclarer une perte")
             else:
                 col1, col2 = st.columns(2)
                 with col1:
-                    article_dict = {f"{a['nom']} - Stock:{a['quantite']}": a for a in articles_list}
-                    article_choisi = st.selectbox("Article/Voiture abîmé", list(article_dict.keys()))
-                    qte_perte = st.number_input("Quantité abîmée", min_value=1, max_value=article_dict[article_choisi]['quantite'] if article_choisi else 1)
+                    article_dict = {f"{a['nom_article']} - Stock:{int(a['stock'])}": a for _, a in articles_dispo.iterrows()}
+                    article_choisi = st.selectbox("Article abîmé/perdu", list(article_dict.keys()))
+                    qte_perte = st.number_input("Quantité abîmée", min_value=1, max_value=int(article_dict[article_choisi]['stock']) if article_choisi else 1)
                 with col2:
-                    motif_perte = st.selectbox("Motif", ["Casse", "Vol", "Accident", "Défaut fabrication", "Péremption", "Autre"])
-                    detail_perte = st.text_area("Détails", placeholder="Ex: Pare-brise fissuré lors du transport")
-                    responsable = st.text_input("Responsable", value=st.session_state.user_name)
+                    motif_perte = st.selectbox("Motif", ["Casse", "Vol", "Péremption", "Défaut fabrication", "Accident", "Autre"])
+                    detail_perte = st.text_area("Détails", placeholder="Ex: Carton mouillé lors livraison")
+                    responsable = st.text_input("Déclaré par", value=st.session_state.user_name)
                 
                 if article_choisi:
                     article_data = article_dict[article_choisi]
-                    valeur_perte = qte_perte * article_data['prix_achat']
-                    st.error(f"💸 Valeur de la perte : {valeur_perte:,.2f} USD")
+                    valeur_perte = qte_perte * float(article_data.get('prix_achat', 0))
+                    st.error(f"💸 Valeur de la perte : {valeur_perte:,.0f} FC")
                 
                 if st.button("🚨 ENREGISTRER LA PERTE", type="primary", width="stretch"):
                     if article_choisi and qte_perte > 0:
                         article_data = article_dict[article_choisi]
                         try:
                             # 1. Déduire du stock
-                            nouveau_stock = article_data['quantite'] - qte_perte
-                            supabase.table('articles').update({"quantite": nouveau_stock}).eq("id", article_data['id']).execute()
+                            nouveau_stock = int(article_data['stock']) - qte_perte
+                            supabase.table('articles').update({"stock": nouveau_stock}).eq("id", int(article_data['id'])).execute()
                             
-                            # 2. Enregistrer le mouvement de perte
+                            # 2. Enregistrer mouvement
                             supabase.table('mouvements_stock').insert({
-                                "article_id": article_data['id'],
-                                "article_nom": article_data['nom'],
+                                "article_id": int(article_data['id']),
+                                "article_nom": str(article_data['nom_article']),
                                 "type": "PERTE",
-                                "quantite": -qte_perte,
+                                "quantite": -int(qte_perte),
                                 "motif": f"{motif_perte} - {detail_perte}",
-                                "valeur": valeur_perte,
+                                "valeur": float(valeur_perte),
                                 "created_by": responsable,
                                 "created_at": datetime.now().isoformat()
                             }).execute()
                             
-                            # 3. Alerter le PDG si montant > 100 USD
-                            if valeur_perte > 100:
-                                supabase.table('notifications').insert({
-                                    "type": "PERTE_IMPORTANTE",
-                                    "message": f"Perte de {qte_perte}x {article_data['nom']} = {valeur_perte:,.2f} USD. Motif: {motif_perte}",
-                                    "pour_role": "PDG",
-                                    "lu": False,
-                                    "created_at": datetime.now().isoformat()
-                                }).execute()
-                            
-                            st.success(f"✅ Perte enregistrée. Stock mis à jour : {nouveau_stock}")
+                            st.success(f"✅ Perte enregistrée. Nouveau stock {article_data['nom_article']}: {nouveau_stock}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
@@ -937,7 +972,7 @@ if "📦 Gestion" in tab_map:
                             st.code(repr(e))
             
             st.divider()
-            st.subheader("📋 Historique des Pertes")
+            st.subheader("📋 Historique Pertes Commerce")
             try:
                 pertes = supabase.table('mouvements_stock').select("*").eq("type", "PERTE").order("created_at", desc=True).limit(20).execute().data
             except:
@@ -947,20 +982,20 @@ if "📦 Gestion" in tab_map:
                 st.info("Aucune perte enregistrée")
             else:
                 total_pertes = sum(p.get('valeur', 0) for p in pertes)
-                st.metric("💸 TOTAL PERTES", f"{total_pertes:,.2f} USD")
+                st.metric("💸 TOTAL PERTES COMMERCE", f"{total_pertes:,.0f} FC")
                 
                 for p in pertes:
-                    with st.expander(f"🔴 {p.get('article_nom')} - {p.get('quantite')} - {p.get('created_at','')[:10]}"):
+                    with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.write(f"**Quantité:** {abs(p.get('quantite', 0))}")
-                            st.write(f"**Valeur:** {p.get('valeur', 0):,.2f} USD")
+                            st.write(f"**Qté perdue:** {abs(p.get('quantite', 0))}")
+                            st.write(f"**Valeur:** {p.get('valeur', 0):,.0f} FC")
                         with col2:
                             st.write(f"**Motif:** {p.get('motif', 'N/A')}")
                             st.write(f"**Par:** {p.get('created_by', 'N/A')}")
                         with col3:
                             if st.session_state.user_role == "PDG":
-                                if st.button("🗑️ Supprimer", key=f"del_perte_{p.get('id')}"):
+                                if st.button("🗑️ Supprimer", key=f"del_perte_com_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
 if "🏠 Immobilier" in tab_map:
@@ -1169,10 +1204,15 @@ if "🚗 Automobile" in tab_map:
 
 if "🚘 Gestion Parc" in tab_map:
     with tab_map["🚘 Gestion Parc"]:
-        st.markdown("## 🚘 Gestion Parc Automobile")
+        st.markdown("## 🚘 Gestion Parc Automobile & Pertes")
+        
+        tab_ajout_v, tab_liste_v, tab_pertes_v = st.tabs(["➕ Ajouter Voiture", "📋 Liste Voitures", "⚠️ Pertes/Dégâts Voitures"])
+        
         colonnes_voitures = get_table_columns("voitures")
-        with st.expander("➕ Ajouter Nouvelle Voiture"):
-            with st.form("form_voiture", clear_on_submit=True):
+        
+        with tab_ajout_v:
+            st.subheader("➕ Ajouter Nouvelle Voiture au Parc")
+            with st.form("form_voiture_parc", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 marque = c1.text_input("Marque")
                 modele = c2.text_input("Modèle")
@@ -1194,10 +1234,10 @@ if "🚘 Gestion Parc" in tab_map:
                     boite = c2.selectbox("Boîte", ["Manuelle", "Automatique"])
                     data_insert["boite"] = str(boite)
                 if "prix" in colonnes_voitures:
-                    prix = c3.number_input("Prix $", min_value=0.0, value=0.0)
+                    prix = c3.number_input("Prix Achat $", min_value=0.0, value=0.0)
                     data_insert["prix"] = float(prix)
                 if "statut" in colonnes_voitures:
-                    statut = c1.selectbox("Statut", ["Disponible", "Réservée", "Vendue"])
+                    statut = c1.selectbox("Statut", ["Disponible", "En réparation", "Réservée", "Vendue"])
                     data_insert["statut"] = str(statut)
                 if "quantite" in colonnes_voitures:
                     quantite = c2.number_input("Quantité en Stock", min_value=1, value=1)
@@ -1211,93 +1251,173 @@ if "🚘 Gestion Parc" in tab_map:
                 if st.form_submit_button("💾 Ajouter Voiture"):
                     try:
                         supabase.table("voitures").insert(data_insert).execute()
-                        st.success("Voiture ajoutée")
+                        st.success(f"Voiture {marque} {modele} ajoutée")
                         st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error("Erreur ajout")
                         st.code(repr(e))
-        st.divider()
-        st.subheader("📋 Liste des Voitures")
-        if df_voitures.empty:
-            st.info("Aucune voiture")
-        else:
-            for _, row in df_voitures.iterrows():
-                with st.expander(f"{row['marque']} {row['modele']} - {row.get('plaque','')} - Stock:{row.get('quantite',0)} - {row.get('statut','')}"):
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        new_marque = st.text_input("Marque", value=row['marque'], key=f"marque_{row['id']}")
-                        new_modele = st.text_input("Modèle", value=row['modele'], key=f"modele_{row['id']}")
-                        new_annee = st.text_input("Année", value=row.get('annee',''), key=f"annee_{row['id']}")
-                    data_update = {"marque": str(new_marque), "modele": str(new_modele), "annee": str(new_annee)}
-                    with c2:
-                        if "plaque" in colonnes_voitures:
-                            new_plaque = st.text_input("Plaque", value=row.get('plaque',''), key=f"plaque_{row['id']}")
-                            data_update["plaque"] = str(new_plaque)
-                        if "couleur" in colonnes_voitures:
-                            new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_{row['id']}")
-                            data_update["couleur"] = str(new_couleur)
-                        if "kilometrage" in colonnes_voitures:
-                            km_val = row.get('kilometrage', 0)
+
+        with tab_liste_v:
+            st.subheader("📋 Liste des Voitures - Modifier/Supprimer")
+            if df_voitures.empty:
+                st.info("Aucune voiture")
+            else:
+                for _, row in df_voitures.iterrows():
+                    with st.expander(f"{row['marque']} {row['modele']} - {row.get('plaque','')} - Stock:{row.get('quantite',0)} - {row.get('statut','')}"):
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            new_marque = st.text_input("Marque", value=row['marque'], key=f"marque_v_{row['id']}")
+                            new_modele = st.text_input("Modèle", value=row['modele'], key=f"modele_v_{row['id']}")
+                            new_annee = st.text_input("Année", value=row.get('annee',''), key=f"annee_v_{row['id']}")
+                        data_update = {"marque": str(new_marque), "modele": str(new_modele), "annee": str(new_annee)}
+                        with c2:
+                            if "plaque" in colonnes_voitures:
+                                new_plaque = st.text_input("Plaque", value=row.get('plaque',''), key=f"plaque_v_{row['id']}")
+                                data_update["plaque"] = str(new_plaque)
+                            if "couleur" in colonnes_voitures:
+                                new_couleur = st.text_input("Couleur", value=row.get('couleur',''), key=f"couleur_v_{row['id']}")
+                                data_update["couleur"] = str(new_couleur)
+                            if "kilometrage" in colonnes_voitures:
+                                km_val = row.get('kilometrage', 0)
+                                try:
+                                    km_val = int(float(km_val)) if km_val else 0
+                                except:
+                                    km_val = 0
+                                new_km = st.number_input("KM", value=km_val, key=f"km_v_{row['id']}")
+                                data_update["kilometrage"] = int(new_km)
+                        with c3:
+                            if "carburant" in colonnes_voitures:
+                                carburant_options = ["Essence", "Diesel", "Hybride", "Électrique"]
+                                carb_val = row.get('carburant','Essence')
+                                new_carb = st.selectbox("Carburant", carburant_options, index=carburant_options.index(carb_val) if carb_val in carburant_options else 0, key=f"carb_v_{row['id']}")
+                                data_update["carburant"] = str(new_carb)
+                            if "boite" in colonnes_voitures:
+                                boite_options = ["Manuelle", "Automatique"]
+                                boite_val = row.get('boite','Manuelle')
+                                new_boite = st.selectbox("Boîte", boite_options, index=boite_options.index(boite_val) if boite_val in boite_options else 0, key=f"boite_v_{row['id']}")
+                                data_update["boite"] = str(new_boite)
+                            if "prix" in colonnes_voitures:
+                                new_prix = st.number_input("Prix $", value=float(row.get('prix',0)), key=f"prix_v_{row['id']}")
+                                data_update["prix"] = float(new_prix)
+                            if "statut" in colonnes_voitures:
+                                statut_options = ["Disponible", "En réparation", "Réservée", "Vendue"]
+                                statut_val = row.get('statut','Disponible')
+                                new_statut = st.selectbox("Statut", statut_options, index=statut_options.index(statut_val) if statut_val in statut_options else 0, key=f"statut_v_{row['id']}")
+                                data_update["statut"] = str(new_statut)
+                        if "quantite" in colonnes_voitures:
+                            new_qte = st.number_input("Stock", value=int(row.get('quantite',1)), min_value=0, key=f"qte_v_{row['id']}")
+                            data_update["quantite"] = int(new_qte)
+                        if "qualite" in colonnes_voitures:
+                            qualite_options = ["Neuf", "Occasion", "Reconditionné"]
+                            qualite_val = row.get('qualite','Neuf')
+                            new_qualite = st.selectbox("Qualité", qualite_options, index=qualite_options.index(qualite_val) if qualite_val in qualite_options else 0, key=f"qual_v_{row['id']}")
+                            data_update["qualite"] = str(new_qualite)
+                        if "code_qr" in colonnes_voitures:
+                            new_code_qr = st.text_input("Code QR", value=row.get('code_qr',''), key=f"qr_v_{row['id']}")
+                            data_update["code_qr"] = str(new_code_qr)
+                        c1, c2 = st.columns(2)
+                        if c1.button("✏️ Modifier", key=f"mod_v_parc_{row['id']}", width="stretch"):
                             try:
-                                km_val = int(float(km_val)) if km_val else 0
-                            except:
-                                km_val = 0
-                            new_km = st.number_input("KM", value=km_val, key=f"km_{row['id']}")
-                            data_update["kilometrage"] = int(new_km)
-                    with c3:
-                        if "carburant" in colonnes_voitures:
-                            carburant_options = ["Essence", "Diesel", "Hybride", "Électrique"]
-                            carb_val = row.get('carburant','Essence')
-                            new_carb = st.selectbox("Carburant", carburant_options, index=carburant_options.index(carb_val) if carb_val in carburant_options else 0, key=f"carb_{row['id']}")
-                            data_update["carburant"] = str(new_carb)
-                        if "boite" in colonnes_voitures:
-                            boite_options = ["Manuelle", "Automatique"]
-                            boite_val = row.get('boite','Manuelle')
-                            new_boite = st.selectbox("Boîte", boite_options, index=boite_options.index(boite_val) if boite_val in boite_options else 0, key=f"boite_{row['id']}")
-                            data_update["boite"] = str(new_boite)
-                        if "prix" in colonnes_voitures:
-                            new_prix = st.number_input("Prix $", value=float(row.get('prix',0)), key=f"prix_{row['id']}")
-                            data_update["prix"] = float(new_prix)
-                        if "statut" in colonnes_voitures:
-                            statut_options = ["Disponible", "Réservée", "Vendue"]
-                            statut_val = row.get('statut','Disponible')
-                            new_statut = st.selectbox("Statut", statut_options, index=statut_options.index(statut_val) if statut_val in statut_options else 0, key=f"statut_{row['id']}")
-                            data_update["statut"] = str(new_statut)
-                    if "quantite" in colonnes_voitures:
-                        new_qte = st.number_input("Stock", value=int(row.get('quantite',1)), min_value=0, key=f"qte_{row['id']}")
-                        data_update["quantite"] = int(new_qte)
-                    if "qualite" in colonnes_voitures:
-                        qualite_options = ["Neuf", "Occasion", "Reconditionné"]
-                        qualite_val = row.get('qualite','Neuf')
-                        new_qualite = st.selectbox("Qualité", qualite_options, index=qualite_options.index(qualite_val) if qualite_val in qualite_options else 0, key=f"qual_{row['id']}")
-                        data_update["qualite"] = str(new_qualite)
-                    if "code_qr" in colonnes_voitures:
-                        new_code_qr = st.text_input("Code QR", value=row.get('code_qr',''), key=f"qr_{row['id']}")
-                        data_update["code_qr"] = str(new_code_qr)
-                    c1, c2 = st.columns(2)
-                    if c1.button("✏️ Modifier", key=f"mod_v_{row['id']}", width="stretch"):
-                        try:
-                            supabase.table("voitures").update(data_update).eq("id", int(row['id'])).execute()
-                            st.success("Modifié")
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur modif")
-                            st.code(repr(e))
-                    if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
-                        if c2.button("🗑️ Supprimer", key=f"del_v_{row['id']}", width="stretch"):
-                            try:
-                                supabase.table("voitures").delete().eq("id", int(row['id'])).execute()
-                                st.success("Supprimé")
+                                supabase.table("voitures").update(data_update).eq("id", int(row['id'])).execute()
+                                st.success("Modifié")
                                 st.cache_data.clear()
                                 st.rerun()
                             except Exception as e:
-                                st.error("Erreur suppression")
+                                st.error("Erreur modif")
                                 st.code(repr(e))
-                    else:
-                        c2.info("🔒 Suppression non autorisée")
+                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                            if c2.button("🗑️ Supprimer", key=f"del_v_parc_{row['id']}", width="stretch"):
+                                try:
+                                    supabase.table("voitures").delete().eq("id", int(row['id'])).execute()
+                                    st.success("Supprimé")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
 
+        with tab_pertes_v:
+            st.subheader("⚠️ Déclarer Dégât/Perte Voiture")
+            
+            voitures_dispo = df_voitures[df_voitures.get('quantite', 1) > 0].copy() if not df_voitures.empty else pd.DataFrame()
+            
+            if voitures_dispo.empty:
+                st.warning("Aucune voiture en stock pour déclarer un dégât")
+            else:
+                col1, col2 = st.columns(2)
+                with col1:
+                    voiture_dict = {f"{v['marque']} {v['modele']} - {v.get('plaque','')} - Stock:{int(v.get('quantite',1))}": v for _, v in voitures_dispo.iterrows()}
+                    voiture_choisie = st.selectbox("Voiture endommagée/perdue", list(voiture_dict.keys()))
+                    qte_perte_v = st.number_input("Quantité endommagée", min_value=1, max_value=int(voiture_dict[voiture_choisie].get('quantite',1)) if voiture_choisie else 1)
+                with col2:
+                    motif_perte_v = st.selectbox("Type de dégât", ["Accident", "Vol", "Incendie", "Panne moteur", "Dégât carrosserie", "Pneus crevés", "Autre"])
+                    detail_perte_v = st.text_area("Détails du dégât", placeholder="Ex: Pare-choc avant enfoncé + phare cassé")
+                    responsable_v = st.text_input("Déclaré par", value=st.session_state.user_name, key="resp_v")
+                
+                if voiture_choisie:
+                    voiture_data = voiture_dict[voiture_choisie]
+                    valeur_perte_v = qte_perte_v * float(voiture_data.get('prix', 0))
+                    st.error(f"💸 Valeur de la perte : {valeur_perte_v:,.2f} $")
+                
+                if st.button("🚨 ENREGISTRER DÉGÂT VOITURE", type="primary", width="stretch"):
+                    if voiture_choisie and qte_perte_v > 0:
+                        voiture_data = voiture_dict[voiture_choisie]
+                        try:
+                            # 1. Déduire du stock
+                            nouveau_stock_v = int(voiture_data.get('quantite',1)) - qte_perte_v
+                            nouveau_statut = "En réparation" if nouveau_stock_v > 0 else "Endommagée"
+                            supabase.table('voitures').update({
+                                "quantite": nouveau_stock_v,
+                                "statut": nouveau_statut
+                            }).eq("id", int(voiture_data['id'])).execute()
+                            
+                            # 2. Enregistrer mouvement perte
+                            supabase.table('mouvements_stock').insert({
+                                "article_id": int(voiture_data['id']),
+                                "article_nom": f"{voiture_data['marque']} {voiture_data['modele']} - {voiture_data.get('plaque','')}",
+                                "type": "PERTE_VOITURE",
+                                "quantite": -int(qte_perte_v),
+                                "motif": f"{motif_perte_v} - {detail_perte_v}",
+                                "valeur": float(valeur_perte_v),
+                                "created_by": responsable_v,
+                                "created_at": datetime.now().isoformat()
+                            }).execute()
+                            
+                            st.success(f"✅ Dégât enregistré. Stock {voiture_data['marque']} {voiture_data['modele']}: {nouveau_stock_v}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur enregistrement dégât")
+                            st.code(repr(e))
+            
+            st.divider()
+            st.subheader("📋 Historique Dégâts/Pertes Voitures")
+            try:
+                pertes_v = supabase.table('mouvements_stock').select("*").eq("type", "PERTE_VOITURE").order("created_at", desc=True).limit(20).execute().data
+            except:
+                pertes_v = []
+            
+            if not pertes_v:
+                st.info("Aucun dégât de voiture enregistré")
+            else:
+                total_pertes_v = sum(p.get('valeur', 0) for p in pertes_v)
+                st.metric("💸 TOTAL PERTES VOITURES", f"{total_pertes_v:,.2f} $")
+                
+                for p in pertes_v:
+                    with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"**Qté endommagée:** {abs(p.get('quantite', 0))}")
+                            st.write(f"**Valeur:** {p.get('valeur', 0):,.2f} $")
+                        with col2:
+                            st.write(f"**Motif:** {p.get('motif', 'N/A')}")
+                            st.write(f"**Par:** {p.get('created_by', 'N/A')}")
+                        with col3:
+                            if st.session_state.user_role == "PDG":
+                                if st.button("🗑️ Supprimer", key=f"del_perte_v_{p.get('id')}"):
+                                    supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
+                                    st.rerun()
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
