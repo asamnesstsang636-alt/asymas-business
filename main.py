@@ -1828,14 +1828,56 @@ if "👥 Utilisateurs" in tab_map:
                 nom = c1.text_input("Nom")
                 role = c2.text_input("Rôle")
                 password = c1.text_input("Mot de passe", type="password")
-                perms_user = c2.text_area("Permissions JSON", value='{"dashboard":true,"commerce":true}', height=100)
+                
+                st.markdown("**Permissions :**")
+                col_p1, col_p2, col_p3 = st.columns(3)
+                with col_p1:
+                    p_dashboard = st.checkbox("Dashboard", value=True)
+                    p_commerce = st.checkbox("Commerce", value=True)
+                    p_stock = st.checkbox("Stock")
+                    p_immobilier = st.checkbox("Immobilier")
+                    p_automobile = st.checkbox("Automobile")
+                    p_parc = st.checkbox("Gestion Parc")
+                with col_p2:
+                    p_compta = st.checkbox("Comptabilité")
+                    p_factures = st.checkbox("Factures")
+                    p_devis_ind = st.checkbox("Devis Industriel")
+                    p_devis_ind_dl = st.checkbox("→ Télécharger Ind")
+                    p_devis_ind_pr = st.checkbox("→ Imprimer Ind")
+                with col_p3:
+                    p_devis_bat = st.checkbox("Devis Bâtiment")
+                    p_devis_bat_dl = st.checkbox("→ Télécharger Bât")
+                    p_devis_bat_pr = st.checkbox("→ Imprimer Bât")
+                    p_devis_hist = st.checkbox("Historique Devis")
+                    p_users = st.checkbox("Utilisateurs")
+                    p_supprimer = st.checkbox("Supprimer")
+
                 if st.form_submit_button("💾 Ajouter"):
                     try:
+                        perms_dict = {
+                            "dashboard": p_dashboard,
+                            "commerce": p_commerce,
+                            "stock": p_stock,
+                            "immobilier": p_immobilier,
+                            "automobile": p_automobile,
+                            "parc": p_parc,
+                            "comptabilite": p_compta,
+                            "factures": p_factures,
+                            "devis_industriel": p_devis_ind,
+                            "devis_industriel_download": p_devis_ind_dl,
+                            "devis_industriel_print": p_devis_ind_pr,
+                            "devis_batiment": p_devis_bat,
+                            "devis_batiment_download": p_devis_bat_dl,
+                            "devis_batiment_print": p_devis_bat_pr,
+                            "devis_historique": p_devis_hist,
+                            "users": p_users,
+                            "supprimer": p_supprimer
+                        }
                         supabase.table("utilisateurs").insert({
                             "nom": nom,
                             "role": role,
                             "password": password,
-                            "permissions": json.loads(perms_user)
+                            "permissions": perms_dict
                         }).execute()
                         st.success("Utilisateur ajouté")
                         st.cache_data.clear()
@@ -1850,13 +1892,34 @@ if "👥 Utilisateurs" in tab_map:
             st.info("Aucun utilisateur")
         else:
             for _, user in df_utilisateurs.iterrows():
+                current_perms = user.get('permissions', {})
+                if isinstance(current_perms, str):
+                    try:
+                        current_perms = json.loads(current_perms)
+                    except:
+                        current_perms = {}
+                
                 with st.expander(f"{user['nom']} - {user['role']}"):
-                    st.write(f"**Permissions:** {user.get('permissions', {})}")
-                    c1, c2 = st.columns(2)
-                    if c1.button("✏️ Modifier", key=f"mod_user_{user['id']}", width="stretch"):
-                        st.info("Fonction à implémenter")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.write("**Accès Onglets :**")
+                        for k in ['dashboard','commerce','stock','immobilier','automobile','parc','comptabilite','factures','users']:
+                            if current_perms.get(k, False):
+                                st.write(f"✅ {k}")
+                    with c2:
+                        st.write("**Devis Industriel :**")
+                        if current_perms.get('devis_industriel'): st.write("✅ Créer")
+                        if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
+                    with c3:
+                        st.write("**Devis Bâtiment :**")
+                        if current_perms.get('devis_batiment'): st.write("✅ Créer")
+                        if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
+                        if current_perms.get('devis_historique'): st.write("✅ Historique")
+
                     if st.session_state.user_role == "PDG":
-                        if c2.button("🗑️ Supprimer", key=f"del_user_{user['id']}", width="stretch"):
+                        if st.button("🗑️ Supprimer", key=f"del_user_{user['id']}", width="stretch"):
                             try:
                                 supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
                                 st.success("Supprimé")
