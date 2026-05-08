@@ -1833,89 +1833,139 @@ if "📋 Devis" in tab_map:
                 """, height=60)
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs & Permissions")
-        if st.session_state.user_role!= "PDG":
-            st.error("🔒 Accès réservé au PDG uniquement")
-        else:
-            with st.expander("➕ Créer Nouvel Utilisateur"):
-                with st.form("form_user", clear_on_submit=True):
-                    c1, c2, c3 = st.columns(3)
-                    nom_user = c1.text_input("Nom Utilisateur")
-                    role_user = c2.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "VENDEUR"])
-                    pwd_user = c3.text_input("Mot de passe", type="password")
+        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
+            with st.form("form_user", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                pwd_user = c3.text_input("Mot de passe *", type="password")
+                st.markdown("**🔐 Autorisations d'onglets :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock", value=(role_user in ["PDG","GERANTE"]))
+                perm_immo = col4.checkbox("Immobilier", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2, col3, col4 = st.columns(4)
+                perm_auto = col1.checkbox("Automobile", value=(role_user in ["PDG","GERANTE"]))
+                perm_parc = col2.checkbox("Gestion Parc", value=(role_user in ["PDG","GERANTE"]))
+                perm_compta = col3.checkbox("Comptabilité", value=(role_user in ["PDG","GERANTE"]))
+                perm_factures = col4.checkbox("Factures", value=(role_user in ["PDG","GERANTE"]))
+                col1, col2 = st.columns(2)
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=(role_user=="PDG"))
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=(role_user=="PDG"))
 
-                    st.markdown("**🔐 Permissions d'accès aux rubriques :**")
-                    col_p1, col_p2, col_p3 = st.columns(3)
-                    with col_p1:
-                        perm_dash = st.checkbox("📊 Dashboard", value=True, key="perm_dash")
-                        perm_com = st.checkbox("🛍️ Commerce", value=True, key="perm_com")
-                        perm_stock = st.checkbox("📦 Gestion Stock", key="perm_stock")
-                    with col_p2:
-                        perm_immo = st.checkbox("🏠 Immobilier", key="perm_immo")
-                        perm_auto = st.checkbox("🚗 Automobile", key="perm_auto")
-                        perm_parc = st.checkbox("🚘 Gestion Parc", key="perm_parc")
-                    with col_p3:
-                        perm_compta = st.checkbox("💰 Comptabilité", key="perm_compta")
-                        perm_fact = st.checkbox("📄 Factures", key="perm_fact")
-                        perm_devis = st.checkbox("📋 Devis", key="perm_devis")
+                st.markdown("**📂 Catégories de Factures Visibles :**")
+                categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                cats_autorisees = st.multiselect(
+                    "Sélectionne les catégories que cet utilisateur peut voir dans Factures",
+                    categories_dispo,
+                    default=["Toutes"],
+                    key="cats_user_new"
+                )
 
-                    cats_autorisees = st.multiselect("📂 Catégories autorisées", ["Immobilier", "Commerce", "Automobile", "Agriculture"])
-
-                    if st.form_submit_button("💾 Créer Utilisateur"):
+                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
+                    if not nom_user or not pwd_user:
+                        st.error("Nom et mot de passe obligatoires")
+                    else:
                         try:
-                            perms_dict = {
-                                "dashboard": perm_dash,
-                                "commerce": perm_com,
-                                "stock": perm_stock,
-                                "immobilier": perm_immo,
-                                "automobile": perm_auto,
-                                "parc": perm_parc,
-                                "comptabilite": perm_compta,
-                                "factures": perm_fact,
-                                "devis_industriel": perm_devis,
-                                "devis_batiment": perm_devis,
-                                "supprimer": role_user == "PDG"
+                            permissions = {
+                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                "immobilier": perm_immo, "automobile": perm_auto, "parc": perm_parc,
+                                "comptabilite": perm_compta, "factures": perm_factures,
+                                "supprimer": perm_supprimer, "users": perm_users
                             }
                             supabase.table("utilisateurs").insert({
-                                "nom": nom_user,
-                                "role": role_user,
-                                "password": pwd_user,
-                                "permissions": perms_dict,
-                                "categories_autorisees": cats_autorisees
+                                "nom": str(nom_user),
+                                "role": str(role_user),
+                                "password": str(pwd_user),
+                                "permissions": permissions,
+                                "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
                             }).execute()
-                            st.success(f"✅ Utilisateur {nom_user} créé")
+                            st.success(f"✅ Utilisateur {nom_user} ajouté avec rôle {role_user}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
-                            st.error("Erreur création")
+                            st.error("❌ ERREUR AJOUT UTILISATEUR")
+                            st.code(f"ERREUR COMPLÈTE : {repr(e)}")
+
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
+        else:
+            for _, row in df_utilisateurs.iterrows():
+                perms_user = row.get('permissions', {})
+                if isinstance(perms_user, str):
+                    try:
+                        perms_user = json.loads(perms_user)
+                    except:
+                        perms_user = {}
+                cats_user = row.get('categories_autorisees', [])
+                if cats_user is None:
+                    cats_user = []
+                with st.expander(f"{row['nom']} - {row['role']}", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_nom = st.text_input("Nom", value=row['nom'], key=f"nom_u_{row['id']}")
+                        new_role = st.selectbox("Rôle", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"],
+                                               index=["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"].index(row['role']) if row['role'] in ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"] else 2,
+                                               key=f"role_u_{row['id']}")
+                    with c2:
+                        new_pwd = st.text_input("Nouveau mot de passe", type="password", placeholder="Laisser vide pour garder l'ancien", key=f"pwd_u_{row['id']}")
+                    st.markdown("**🔐 Autorisations d'onglets :**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_dashboard = col1.checkbox("Dashboard", value=perms_user.get('dashboard',True), key=f"p1_{row['id']}")
+                    p_commerce = col2.checkbox("Commerce", value=perms_user.get('commerce',True), key=f"p2_{row['id']}")
+                    p_stock = col3.checkbox("Stock", value=perms_user.get('stock',False), key=f"p3_{row['id']}")
+                    p_immo = col4.checkbox("Immobilier", value=perms_user.get('immobilier',False), key=f"p4_{row['id']}")
+                    col1, col2, col3, col4 = st.columns(4)
+                    p_auto = col1.checkbox("Auto", value=perms_user.get('automobile',False), key=f"p5_{row['id']}")
+                    p_parc = col2.checkbox("Parc", value=perms_user.get('parc',False), key=f"p6_{row['id']}")
+                    p_compta = col3.checkbox("Compta", value=perms_user.get('comptabilite',False), key=f"p7_{row['id']}")
+                    p_fact = col4.checkbox("Factures", value=perms_user.get('factures',False), key=f"p8_{row['id']}")
+                    col1, col2 = st.columns(2)
+                    p_del = col1.checkbox("🗑️ Peut Supprimer", value=perms_user.get('supprimer',False), key=f"p9_{row['id']}")
+                    p_users = col2.checkbox("👥 Gérer Users", value=perms_user.get('users',False), key=f"p10_{row['id']}")
+
+                    st.markdown("**📂 Catégories de Factures Visibles :**")
+                    categories_dispo = ["Toutes", "Loyer", "Vente Commerce", "Vente Voiture", "Carburant", "Dépense", "Revenu"]
+                    cats_modif = st.multiselect(
+                        "Catégories autorisées",
+                        categories_dispo,
+                        default=cats_user if cats_user else ["Toutes"],
+                        key=f"cats_u_{row['id']}"
+                    )
+
+                    c1, c2 = st.columns(2)
+                    if c1.button("✏️ Modifier", key=f"mod_u_{row['id']}", width="stretch"):
+                        try:
+                            update_data = {
+                                "nom": str(new_nom),
+                                "role": str(new_role),
+                                "permissions": {
+                                    "dashboard": p_dashboard, "commerce": p_commerce, "stock": p_stock,
+                                    "immobilier": p_immo, "automobile": p_auto, "parc": p_parc,
+                                    "comptabilite": p_compta, "factures": p_fact,
+                                    "supprimer": p_del, "users": p_users
+                                },
+                                "categories_autorisees": cats_modif if "Toutes" not in cats_modif else []
+                            }
+                            if new_pwd:
+                                update_data["password"] = str(new_pwd)
+                            supabase.table("utilisateurs").update(update_data).eq("id", int(row['id'])).execute()
+                            st.success("Modifié")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur modif")
                             st.code(repr(e))
-
-            st.divider()
-            st.subheader("📋 Liste des Utilisateurs")
-            if df_utilisateurs.empty:
-                st.info("Aucun utilisateur")
-            else:
-                for _, user in df_utilisateurs.iterrows():
-                    with st.expander(f"👤 {user['nom']} - {user['role']}"):
-                        perms_user = user.get('permissions', {})
-                        if isinstance(perms_user, str):
-                            try:
-                                perms_user = json.loads(perms_user)
-                            except:
-                                perms_user = {}
-
-                        st.write("**Permissions actives :**")
-                        cols = st.columns(3)
-                        perms_list = [k for k, v in perms_user.items() if v]
-                        for i, perm in enumerate(perms_list):
-                            cols[i % 3].write(f"✅ {perm}")
-
-                        if st.button("🗑️ Supprimer", key=f"del_user_{user['id']}", width="stretch"):
-                            try:
-                                supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
-                                st.success("Utilisateur supprimé")
-                                st.cache_data.clear()
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Erreur suppression")
-                                st.code(repr(e))
+                    if c2.button("🗑️ Supprimer", key=f"del_u_{row['id']}", width="stretch"):
+                        try:
+                            supabase.table("utilisateurs").delete().eq("id", int(row['id'])).execute()
+                            st.success("Supprimé")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur suppression")
+                            st.code(repr(e))
