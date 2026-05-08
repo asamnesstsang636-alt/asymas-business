@@ -2308,13 +2308,7 @@ if "📋 Devis" in tab_map:
                                     </script>
                                 """, height=40)
                             else:
-                                st.write("🔒")
-                    
-                        
-                        
-                        
-
-                        
+                                st.write("🔒")                       
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
