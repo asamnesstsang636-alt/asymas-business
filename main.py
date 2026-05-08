@@ -1539,7 +1539,7 @@ if "📋 Devis" in tab_map:
 
             for idx, section in enumerate(st.session_state.devis_sections):
                 with st.expander(f"Section {section['numero']} - {section['titre']}", expanded=True):
-                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2,2])
+                    col1, col2, col3, col4, col5, col6 = st.columns([1,4,2])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_{idx}")
                     with col2:
@@ -1579,12 +1579,36 @@ if "📋 Devis" in tab_map:
             if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
                 if client_devis and titre_devis and st.session_state.devis_sections:
                     numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    total_devis = sum(sum(item['qte'] * item['pu'] for item in s['items']) for s in st.session_state.devis_sections) + main_oeuvre
+
+                    # ENREGISTRER DANS SUPABASE
+                    try:
+                        data_devis = {
+                            "numero": numero_devis,
+                            "type": "Industriel",
+                            "client": client_devis,
+                            "telephone": tel_client_devis,
+                            "titre": titre_devis,
+                            "parcelle": parcelle_devis,
+                            "localisation": localisation_devis,
+                            "sections": st.session_state.devis_sections,
+                            "main_oeuvre": main_oeuvre,
+                            "total": total_devis,
+                            "devise": devise_devis,
+                            "created_by": st.session_state.user_name,
+                            "created_at": datetime.now().isoformat()
+                        }
+                        supabase.table('devis').insert(data_devis).execute()
+                        st.success(f"✅ Devis enregistré : {numero_devis}")
+                    except Exception as e:
+                        st.error("Erreur enregistrement")
+                        st.code(repr(e))
+
                     pdf_bytes = generer_pdf_devis_consulting(
                         numero_devis, "Industriel", client_devis, titre_devis,
                         parcelle_devis, localisation_devis, st.session_state.devis_sections,
                         devise_devis, tel_client_devis, main_oeuvre
                     )
-                    st.success(f"✅ Devis généré : {numero_devis}")
                     st.download_button(
                         label="📥 Télécharger Devis PDF",
                         data=pdf_bytes,
@@ -1611,10 +1635,85 @@ if "📋 Devis" in tab_map:
                 else:
                     st.error("Client, Titre et au moins 1 section requis")
 
+            # === LISTE DES DEVIS INDUSTRIEL ENREGISTRES ===
+            st.divider()
+            st.subheader("📚 Devis Industriel Enregistrés")
+
+            try:
+                devis_ind_list = supabase.table('devis').select("*").eq("type", "Industriel").order("created_at", desc=True).limit(10).execute().data
+            except:
+                devis_ind_list = []
+
+            if not devis_ind_list:
+                st.info("Aucun devis industriel enregistré")
+            else:
+                peut_telecharger_ind = st.session_state.user_role == "PDG" or perms.get('devis_industriel_download', False)
+                peut_imprimer_ind = st.session_state.user_role == "PDG" or perms.get('devis_industriel_print', False)
+
+                for d in devis_ind_list:
+                    numero = d.get('numero', 'N/A')
+                    client = d.get('client', 'N/A')
+                    total = d.get('total', 0)
+                    devise = d.get('devise', 'USD')
+                    date_crea = d.get('created_at', '')[:10] if d.get('created_at') else 'N/A'
+
+                    with st.expander(f"{numero} - {client} - {total:,.0f} {devise} - {date_crea}"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"**Projet:** {d.get('titre','N/A')}")
+                            st.write(f"**Parcelle:** {d.get('parcelle','N/A')}")
+                            st.write(f"**Localisation:** {d.get('localisation','N/A')}")
+                        with col2:
+                            st.write(f"**Main d'oeuvre:** {d.get('main_oeuvre',0):,.0f} {devise}")
+                            st.write(f"**TOTAL:** {total:,.0f} {devise}")
+                            st.write(f"**Par:** {d.get('created_by','N/A')}")
+                        with col3:
+                            if peut_telecharger_ind:
+                                pdf_bytes = generer_pdf_devis_consulting(
+                                    numero, "Industriel", client, d.get('titre',''),
+                                    d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                    devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                )
+                                st.download_button(
+                                    label="📥 Télécharger",
+                                    data=pdf_bytes,
+                                    file_name=f"{numero}.pdf",
+                                    mime="application/pdf",
+                                    key=f"dl_ind_hist_{numero}",
+                                    width="stretch"
+                                )
+                            if peut_imprimer_ind:
+                                pdf_bytes = generer_pdf_devis_consulting(
+                                    numero, "Industriel", client, d.get('titre',''),
+                                    d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                    devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                )
+                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                safe_id = numero.replace('-', '_')
+                                st.components.v1.html(f"""
+                                    <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
+                                        🖨️ Imprimer
+                                    </button>
+                                    <script>
+                                    function printPDF_{safe_id}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, height=45)
+                            if st.session_state.user_role == "PDG":
+                                if st.button("🗑️ Supprimer", key=f"del_ind_{numero}", width="stretch"):
+                                    supabase.table('devis').delete().eq("numero", numero).execute()
+                                    st.success("Supprimé")
+                                    st.rerun()
+
         with tab_batiment:
             st.session_state.devis_type = "Bâtiment"
             st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
-            
+
             if not st.session_state.devis_bat_sections:
                 st.session_state.devis_bat_sections = [
                     {
@@ -1671,7 +1770,7 @@ if "📋 Devis" in tab_map:
                         ]
                     }
                 ]
-            
+
             col1, col2, col3 = st.columns(3)
             with col1:
                 client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
@@ -1687,7 +1786,7 @@ if "📋 Devis" in tab_map:
             st.markdown("### 📊 Tableau Complet Éditable")
 
             total_general = 0
-            
+
             col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
             col_h1.markdown("**no**")
             col_h2.markdown("**désignation**")
@@ -1700,7 +1799,7 @@ if "📋 Devis" in tab_map:
 
             for idx, section in enumerate(st.session_state.devis_bat_sections):
                 st.markdown(f"**{section['numero']}. {section['titre']}**")
-                
+
                 sous_total_sec = 0
                 for i, item in enumerate(section['items']):
                     col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
@@ -1712,7 +1811,7 @@ if "📋 Devis" in tab_map:
                         section['items'][i]['designation'] = new_des
                     with col3:
                         options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
-                        new_unit = st.selectbox("Unité", options_unit, 
+                        new_unit = st.selectbox("Unité", options_unit,
                                                index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
                                                key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
                         section['items'][i]['unite'] = new_unit
@@ -1785,6 +1884,30 @@ if "📋 Devis" in tab_map:
                 if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_bat"):
                     if client_devis_bat and st.session_state.devis_bat_titre:
                         numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+                        # ENREGISTRER DANS SUPABASE
+                        try:
+                            data_devis = {
+                                "numero": numero_devis,
+                                "type": "Bâtiment",
+                                "client": client_devis_bat,
+                                "telephone": tel_client_devis_bat,
+                                "titre": st.session_state.devis_bat_titre,
+                                "parcelle": parcelle_devis_bat,
+                                "localisation": localisation_devis_bat,
+                                "sections": st.session_state.devis_bat_sections,
+                                "main_oeuvre": st.session_state.devis_bat_main_oeuvre,
+                                "total": cout_total,
+                                "devise": devise_devis_bat,
+                                "created_by": st.session_state.user_name,
+                                "created_at": datetime.now().isoformat()
+                            }
+                            supabase.table('devis').insert(data_devis).execute()
+                            st.success(f"✅ Devis enregistré : {numero_devis}")
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+
                         pdf_bytes = generer_pdf_devis_consulting(
                             numero_devis, "Bâtiment", client_devis_bat, st.session_state.devis_bat_titre,
                             parcelle_devis_bat, localisation_devis_bat, st.session_state.devis_bat_sections,
@@ -1792,7 +1915,6 @@ if "📋 Devis" in tab_map:
                         )
                         st.session_state.pdf_devis_bat = pdf_bytes
                         st.session_state.num_devis_bat = numero_devis
-                        st.success(f"✅ Devis généré : {numero_devis}")
                         st.rerun()
                     else:
                         st.error("Client et Titre requis")
@@ -1831,6 +1953,74 @@ if "📋 Devis" in tab_map:
                     }}
                     </script>
                 """, height=60)
+
+            # === LISTE DES DEVIS BATIMENT ENREGISTRES ===
+            st.divider()
+            st.subheader("📚 Devis Bâtiment Enregistrés")
+
+            try:
+                devis_bat_list = supabase.table('devis').select("*").eq("type", "Bâtiment").order("created_at", desc=True).limit(5).execute().data
+            except:
+                devis_bat_list = []
+
+            if not devis_bat_list:
+                st.info("Aucun devis bâtiment enregistré")
+            else:
+                peut_telecharger_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_download', False)
+                peut_imprimer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_print', False)
+
+                for d in devis_bat_list:
+                    numero = d.get('numero', 'N/A')
+                    client = d.get('client', 'N/A')
+                    total = d.get('total', 0)
+                    devise = d.get('devise', 'USD')
+
+                    col1, col2, col3, col4 = st.columns([3,2,1])
+                    with col1:
+                        st.write(f"**{numero}** - {client}")
+                    with col2:
+                        st.write(f"{total:,.0f} {devise}")
+                    with col3:
+                        if peut_telecharger_bat:
+                            pdf_bytes = generer_pdf_devis_consulting(
+                                numero, "Bâtiment", client, d.get('titre',''),
+                                d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                            )
+                            st.download_button(
+                                label="📥",
+                                data=pdf_bytes,
+                                file_name=f"{numero}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_bat_bas_{numero}"
+                            )
+                        else:
+                            st.write("🔒")
+                    with col4:
+                        if peut_imprimer_bat:
+                            pdf_bytes = generer_pdf_devis_consulting(
+                                numero, "Bâtiment", client, d.get('titre',''),
+                                d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                            )
+                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                            safe_id = numero.replace('-', '_')
+                            st.components.v1.html(f"""
+                                <button onclick="printPDF_{safe_id}()" style="width:100%; padding:6px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                    🖨️
+                                </button>
+                                <script>
+                                function printPDF_{safe_id}() {{
+                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                    const win = window.open('', '_blank');
+                                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                    win.document.close();
+                                    setTimeout(() => {{ win.print(); }}, 1000);
+                                }}
+                                </script>
+                            """, height=40)
+                        else:
+                            st.write("🔒")
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
