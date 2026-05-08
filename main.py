@@ -1560,7 +1560,14 @@ if "📋 Devis" in tab_map:
                 st.divider()
 
                 for idx, section in enumerate(st.session_state.devis_sections):
-                    st.markdown(f"**{section['numero']}. {section['titre']}**")
+                    col_titre, col_del_sec = st.columns([5, 1])
+                    with col_titre:
+                        st.markdown(f"**{section['numero']}. {section['titre']}**")
+                    with col_del_sec:
+                        if st.button("🗑️ Supprimer Section", key=f"del_sec_ind_{idx}"):
+                            st.session_state.devis_sections.pop(idx)
+                            st.rerun()
+
                     sous_total_sec = 0
 
                     for i, item in enumerate(section['items']):
@@ -1635,7 +1642,16 @@ if "📋 Devis" in tab_map:
                     with col3:
                         type_new = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"], key=f"type_ind_{idx}_new", label_visibility="collapsed")
                     with col4:
-                        st.write("Spécifications")
+                        if type_new == "cable":
+                            marque_new = st.text_input("Marque", key=f"marque_ind_{idx}_new", label_visibility="collapsed", placeholder="Marque")
+                            section_new = st.text_input("Section", key=f"sec_ind_{idx}_new", label_visibility="collapsed", placeholder="2.5mm²")
+                            longueur_new = st.number_input("Long", min_value=0.0, key=f"long_ind_{idx}_new", label_visibility="collapsed", format="%.1f")
+                        elif type_new == "interrupteur":
+                            marque_new = st.text_input("Marque", key=f"marque_int_{idx}_new", label_visibility="collapsed", placeholder="Marque")
+                            couleur_new = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"], key=f"coul_int_{idx}_new", label_visibility="collapsed")
+                            qualite_new = st.selectbox("Qualité", ["Standard", "Premium", "Pro"], key=f"qual_int_{idx}_new", label_visibility="collapsed")
+                        else:
+                            spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
                     with col5:
                         unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
                         qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
@@ -1646,7 +1662,14 @@ if "📋 Devis" in tab_map:
                     with col8:
                         if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
                             if design:
-                                section['items'].append({"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu})
+                                new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
+                                if type_new == "cable":
+                                    new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new})
+                                elif type_new == "interrupteur":
+                                    new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new})
+                                else:
+                                    new_item.update({"spec": spec_new})
+                                section['items'].append(new_item)
                                 st.rerun()
 
                     col_st1, col_st2, col_st3 = st.columns([7.5, 1, 0.5])
@@ -2094,6 +2117,7 @@ if "📋 Devis" in tab_map:
                                 """, height=40)
                             else:
                                 st.write("🔒")
+                    
                         
                         
                         
