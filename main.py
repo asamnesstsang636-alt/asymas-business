@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 st.set_page_config(
-    page_title="ASYMAS BUSINESS",
+    page_title="ASYMAS CAMPANY",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="auto"
@@ -205,7 +205,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(90, 5, "Ing. SAMY TSANGYA", ln=True)
     y_pos += 5
     pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, "Tel: +243 995 105 623", ln=True)
+    pdf.cell(90, 5, "Tel: +243 995 105 623 , +256766515428", ln=True)
     y_pos += 5
     pdf.set_xy(10, y_pos)
     pdf.cell(90, 5, "Beni, Nord-Kivu, RDC", ln=True)
