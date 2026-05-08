@@ -1719,7 +1719,7 @@ if "📋 Devis" in tab_map:
                                     st.success("Supprimé")
                                     st.rerun()
 
-    with tab_batiment:
+  with tab_batiment:
     # VERIFIER PERMISSION CREATION
     peut_creer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
 
