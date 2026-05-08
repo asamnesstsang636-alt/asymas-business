@@ -1490,7 +1490,7 @@ if "📄 Factures" in tab_map:
                                 """, unsafe_allow_html=True)
                             except Exception as e:
                                 col_f.write("❌")
-                                col_g.write("❌"
+                                col_g.write("❌")
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
