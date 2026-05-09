@@ -2585,7 +2585,7 @@ if st.session_state.user_role == "PDG":
                                 {"role": "system", "content": system_prompt},
                                 {"role": "user", "content": user_prompt}
                             ],
-                            model="llama-3.1-70b-versatile",
+                            model="llama3.1-70b-8192",
                             temperature=0.7,
                         )
                         st.success("Message ASYMAS prêt :")
