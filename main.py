@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 st.set_page_config(
-    page_title="ASYMAS CAMPANY",
+    page_title="ASYMAS BUSINESS",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="auto"
@@ -9,15 +9,22 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
-try:
-    st.image("asymas_logo_final.png", width=300)
-except:
-    st.error("Logo introuvable. Vérifie que asymas_logo_final.png est dans GitHub")
-    st.image("https://via.placeholder.com/300x200.png?text=ASYMAS+Logo", width=300)
+import base64
 
+# Colle ton base64 ici entre les guillemets
+logo_base64 = """
+METS_TON_BASE64_ICI
+"""
 
-    
-
+# Affichage du logo centré
+st.markdown(
+    f"""
+    <div style="text-align:center; margin-top:-20px; margin-bottom:10px;">
+        <img src="data:image/png;base64,{logo_base64}" width="300">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 st.markdown("---")
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
@@ -215,7 +222,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     pdf.cell(90, 5, "Ing. SAMY TSANGYA", ln=True)
     y_pos += 5
     pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, "Tel: +243995105623", ln=True)
+    pdf.cell(90, 5, "Tel: +243 995 105 623", ln=True)
     y_pos += 5
     pdf.set_xy(10, y_pos)
     pdf.cell(90, 5, "Beni, Nord-Kivu, RDC", ln=True)
@@ -496,7 +503,7 @@ if 'user_role' not in st.session_state:
     st.session_state.user_cats = []
 
 if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS COMPANY - CONNEXION")
+    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Choisissez votre profil :")
@@ -569,13 +576,13 @@ if 'date' in df_compta.columns:
     df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
     df_compta = df_compta.sort_values('date', ascending=False)
 
-st.markdown(f"# ASYMAS CAMPANY - {st.session_state.user_name}")
-st.markdown("### AFRICA INNOVATION• NORD-KIVU RDC")
+st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS CAMPANY v2.6")
+    st.info("ASYMAS BUSINESS v2.6")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
@@ -2318,7 +2325,13 @@ if "📋 Devis" in tab_map:
                                     </script>
                                 """, height=40)
                             else:
-                                st.write("🔒")                       
+                                st.write("🔒")
+                    
+                        
+                        
+                        
+
+                        
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
