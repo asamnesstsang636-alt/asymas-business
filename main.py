@@ -9,10 +9,14 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
-# Logo ASYMAS centré en haut
-col1, col2, col3 = st.columns([1,2,1])
-with col2:
+try:
     st.image("asymas_logo_final.png", width=300)
+except:
+    st.error("Logo introuvable. Vérifie que asymas_logo_final.png est dans GitHub")
+    st.image("https://via.placeholder.com/300x200.png?text=ASYMAS+Logo", width=300)
+
+
+    
 
 st.markdown("---")
 from supabase import create_client, Client
