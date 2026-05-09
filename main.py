@@ -9,9 +9,12 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
-col1, col2, col3 = st.columns([1,2,1])
-with col2:
-    st.image("asymas_logo_final.png", width=300)
+# Logo ASYMAS - version qui marche sans fichier local
+st.markdown("""
+<div style="text-align:center; margin-top:-10px; margin-bottom:10px;">
+    <img src="https://raw.githubusercontent.com/TON_PSEUDO/asymas-business/main/asymas_logo_final.png" width="320">
+</div>
+""", unsafe_allow_html=True)
 st.markdown("---")
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
