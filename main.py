@@ -9,13 +9,6 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
-# Logo ASYMAS - version qui marche sans fichier local
-st.markdown("""
-<div style="text-align:center; margin-top:-10px; margin-bottom:10px;">
-    <img src="https://raw.githubusercontent.com/TON_PSEUDO/asymas-business/main/asymas_logo_final.png" width="320">
-</div>
-""", unsafe_allow_html=True)
-st.markdown("---")
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
