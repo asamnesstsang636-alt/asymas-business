@@ -9,53 +9,6 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
-import streamlit as st
-import pandas as pd
-st.set_page_config(
-    page_title="ASYMAS BUSINESS",
-    page_icon="💼",
-    layout="wide",
-    initial_sidebar_state="auto"
-)
-st.markdown("""
-<meta name="mobile-web-app-capable" content="yes">
-""", unsafe_allow_html=True)
-
-from supabase import create_client, Client
-from datetime import date, datetime, timedelta
-from fpdf import FPDF
-import base64
-import io
-import tempfile
-
-# ===== COLLE L'AGENT ICI =====
-st.title("Agent Commercial ASYMAS V0")
-
-st.write("Colle le profil LinkedIn brut du prospect")
-profil = st.text_area("Profil LinkedIn", height=150, placeholder="Ex: Jean Kabila, DG de Kivu Distrib. 30 employés...")
-
-if st.button("Générer message perso"):
-    if profil:
-        nom = profil.split(',')[0] if ',' in profil else "Bonjour"
-        message = f"""{nom},
-
-J'ai vu que vous gérez [problème détecté].
-On a automatisé exactement ça pour une PME à Bukavu = -40% de temps perdu.
-
-Ça te dirait 15 min cette semaine pour voir comment on fait pareil chez toi?
-Je te montre l'écran, 0 blabla.
-
-Dispo jeudi ou vendredi?"""
-
-        st.success("Message prêt à copier-coller :")
-        st.code(message)
-    else:
-        st.warning("Colle un profil d'abord")
-
-st.markdown("---")
-# ===== FIN AGENT =====
-
-# Ton code ASYMAS BUSINESS existant continue ici...
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
