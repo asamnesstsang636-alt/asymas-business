@@ -1585,14 +1585,259 @@ if "📋 Devis" in tab_map:
 
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        if not df_utilisateurs.empty:
-            st.dataframe(df_utilisateurs[['nom','role']], use_container_width=True)
-        else:
-            st.info("Aucun utilisateur")
+        st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
+        with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
+            with st.form("form_user", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                pwd_user = c3.text_input("Mot de passe *", type="password")
 
-# === AGENT IA PDG UNIQUEMENT ===
+                st.markdown("**🔐 Autorisations d'onglets :**")
+                col1, col2, col3, col4 = st.columns(4)
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock")
+                perm_immobilier = col4.checkbox("Immobilier")
+                perm_automobile = col1.checkbox("Automobile")
+                perm_parc = col2.checkbox("Gestion Parc")
+                perm_comptabilite = col3.checkbox("Comptabilité")
+                perm_factures = col4.checkbox("Factures")
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer")
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs")
+
+                st.markdown("**📋 Autorisations Devis :**")
+                col_d1, col_d2, col_d3 = st.columns(3)
+                with col_d1:
+                    st.markdown("*Devis Industriel*")
+                    perm_devis_ind = st.checkbox("Créer", key="perm_ind_creer")
+                    perm_devis_ind_dl = st.checkbox("Télécharger", key="perm_ind_dl")
+                    perm_devis_ind_pr = st.checkbox("Imprimer", key="perm_ind_pr")
+                with col_d2:
+                    st.markdown("*Devis Bâtiment*")
+                    perm_devis_bat = st.checkbox("Créer", key="perm_bat_creer")
+                    perm_devis_bat_dl = st.checkbox("Télécharger", key="perm_bat_dl")
+                    perm_devis_bat_pr = st.checkbox("Imprimer", key="perm_bat_pr")
+                with col_d3:
+                    st.markdown("*Historique*")
+                    perm_devis_hist = st.checkbox("Voir Historique", key="perm_hist")
+
+                st.markdown("**📂 Catégories de Factures Visibles :**")
+                cats_dispo = sorted(df_compta['categorie'].dropna().unique().tolist()) if 'categorie' in df_compta.columns else []
+                cats_autorisees = st.multiselect("Sélectionne les catégories que cet utilisateur peut voir dans Factures",
+                                                 ["Toutes"] + cats_dispo, default=["Toutes"], key="cats_factures")
+
+                if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
+                    if nom_user and pwd_user:
+                        try:
+                            perms_dict = {
+                                "dashboard": perm_dashboard,
+                                "commerce": perm_commerce,
+                                "stock": perm_stock,
+                                "immobilier": perm_immobilier,
+                                "automobile": perm_automobile,
+                                "parc": perm_parc,
+                                "comptabilite": perm_comptabilite,
+                                "factures": perm_factures,
+                                "supprimer": perm_supprimer,
+                                "users": perm_users,
+                                "devis_industriel": perm_devis_ind,
+                                "devis_industriel_download": perm_devis_ind_dl,
+                                "devis_industriel_print": perm_devis_ind_pr,
+                                "devis_batiment": perm_devis_bat,
+                                "devis_batiment_download": perm_devis_bat_dl,
+                                "devis_batiment_print": perm_devis_bat_pr,
+                                "devis_historique": perm_devis_hist
+                            }
+                            supabase.table("utilisateurs").insert({
+                                "nom": nom_user,
+                                "role": role_user,
+                                "password": pwd_user,
+                                "permissions": perms_dict,
+                                "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
+                            }).execute()
+                            st.success(f"Utilisateur {nom_user} ajouté")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur ajout")
+                            st.code(repr(e))
+                    else:
+                        st.error("Nom et mot de passe obligatoires")
+
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
+        else:
+            for _, user in df_utilisateurs.iterrows():
+                current_perms = user.get('permissions', {})
+                if isinstance(current_perms, str):
+                    try:
+                        current_perms = json.loads(current_perms)
+                    except:
+                        current_perms = {}
+
+                with st.expander(f"{user['nom']} - {user['role']}"):
+                    # AFFICHAGE ACTUEL
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.write("**Onglets :**")
+                        if current_perms.get('dashboard'): st.write("✅ Dashboard")
+                        if current_perms.get('commerce'): st.write("✅ Commerce")
+                        if current_perms.get('stock'): st.write("✅ Stock")
+                        if current_perms.get('immobilier'): st.write("✅ Immobilier")
+                        if current_perms.get('automobile'): st.write("✅ Automobile")
+                        if current_perms.get('parc'): st.write("✅ Parc")
+                        if current_perms.get('comptabilite'): st.write("✅ Comptabilité")
+                        if current_perms.get('factures'): st.write("✅ Factures")
+                        if current_perms.get('users'): st.write("✅ Utilisateurs")
+                        if current_perms.get('supprimer'): st.write("✅ Supprimer")
+                    with c2:
+                        st.write("**Devis Industriel :**")
+                        if current_perms.get('devis_industriel'): st.write("✅ Créer")
+                        if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
+                    with c3:
+                        st.write("**Devis Bâtiment :**")
+                        if current_perms.get('devis_batiment'): st.write("✅ Créer")
+                        if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
+                        if current_perms.get('devis_historique'): st.write("✅ Historique")
+
+                    st.divider()
+
+                    # SEUL LE PDG PEUT MODIFIER
+                    if st.session_state.user_role == "PDG":
+                        st.markdown("**✏️ Modifier les autorisations :**")
+                        with st.form(f"edit_user_{user['id']}"):
+                            col1, col2, col3, col4 = st.columns(4)
+                            perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
+                            perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
+                            perm_stock = col3.checkbox("Gestion Stock", value=current_perms.get('stock', False), key=f"edit_stock_{user['id']}")
+                            perm_immobilier = col4.checkbox("Immobilier", value=current_perms.get('immobilier', False), key=f"edit_immo_{user['id']}")
+                            perm_automobile = col1.checkbox("Automobile", value=current_perms.get('automobile', False), key=f"edit_auto_{user['id']}")
+                            perm_parc = col2.checkbox("Gestion Parc", value=current_perms.get('parc', False), key=f"edit_parc_{user['id']}")
+                            perm_comptabilite = col3.checkbox("Comptabilité", value=current_perms.get('comptabilite', False), key=f"edit_comp_{user['id']}")
+                            perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
+                            perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
+                            perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
+
+                            st.markdown("**📋 Devis Industriel :**")
+                            col_i1, col_i2, col_i3 = st.columns(3)
+                            perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
+                            perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
+                            perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
+
+                            st.markdown("**📋 Devis Bâtiment :**")
+                            col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+                            perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
+                            perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
+                            perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
+                            perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
+
+                            col_btn1, col_btn2 = st.columns(2)
+                            if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+                                new_perms = {
+                                    "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                    "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
+                                    "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
+                                    "users": perm_users, "devis_industriel": perm_devis_ind,
+                                    "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
+                                    "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
+                                    "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
+                                }
+                                try:
+                                    supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
+                                    st.success(f"Permissions de {user['nom']} mises à jour")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur modification")
+                                    st.code(repr(e))
+
+                        # SUPPRIMER UTILISATEUR - SAUF SOI-MEME
+                        if user['nom']!= st.session_state.user_name:
+                            if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
+                                try:
+                                    supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
+                                    st.success(f"Utilisateur {user['nom']} supprimé")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
+                        else:
+                            st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
+                    else:
+                        st.info("🔒 Seul le PDG peut modifier les autorisations")
+
+# === DÉBUT AJOUT AGENT PDG - COLLE APRÈS TON DERNIER BLOC ===
+from groq import Groq
+GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+def get_asymas_context():
+    df_articles = load_table("articles")
+    df_biens = load_table("biens")
+    df_voitures = load_table("voitures")
+    df_ventes = load_table("ventes")
+    df_compta = load_table("compta")
+
+    articles_str = "Aucun"
+    if not df_articles.empty:
+        articles_dispo = df_articles[df_articles['stock'] > 0]
+        if not articles_dispo.empty:
+            articles_str = articles_dispo[['nom_article', 'categorie', 'prix_vente', 'stock']].head(20).to_string(index=False)
+
+    voitures_str = "Aucune"
+    if not df_voitures.empty:
+        voitures_dispo = df_voitures[(df_voitures['statut'] == 'Disponible') & (df_voitures['quantite'] > 0)]
+        if not voitures_dispo.empty:
+            voitures_str = voitures_dispo[['marque', 'modele', 'annee', 'prix']].head(10).to_string(index=False)
+
+    preuves_str = "Aucune"
+    if not df_compta.empty and 'type' in df_compta.columns:
+        preuves = df_compta[df_compta['type']=='Revenu'].head(5)
+        if not preuves.empty:
+            preuves_str = preuves[['description', 'montant']].to_string(index=False)
+
+    context = f"""
+=== INVENTAIRE ASYMAS BUSINESS LIVE - BUKAVU RDC ===
+ARTICLES DISPO:
+{articles_str}
+
+VOITURES DISPO:
+{voitures_str}
+
+PREUVES CLIENTS RÉCENTES:
+{preuves_str}
+
+RÈGLES ASYMAS: Utilise UNIQUEMENT ces données réelles de Supabase. Ne révèle JAMAIS les prix d'achat. Cite TOUJOURS une vraie vente/produit ASYMAS. Termine par CTA call 15min. Tu es le PDG TSANGYA qui parle.
+"""
+    return context
+
+def transcribe_audio(audio_bytes):
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+        with open(tmp_path, 'rb') as f:
+            transcription = GROQ_CLIENT.audio.transcriptions.create(
+                file=f,
+                model="whisper-large-v3"
+            )
+        os.unlink(tmp_path)
+        return transcription.text
+    except Exception as e:
+        st.error(f"Erreur transcription: {e}")
+        return None
+
+# Ajout onglets Agent si PDG
 if st.session_state.user_role == "PDG":
+    tabs_dispo.extend(["🤖 Agent Message", "🔍 Agent Prospection", "🔁 Agent Relance", "🎤 Agent Vocal"])
+    tabs = st.tabs(tabs_dispo)
+    tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+
     if "🤖 Agent Message" in tab_map:
         with tab_map["🤖 Agent Message"]:
             st.markdown("## 🤖 Agent Commercial ASYMAS - Message Perso")
@@ -1680,5 +1925,6 @@ if st.session_state.user_role == "PDG":
                             st.audio(speech.read(), format="audio/wav")
                         except:
                             st.info("Réponse texte uniquement - TTS indisponible")
+# === FIN AJOUT AGENT PDG ===
                             
     
