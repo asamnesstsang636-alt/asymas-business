@@ -9,18 +9,17 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
+# Logo ASYMAS intégré sans fichier externe
 import base64
 
-# Colle ton base64 ici entre les guillemets
-logo_base64 = """
-METS_TON_BASE64_ICI
-"""
+with open("asymas_logo_final.png", "rb") as f:
+    logo_bytes = f.read()
+logo_base64 = base64.b64encode(logo_bytes).decode()
 
-# Affichage du logo centré
 st.markdown(
     f"""
-    <div style="text-align:center; margin-top:-20px; margin-bottom:10px;">
-        <img src="data:image/png;base64,{logo_base64}" width="300">
+    <div style="text-align:center; margin-top:-10px; margin-bottom:10px;">
+        <img src="data:image/png;base64,{logo_base64}" width="320">
     </div>
     """,
     unsafe_allow_html=True
