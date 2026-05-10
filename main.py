@@ -599,7 +599,7 @@ if st.session_state.user_role == "PDG" or perms.get('users', False):
 
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
-    def get_asymas_context():
+def get_asymas_context():
     df_articles = load_table("articles")
     df_voitures = load_table("voitures")
     df_ventes = load_table("ventes")
