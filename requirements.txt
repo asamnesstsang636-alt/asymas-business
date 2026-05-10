@@ -9,3 +9,6 @@ streamlit-qrcode-scanner
 pyzbar
 groq
 numpy
+flask
+gunicorn
+requests
