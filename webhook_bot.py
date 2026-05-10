@@ -158,6 +158,25 @@ def webhook():
             print(f"Erreur webhook: {e}")
         return jsonify({"status": "ok"}), 200
 
+# === ROUTES POUR STREAMLIT ===
+@app.route("/chat", methods=["POST"])
+def chat_web():
+    data = request.json
+    message = data.get("message", "")
+    numero = data.get("numero", "WEB_TSANG")
+    reponse = cerveau_asymas(message, numero)
+    return jsonify({"reponse": reponse})
+
+@app.route("/chat/transcribe", methods=["POST"])
+def transcribe_web():
+    audio_file = request.files['audio']
+    transcription = GROQ_CLIENT.audio.transcriptions.create(
+        file=("audio.webm", audio_file.read()),
+        model="whisper-large-v3",
+        language="fr"
+    )
+    return jsonify({"text": transcription.text})
+
 @app.route("/", methods=["GET"])
 def home():
     return "FLOKI ASYMAS ACTIF ✅", 200
