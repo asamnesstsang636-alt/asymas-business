@@ -689,25 +689,33 @@ with st.sidebar:
                         )
                         st.markdown(chat.choices[0].message.content)
 
-        elif agent_choix == "Vocal":
+          elif agent_choix == "Vocal":
             st.markdown("**Ordre Vocal**")
             audio = st.audio_input("Donne un ordre", key="agent_vocal_audio_sidebar")
             if audio:
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
-                    tmp.write(audio.getvalue())
-                    tmp_path = tmp.name
-                with open(tmp_path, 'rb') as f:
-                    trans = GROQ_CLIENT.audio.transcriptions.create(file=f, model="whisper-large-v3")
-                os.unlink(tmp_path)
-                st.success(f"Ordre: {trans.text}")
-                with st.spinner("Exécution..."):
-                    chat = GROQ_CLIENT.chat.completions.create(
-                        messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: {trans.text}"}],
-                        model="llama-3.3-70b-versatile",
-                        temperature=0.1,
-                        max_tokens=300
-                    )
-                    st.write(chat.choices[0].message.content)
+                try:
+                    with st.spinner("Transcription..."):
+                        # FIX: On lit direct sans NamedTemporaryFile pour éviter crash
+                        trans = GROQ_CLIENT.audio.transcriptions.create(
+                            file=(audio.name, audio.getvalue()),
+                            model="whisper-large-v3"
+                        )
+                    st.success(f"Ordre reçu: {trans.text}")
+                    with st.spinner("Exécution ASYMAS..."):
+                        chat = GROQ_CLIENT.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": get_asymas_context()},
+                                {"role": "user", "content": f"EXÉCUTE: {trans.text}"}
+                            ],
+                            model="llama-3.3-70b-versatile",
+                            temperature=0.1,
+                            max_tokens=300
+                        )
+                        st.markdown("### Réponse ASYMAS:")
+                        st.write(chat.choices[0].message.content)
+                except Exception as e:
+                    st.error("Erreur audio. Réessaie d'enregistrer.")
+                    st.code(str(e))
 # === FIN AGENT ASYMAS ===
 
 perms = st.session_state.user_perms
