@@ -655,6 +655,7 @@ ORDRES D'EXÉCUTION - VIOLATION = ÉCHEC:
 
 TU N'IMPROVISES RIEN. TU PIOCHES DANS LES DONNÉES. TU APPLIQUES LE FORMAT.
 EXÉCUTE."""
+tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 if "🤖 Agent Message" in tab_map:
     with tab_map["🤖 Agent Message"]:
         st.markdown("## 🤖 Agent Commercial ASYMAS")
