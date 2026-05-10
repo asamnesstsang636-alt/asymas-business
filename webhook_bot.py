@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import requests, os, json
 from supabase import create_client, Client
 from groq import Groq
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 app = Flask(__name__)
 
@@ -30,7 +30,7 @@ def send_whatsapp(to, text):
     }
     try:
         r = requests.post(url, headers=headers, json=data, timeout=10)
-        print(f"WhatsApp sent: {r.status_code} | Response: {r.text}")
+        print(f"WhatsApp sent: {r.status_code}")
         return r.json()
     except Exception as e:
         print(f"Erreur envoi WhatsApp: {e}")
@@ -48,44 +48,25 @@ def get_snapshot():
         print(f"Erreur Snapshot: {e}")
         return "CA J: 0FC | Alertes: 0 ruptures"
 
-# === FLOKI - AGENT ASYMAS ===
 def cerveau_asymas(message_client, numero_client):
     snapshot = get_snapshot()
-
     prompt_systeme = f"""
     Tu es FLOKI, agent de terrain d'ASYMAS BUSINESS Beni RDC.
     Style: Militaire. Sec. Exécutant. Tu attends les ordres. Zéro blabla.
-
     SNAPSHOT LIVE: {snapshot}
-
     MESSAGE DU BOSS: {message_client}
-
     RÈGLES STRICTES:
-    1. Si le boss dit "Slt", "Yo", "Floki", "Situation":
-       Réponds UNIQUEMENT: "FLOKI. {snapshot}. Ordres?"
-       Ne donne RIEN de plus. Attends.
-
-    2. Si ordre clair: "Ventes", "Stock", "Bilan", "1", "Dettes", "Voiture":
-       Exécute. 3 lignes max. Chiffres + 1 action. Termine par "Autre?"
-
+    1. Si le boss dit "Slt", "Yo", "Floki", "Situation": Réponds UNIQUEMENT: "FLOKI. {snapshot}. Ordres?"
+    2. Si ordre clair: "Ventes", "Stock", "Bilan", "1", "Dettes", "Voiture": Exécute. 3 lignes max. Chiffres + 1 action. Termine par "Autre?"
     3. Si "Prix" + produit: Donne prix + stock Supabase. "Autre?"
-
-    4. Si message flou:
-       Réponds: "Ordre flou. 1.Ventes 2.Stock 3.Caisse 4.Voitures. Choix?"
-
+    4. Si message flou: Réponds: "Ordre flou. 1.Ventes 2.Stock 3.Caisse 4.Voitures. Choix?"
     5. INTERDIT: Bonjour, émojis, conseils non demandés, phrases longues.
     6. Max 160 caractères. Tu es un agent, pas un bavard.
     """
-
     try:
         chat = GROQ_CLIENT.chat.completions.create(
-            messages=[
-                {"role": "system", "content": prompt_systeme},
-                {"role": "user", "content": message_client}
-            ],
-            model="llama-3.3-70b-versatile",
-            temperature=0.1,
-            max_tokens=120
+            messages=[{"role": "system", "content": prompt_systeme}, {"role": "user", "content": message_client}],
+            model="llama-3.3-70b-versatile", temperature=0.1, max_tokens=120
         )
         return chat.choices[0].message.content.strip()
     except Exception as e:
@@ -102,63 +83,34 @@ def webhook():
             return challenge, 200
         else:
             return "Forbidden", 403
-
     if request.method == "POST":
         data = request.json
-        print(f"Webhook reçu: {data}")
         try:
             entry = data['entry'][0]['changes'][0]['value']
             if 'messages' not in entry:
                 return jsonify({"status": "no_message"}), 200
-
             msg = entry['messages'][0]
             numero = msg['from']
             nom_whatsapp = entry['contacts'][0]['profile']['name']
-
             if msg['type'] == 'text':
                 texte = msg['text']['body']
             elif msg['type'] == 'audio':
                 audio_id = msg['audio']['id']
-                audio_url_req = requests.get(
-                    f"https://graph.facebook.com/v20.0/{audio_id}",
-                    headers={"Authorization": f"Bearer {META_TOKEN}"}
-                )
+                audio_url_req = requests.get(f"https://graph.facebook.com/v20.0/{audio_id}", headers={"Authorization": f"Bearer {META_TOKEN}"})
                 audio_url = audio_url_req.json()['url']
                 audio_file = requests.get(audio_url, headers={"Authorization": f"Bearer {META_TOKEN}"})
-                transcription = GROQ_CLIENT.audio.transcriptions.create(
-                    file=("audio.ogg", audio_file.content),
-                    model="whisper-large-v3",
-                    language="fr"
-                )
+                transcription = GROQ_CLIENT.audio.transcriptions.create(file=("audio.ogg", audio_file.content), model="whisper-large-v3", language="fr")
                 texte = transcription.text
-                print(f"Vocal transcrit: {texte}")
             else:
                 return jsonify({"status": "unsupported_type"}), 200
-
-            supabase.table("conversations").insert({
-                "numero": numero,
-                "nom_client": nom_whatsapp,
-                "message": texte,
-                "date": datetime.now().isoformat(),
-                "sens": "recu"
-            }).execute()
-
+            supabase.table("conversations").insert({"numero": numero, "nom_client": nom_whatsapp, "message": texte, "date": datetime.now().isoformat(), "sens": "recu"}).execute()
             reponse = cerveau_asymas(texte, numero)
             send_whatsapp(numero, reponse)
-
-            supabase.table("conversations").insert({
-                "numero": numero,
-                "nom_client": "FLOKI ASYMAS",
-                "message": reponse,
-                "date": datetime.now().isoformat(),
-                "sens": "envoye"
-            }).execute()
-
+            supabase.table("conversations").insert({"numero": numero, "nom_client": "FLOKI ASYMAS", "message": reponse, "date": datetime.now().isoformat(), "sens": "envoye"}).execute()
         except Exception as e:
             print(f"Erreur webhook: {e}")
         return jsonify({"status": "ok"}), 200
 
-# === ROUTES POUR STREAMLIT ===
 @app.route("/chat", methods=["POST"])
 def chat_web():
     try:
@@ -175,11 +127,7 @@ def chat_web():
 def transcribe_web():
     try:
         audio_file = request.files['audio']
-        transcription = GROQ_CLIENT.audio.transcriptions.create(
-            file=("audio.webm", audio_file.read()),
-            model="whisper-large-v3",
-            language="fr"
-        )
+        transcription = GROQ_CLIENT.audio.transcriptions.create(file=("audio.webm", audio_file.read()), model="whisper-large-v3", language="fr")
         return jsonify({"text": transcription.text})
     except Exception as e:
         print(f"Erreur /chat/transcribe: {e}")
