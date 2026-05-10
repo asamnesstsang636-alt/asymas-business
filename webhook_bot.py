@@ -6,17 +6,17 @@ from datetime import datetime, date
 
 app = Flask(__name__)
 
-# === CONFIG - TES VRAIES CLÉS ===
-META_TOKEN = os.getenv("META_TOKEN", "EAA8PVIKSui0BRUZC7kFoO99B2TTDrEwwTZB3sL66lEMNBeLdiqsiHD9c3l") # Mets dans Render
-PHONE_ID = os.getenv("PHONE_ID", "1049697111568187") # Mets dans Render
-VERIFY_TOKEN = "asymas2024" # Garde celui-là pour Meta
+# === CONFIG - UTILISE LES VARIABLES RENDER ===
+META_TOKEN = os.getenv("META_TOKEN")
+PHONE_ID = os.getenv("PHONE_ID")
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "asymas_webhook_verify")
 
-# SUPABASE - Même base que ton Streamlit
+# SUPABASE
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# GROQ - Cerveau IA
+# GROQ - CERVEAU IA
 GROQ_CLIENT = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # === FONCTION ENVOI WHATSAPP ===
@@ -27,30 +27,28 @@ def send_whatsapp(to, text):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": text[:4096]} # Limite WhatsApp
+        "text": {"body": text[:4096]}
     }
     try:
         r = requests.post(url, headers=headers, json=data, timeout=10)
+        print(f"WhatsApp sent: {r.status_code}")
         return r.json()
-    except:
+    except Exception as e:
+        print(f"Erreur envoi WhatsApp: {e}")
         return None
 
 # === CERVEAU ASYMAS - IL LIT TA BASE SUPABASE ===
 def cerveau_asymas(message_client, numero_client):
-    # 1. Récupère contexte live depuis Supabase
     contexte_db = ""
     try:
-        # Compta du jour
         today = str(date.today())
         compta_jour = supabase.table("compta").select("type,montant,description").eq("date", today).execute()
         revenus = sum(float(x['montant']) for x in compta_jour.data if x['type']=='Revenu')
         depenses = sum(float(x['montant']) for x in compta_jour.data if x['type']=='Depense')
 
-        # Stock top 5
         articles = supabase.table("articles").select("nom_article,prix_vente,stock").gt("stock",0).limit(5).execute()
         stock_txt = "\n".join([f"- {a['nom_article']}: {a['prix_vente']:,.0f}FC Stock:{a['stock']}" for a in articles.data])
 
-        # Voitures dispo
         voitures = supabase.table("voitures").select("marque,modele,prix").eq("statut","Disponible").limit(3).execute()
         voitures_txt = "\n".join([f"- {v['marque']} {v['modele']}: {v['prix']:,.0f}$" for v in voitures.data])
 
@@ -62,6 +60,7 @@ def cerveau_asymas(message_client, numero_client):
         {voitures_txt if voitures_txt else 'Aucune'}
         """
     except Exception as e:
+        print(f"Erreur Supabase: {e}")
         contexte_db = "Base temporairement inaccessible"
 
     prompt_systeme = f"""
@@ -93,27 +92,39 @@ def cerveau_asymas(message_client, numero_client):
         )
         return chat.choices[0].message.content.strip()
     except Exception as e:
+        print(f"Erreur Groq: {e}")
         return "Cerveau ASYMAS en maintenance. Réessaie dans 1min chef."
 
 # === WEBHOOK META ===
 @app.route("/webhook", methods=["GET", "POST"])
 def webhook():
-    # Vérification Meta
+    # Vérification Meta - GET
     if request.method == "GET":
-        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-            return request.args.get("hub.challenge"), 200
-        return "Token invalide", 403
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
 
-    # Réception message WhatsApp
+        print(f"Verify attempt: mode={mode}, token={token}")
+
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            print("WEBHOOK_VERIFIED")
+            return challenge, 200
+        else:
+            print("VERIFICATION_FAILED")
+            return "Forbidden", 403
+
+    # Réception message WhatsApp - POST
     if request.method == "POST":
         data = request.json
+        print(f"Webhook reçu: {data}")
+
         try:
             entry = data['entry'][0]['changes'][0]['value']
             if 'messages' not in entry:
                 return jsonify({"status": "no_message"}), 200
 
             msg = entry['messages'][0]
-            numero = msg['from'] # 243995105623
+            numero = msg['from']
             texte = msg['text']['body']
             nom_whatsapp = entry['contacts'][0]['profile']['name']
 
@@ -152,4 +163,5 @@ def home():
     return "ASYMAS BOT WEBHOOK ACTIF ✅", 200
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
