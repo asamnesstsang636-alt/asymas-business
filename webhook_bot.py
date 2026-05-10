@@ -5,6 +5,8 @@ from groq import Groq
 from datetime import datetime, date
 
 app = Flask(__name__)
+from flask_cors import CORS
+CORS(app)
 
 # === CONFIG ===
 META_TOKEN = os.getenv("META_TOKEN")
