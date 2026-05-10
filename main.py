@@ -569,202 +569,78 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-# === AGENT ASYMAS BUSINESS - VERSION STABLE SANS WEBRTC ===
-import os, io
-from groq import Groq
+    # === FLOKI ICI SOUS ACTUALISER ===
+    st.divider()
+    if st.button("🤖 FLOKI ASYMAS", use_container_width=True, type="primary"):
+        st.session_state.page = "floki"
+    st.divider()        
 
-# 1. CLIENT GROQ UNIQUE
-GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-# 2. FONCTION CONTEXTE UNIQUE AVEC CACHE 1H
-@st.cache_data(ttl=3600)
-def get_asymas_context():
-    df_articles = load_table("articles")
-    df_voitures = load_table("voitures")
-    df_ventes = load_table("ventes")
-
-    articles_list = []
-    if not df_articles.empty:
-        df_stock = df_articles[df_articles['stock'] > 0]
-        for _, a in df_stock.head(15).iterrows():
-            articles_list.append(f"{a['nom_article']} | Stock:{int(a['stock'])} | PV:{a['prix_vente']:,.0f}FC")
-    articles_str = "\n".join(articles_list) if articles_list else "AUCUN ARTICLE EN STOCK"
-
-    voitures_list = []
-    if not df_voitures.empty:
-        df_dispo = df_voitures[(df_voitures['statut']=='Disponible') & (df_voitures['quantite']>0)]
-        for _, v in df_dispo.head(10).iterrows():
-            voitures_list.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v['prix']:,.0f}$ | {v.get('qualite','')}")
-    voitures_str = "\n".join(voitures_list) if voitures_list else "AUCUNE VOITURE DISPONIBLE"
-
-    preuves_list = []
-    if not df_ventes.empty and 'date' in df_ventes.columns:
-        df_ventes_sorted = df_ventes.sort_values('date', ascending=False)
-        for _, v in df_ventes_sorted.head(5).iterrows():
-            preuves_list.append(f"{v.get('client_nom','Client')} | {v.get('article_id','Produit')} | {v.get('total',0):,.0f}FC | {v.get('date','')}")
-    preuves_str = "\n".join(preuves_list) if preuves_list else "AUCUNE VENTE ENREGISTRÉE"
-
-    return f"""ORDRE DIRECT DU PDG SAMY TSANGYA. TU OBÉIS.
-
-IDENTITÉ: Tu es SAMY TSANGYA, PDG ASYMAS BUSINESS Beni RDC. Tel: +243 995 105 623.
-
-MÉMOIRE ASYMAS PERMANENTE - BASE SUPABASE LIVE:
-[ARTICLES EN STOCK AUJOURD'HUI]
-{articles_str}
-
-[VOITURES DISPONIBLES AUJOURD'HUI]
-{voitures_str}
-
-[5 DERNIÈRES VENTES RÉELLES ASYMAS]
-{preuves_str}
-
-ORDRES - VIOLATION = ÉCHEC:
-1. TU DOIS UTILISER 1 ARTICLE OU 1 VOITURE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
-2. TU DOIS UTILISER 1 PREUVE VENTE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
-3. FORMAT: "[Nom], vu ton poste à [Entreprise], on a livré [Preuve vente] pour [Montant]. On a [Produit du stock] dispo. Call 15min?"
-4. 80 MOTS MAXIMUM.
-5. INTERDICTIONS: Bonjour, Nous sommes, fournisseurs, espérer, peut-être, prix d'achat.
-6. Si profil vide: "Donne Nom+Poste+Entreprise".
-
-EXÉCUTE."""
-
-# 3. MENU AGENT DANS SIDEBAR - EN DESSOUS DE "Actualiser"
-with st.sidebar:
-    st.markdown("---")
-    with st.expander("🤖 AGENT ASYMAS", expanded=False):
-        agent_choix = st.selectbox(
-            "Fonction Agent:",
-            ["Message Commercial", "Prospection", "Relance 7J", "Vocal"],
-            key="agent_choix_sidebar"
-        )
-
-        if agent_choix == "Message Commercial":
-            st.markdown("**Générer Message LinkedIn**")
-            profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, Goma", key="agent_msg_profil_sidebar")
-            if st.button("✨ GÉNÉRER", key="agent_msg_btn_sidebar", use_container_width=True):
-                if len(profil.strip()) < 15:
-                    st.error("ORDRE REJETÉ: Profil invalide")
-                else:
-                    with st.spinner("Exécution..."):
-                        chat = GROQ_CLIENT.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": get_asymas_context()},
-                                {"role": "user", "content": f"EXÉCUTE SUR: {profil}"}
-                            ],
-                            model="llama-3.3-70b-versatile",
-                            temperature=0.1,
-                            max_tokens=150,
-                            top_p=0.1
-                        )
-                        st.success("✅ EXÉCUTÉ :")
-                        st.code(chat.choices[0].message.content, language="text")
-
-        elif agent_choix == "Prospection":
-            st.markdown("**Trouver Prospects**")
-            secteur = st.text_input("Secteur", "Cliniques", key="agent_prospect_secteur_sidebar")
-            ville = st.text_input("Ville", "Beni", key="agent_prospect_ville_sidebar")
-            if st.button("🎯 PROSPECTER", key="agent_prospect_btn_sidebar", use_container_width=True):
-                with st.spinner("Recherche..."):
-                    chat = GROQ_CLIENT.chat.completions.create(
-                        messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: Liste 3 prospects réels {secteur} à {ville}. Format: Nom+Poste+Entreprise."}],
-                        model="llama-3.3-70b-versatile",
-                        temperature=0.1,
-                        max_tokens=400
-                    )
-                    st.markdown(chat.choices[0].message.content)
-
-        elif agent_choix == "Relance 7J":
-            st.markdown("**Planning Relance**")
-            contexte = st.text_area("Contexte", placeholder="Ex: Devis envoyé à Jean il y a 3j", key="agent_relance_ctx_sidebar")
-            if st.button("📅 PLANNING", key="agent_relance_btn_sidebar", use_container_width=True):
-                if len(contexte.strip()) < 10:
-                    st.error("ORDRE REJETÉ: Contexte trop court")
-                else:
-                    with st.spinner("Génération..."):
-                        chat = GROQ_CLIENT.chat.completions.create(
-                            messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: Planning relance 7j. Utilise 1 produit du stock. {contexte}"}],
-                            model="llama-3.3-70b-versatile",
-                            temperature=0.1,
-                            max_tokens=500
-                        )
-                        st.markdown(chat.choices[0].message.content)
-
-        elif agent_choix == "Vocal":
-            st.markdown("**🎤 Ordre Vocal ASYMAS**")
-
-            if 'agent_audio' not in st.session_state:
-                st.session_state.agent_audio = None
-            if 'agent_historique' not in st.session_state:
-                st.session_state.agent_historique = []
-
-            # Affiche historique
-            for msg in st.session_state.agent_historique:
-                if msg["role"] == "user":
-                    st.chat_message("user").write(f"🗣️ {msg['content']}")
-                else:
-                    st.chat_message("assistant").write(msg['content'])
-                    if 'audio' in msg:
-                        st.audio(msg['audio'], format="audio/wav")
-
-            audio = st.audio_input("1. Enregistre ton ordre", key="agent_vocal_audio_sidebar")
-
-            if audio:
-                st.session_state.agent_audio = audio
-                st.success("✅ Audio enregistré. Clique Envoyer.")
-
-            if st.session_state.agent_audio:
-                if st.button("📤 ENVOYER À ASYMAS", key="send_audio_btn", type="primary", use_container_width=True):
-                    try:
-                        with st.spinner("1/3 Transcription..."):
-                            trans = GROQ_CLIENT.audio.transcriptions.create(
-                                file=(st.session_state.agent_audio.name, st.session_state.agent_audio.getvalue()),
-                                model="whisper-large-v3"
-                            )
-
-                        st.session_state.agent_historique.append({"role": "user", "content": trans.text})
-                        st.chat_message("user").write(f"🗣️ {trans.text}")
-
-                        with st.spinner("2/3 ASYMAS répond..."):
-                            chat = GROQ_CLIENT.chat.completions.create(
-                                messages=[
-                                    {"role": "system", "content": get_asymas_context()},
-                                    {"role": "user", "content": f"EXÉCUTE: {trans.text}"}
-                                ],
-                                model="llama-3.3-70b-versatile",
-                                temperature=0.1,
-                                max_tokens=300
-                            )
-                            reponse = chat.choices[0].message.content
-                            st.chat_message("assistant").write(reponse)
-
-                        with st.spinner("3/3 Voix féminine..."):
-                            tts = GROQ_CLIENT.audio.speech.create(
-                                model="playai-tts",
-                                voice="Aaliyah-PlayAI",
-                                input=reponse
-                            )
-                            audio_bytes = tts.read()
-                            st.audio(audio_bytes, format="audio/wav", autoplay=True)
-                            st.session_state.agent_historique.append({"role": "assistant", "content": reponse, "audio": audio_bytes})
-
-                        st.session_state.agent_audio = None
-                        st.rerun()
-
-                    except Exception as e:
-                        st.error("Erreur audio. Réessaie.")
-                        st.code(str(e))
-                        st.session_state.agent_audio = None
-
-            if st.button("🗑️ Effacer Conversation", use_container_width=True):
-                st.session_state.agent_historique = []
-                st.session_state.agent_audio = None
-                st.rerun()
-# === FIN AGENT ASYMAS ===
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
+# === CONFIG FLOKI API ===
+FLOKI_API_URL = "https://asymas-bot.onrender.com" # Ton URL Render
 
+# === PAGE FLOKI ===
+if st.session_state.get('page') == 'floki':
+    st.title("🤖 FLOKI - Agent ASYMAS")
+    st.caption("Parle ou écris. FLOKI exécute. Zéro blabla.")
+
+    if "messages_floki" not in st.session_state:
+        st.session_state.messages_floki = [
+            {"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}
+        ]
+
+    for msg in st.session_state.messages_floki:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    col1, col2 = st.columns([5,1])
+    with col1:
+        prompt = st.chat_input("Donne tes ordres...")
+    with col2:
+        audio_val = st.audio_input("🎤", key="floki_audio")
+
+    user_input = None
+    if prompt:
+        user_input = prompt
+    elif audio_val:
+        with st.spinner("Transcription..."):
+            files = {"audio": audio_val.getvalue()}
+            try:
+                res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=30)
+                user_input = res.json().get("text", "")
+                if user_input:
+                    st.toast(f"🎤 {user_input}", icon="🎤")
+            except Exception as e:
+                st.error(f"Erreur transcription: {e}")
+
+    if user_input:
+        st.session_state.messages_floki.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        with st.spinner("FLOKI analyse..."):
+            try:
+                res = requests.post(
+                    f"{FLOKI_API_URL}/chat",
+                    json={"message": user_input, "numero": f"WEB_{st.session_state.user_name}"},
+                    timeout=30
+                )
+                reponse_floki = res.json().get("reponse", "Erreur FLOKI")
+            except Exception as e:
+                reponse_floki = f"Erreur connexion FLOKI: {e}"
+
+        st.session_state.messages_floki.append({"role": "assistant", "content": reponse_floki})
+        with st.chat_message("assistant"):
+            st.markdown(reponse_floki)
+
+    if st.button("⬅️ Retour Dashboard", use_container_width=True):
+        st.session_state.page = "dashboard"
+        st.rerun()
+
+    st.stop()
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
