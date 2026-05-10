@@ -599,115 +599,80 @@ if st.session_state.user_role == "PDG" or perms.get('users', False):
 
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
+
+tabs = st.tabs(tabs_dispo)
+tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+# === AGENT ASYMAS BUSINESS - VERSION FINALE PROPRE ===
+import os, tempfile
+from groq import Groq
+
+# 1. CLIENT GROQ UNIQUE
+GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+# 2. FONCTION CONTEXTE UNIQUE AVEC CACHE 1H
+@st.cache_data(ttl=3600) # Cache 1h : données fraîches mais rapide
 def get_asymas_context():
     df_articles = load_table("articles")
     df_voitures = load_table("voitures")
     df_ventes = load_table("ventes")
 
+    # Articles
     articles_list = []
     if not df_articles.empty:
-        for _, a in df_articles[df_articles['stock'] > 0].head(10).iterrows():
+        df_stock = df_articles[df_articles['stock'] > 0]
+        for _, a in df_stock.head(15).iterrows():
             articles_list.append(f"{a['nom_article']} | Stock:{int(a['stock'])} | PV:{a['prix_vente']:,.0f}FC")
-    articles_str = "\n".join(articles_list) if articles_list else "AUCUN"
+    articles_str = "\n".join(articles_list) if articles_list else "AUCUN ARTICLE EN STOCK"
 
+    # Voitures
     voitures_list = []
     if not df_voitures.empty:
-        for _, v in df_voitures[(df_voitures['statut']=='Disponible') & (df_voitures['quantite']>0)].head(5).iterrows():
+        df_dispo = df_voitures[(df_voitures['statut']=='Disponible') & (df_voitures['quantite']>0)]
+        for _, v in df_dispo.head(10).iterrows():
             voitures_list.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v['prix']:,.0f}$ | {v.get('qualite','')}")
-    voitures_str = "\n".join(voitures_list) if voitures_list else "AUCUNE"
+    voitures_str = "\n".join(voitures_list) if voitures_list else "AUCUNE VOITURE DISPONIBLE"
 
+    # 5 dernières ventes réelles = mémoire permanente
     preuves_list = []
-    if not df_ventes.empty:
-        for _, v in df_ventes.sort_values('date', ascending=False).head(3).iterrows():
-            preuves_list.append(f"{v.get('client_nom')} | {v.get('quantite')}x | {v.get('total'):,.0f}FC")
-    preuves_str = "\n".join(preuves_list) if preuves_list else "AUCUNE"
+    if not df_ventes.empty and 'date' in df_ventes.columns:
+        df_ventes_sorted = df_ventes.sort_values('date', ascending=False)
+        for _, v in df_ventes_sorted.head(5).iterrows():
+            preuves_list.append(f"{v.get('client_nom','Client')} | {v.get('article_id','Produit')} | {v.get('total',0):,.0f}FC | {v.get('date','')}")
+    preuves_str = "\n".join(preuves_list) if preuves_list else "AUCUNE VENTE ENREGISTRÉE"
 
     return f"""ORDRE DIRECT DU PDG SAMY TSANGYA. TU OBÉIS.
 
 IDENTITÉ: Tu es SAMY TSANGYA, PDG ASYMAS BUSINESS Beni RDC. Tel: +243 995 105 623. Tu ne poses JAMAIS de questions. Tu exécutes.
 
-DONNÉES ASYMAS AUTORISÉES - RIEN D'AUTRE:
-[ARTICLES]
+MÉMOIRE ASYMAS PERMANENTE - BASE SUPABASE LIVE:
+[ARTICLES EN STOCK AUJOURD'HUI]
 {articles_str}
 
-[VOITURES]
+[VOITURES DISPONIBLES AUJOURD'HUI]
 {voitures_str}
 
-[PREUVES VENTES RÉELLES]
+[5 DERNIÈRES VENTES RÉELLES ASYMAS]
 {preuves_str}
 
 ORDRES D'EXÉCUTION - VIOLATION = ÉCHEC:
-1. TU UTILISES 1 ARTICLE OU 1 VOITURE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
-2. TU UTILISES 1 PREUVE VENTE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
+1. TU DOIS UTILISER 1 ARTICLE OU 1 VOITURE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
+2. TU DOIS UTILISER 1 PREUVE VENTE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
 3. FORMAT EXACT: "[Nom], vu ton poste à [Entreprise], on a livré [Preuve vente] pour [Montant]. On a [Produit du stock] dispo. Call 15min?"
-4. 80 MOTS MAX. Si tu dépasses, tu échoues.
+4. 80 MOTS MAXIMUM.
 5. INTERDICTIONS ABSOLUES: Bonjour, Nous sommes, fournisseurs, espérer, peut-être, prix d'achat.
 6. Si profil vide: Réponds UNIQUEMENT "Donne Nom+Poste+Entreprise".
 
 TU N'IMPROVISES RIEN. TU PIOCHES DANS LES DONNÉES. TU APPLIQUES LE FORMAT.
 EXÉCUTE."""
 
-tabs = st.tabs(tabs_dispo)
-tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
-# === AGENT ASYMAS BUSINESS - COLLER ICI OBLIGATOIRE ===
-import os, tempfile
-from groq import Groq
-GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-def get_asymas_context():
-    df_articles = load_table("articles")
-    df_voitures = load_table("voitures")
-    df_ventes = load_table("ventes")
-
-    articles_list = []
-    if not df_articles.empty:
-        for _, a in df_articles[df_articles['stock'] > 0].head(10).iterrows():
-            articles_list.append(f"{a['nom_article']} | Stock:{int(a['stock'])} | PV:{a['prix_vente']:,.0f}FC")
-    articles_str = "\n".join(articles_list) if articles_list else "AUCUN"
-
-    voitures_list = []
-    if not df_voitures.empty:
-        for _, v in df_voitures[(df_voitures['statut']=='Disponible') & (df_voitures['quantite']>0)].head(5).iterrows():
-            voitures_list.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v['prix']:,.0f}$ | {v.get('qualite','')}")
-    voitures_str = "\n".join(voitures_list) if voitures_list else "AUCUNE"
-
-    preuves_list = []
-    if not df_ventes.empty:
-        for _, v in df_ventes.sort_values('date', ascending=False).head(3).iterrows():
-            preuves_list.append(f"{v.get('client_nom')} | {v.get('quantite')}x | {v.get('total'):,.0f}FC")
-    preuves_str = "\n".join(preuves_list) if preuves_list else "AUCUNE"
-
-    return f"""ORDRE DIRECT DU PDG SAMY TSANGYA. TU OBÉIS.
-
-IDENTITÉ: Tu es SAMY TSANGYA, PDG ASYMAS BUSINESS Beni RDC. Tel: +243 995 105 623.
-
-DONNÉES ASYMAS AUTORISÉES:
-[ARTICLES]
-{articles_str}
-
-[VOITURES]
-{voitures_str}
-
-[PREUVES VENTES]
-{preuves_str}
-
-ORDRES - VIOLATION = ÉCHEC:
-1. UTILISE 1 ARTICLE OU 1 VOITURE DE LA LISTE. OBLIGATOIRE.
-2. UTILISE 1 PREUVE VENTE DE LA LISTE. OBLIGATOIRE.
-3. FORMAT: "[Nom], vu ton poste à [Entreprise], on a livré [Preuve vente] pour [Montant]. On a [Produit du stock] dispo. Call 15min?"
-4. 80 MOTS MAX.
-5. INTERDIT: Bonjour, Nous sommes, fournisseurs, espérer, peut-être.
-6. Si profil vide: "Donne Nom+Poste+Entreprise".
-
-EXÉCUTE."""
-
+# 3. AGENT MESSAGE
 if "🤖 Agent Message" in tab_map:
     with tab_map["🤖 Agent Message"]:
         st.markdown("## 🤖 Agent Commercial ASYMAS")
         st.warning("Colle un VRAI profil LinkedIn : Nom + Poste + Entreprise + Ville")
-        profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, 50 employés, Goma", key="agent_msg_profil_v5")
+        profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, 50 employés, Goma", key="agent_msg_profil_final")
 
-        if st.button("✨ GÉNÉRER MESSAGE ASYMAS", key="agent_msg_btn_v5", type="primary"):
+        if st.button("✨ GÉNÉRER MESSAGE ASYMAS", key="agent_msg_btn_final", type="primary"):
             if len(profil.strip()) < 15:
                 st.error("ORDRE REJETÉ: Profil invalide. Format: Nom+Poste+Entreprise")
             else:
@@ -725,12 +690,13 @@ if "🤖 Agent Message" in tab_map:
                     st.success("✅ EXÉCUTÉ :")
                     st.code(chat.choices[0].message.content, language="text")
 
+# 4. AGENT PROSPECTION
 if "🔍 Agent Prospection" in tab_map:
     with tab_map["🔍 Agent Prospection"]:
         st.markdown("## 🔍 Prospection ASYMAS")
-        secteur = st.text_input("Secteur", "Cliniques", key="agent_prospect_secteur_v5")
-        ville = st.text_input("Ville", "Beni", key="agent_prospect_ville_v5")
-        if st.button("🎯 PROSPECTER", key="agent_prospect_btn_v5", type="primary"):
+        secteur = st.text_input("Secteur", "Cliniques", key="agent_prospect_secteur_final")
+        ville = st.text_input("Ville", "Beni", key="agent_prospect_ville_final")
+        if st.button("🎯 PROSPECTER", key="agent_prospect_btn_final", type="primary"):
             with st.spinner("Recherche..."):
                 chat = GROQ_CLIENT.chat.completions.create(
                     messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: Liste 3 prospects réels {secteur} à {ville}. Format: Nom+Poste+Entreprise."}],
@@ -740,27 +706,29 @@ if "🔍 Agent Prospection" in tab_map:
                 )
                 st.markdown(chat.choices[0].message.content)
 
+# 5. AGENT RELANCE
 if "🔁 Agent Relance" in tab_map:
     with tab_map["🔁 Agent Relance"]:
         st.markdown("## 🔁 Relance ASYMAS")
-        contexte = st.text_area("Contexte", placeholder="Ex: Devis envoyé à Jean il y a 3j", key="agent_relance_ctx_v5")
-        if st.button("📅 PLANNING 7J", key="agent_relance_btn_v5", type="primary"):
+        contexte = st.text_area("Contexte", placeholder="Ex: Devis envoyé à Jean il y a 3j", key="agent_relance_ctx_final")
+        if st.button("📅 PLANNING 7J", key="agent_relance_btn_final", type="primary"):
             if len(contexte.strip()) < 10:
                 st.error("ORDRE REJETÉ: Contexte trop court")
             else:
                 with st.spinner("Génération..."):
                     chat = GROQ_CLIENT.chat.completions.create(
-                        messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: Planning relance 7j. {contexte}"}],
+                        messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"EXÉCUTE: Planning relance 7j avec messages ASYMAS. Utilise 1 produit du stock. {contexte}"}],
                         model="llama-3.3-70b-versatile",
                         temperature=0.1,
                         max_tokens=500
                     )
                     st.markdown(chat.choices[0].message.content)
 
+# 6. AGENT VOCAL
 if "🎤 Agent Vocal" in tab_map:
     with tab_map["🎤 Agent Vocal"]:
         st.markdown("## 🎤 Agent Vocal ASYMAS")
-        audio = st.audio_input("Donne un ordre", key="agent_vocal_audio_v5")
+        audio = st.audio_input("Donne un ordre", key="agent_vocal_audio_final")
         if audio:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
                 tmp.write(audio.getvalue())
