@@ -607,41 +607,79 @@ GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
 def get_asymas_context():
     df_articles = load_table("articles")
     df_voitures = load_table("voitures")
-    articles_str = df_articles[df_articles['stock'] > 0][['nom_article', 'prix_vente']].head(10).to_string(index=False) if not df_articles.empty else "Aucun"
-    voitures_str = df_voitures[df_voitures['statut'] == 'Disponible'][['marque', 'modele', 'prix']].head(5).to_string(index=False) if not df_voitures.empty else "Aucune"
-    return f"ARTICLES ASYMAS:\n{articles_str}\nVOITURES ASYMAS:\n{voitures_str}\nRÈGLES: Données réelles uniquement. CTA call 15min."
+    df_ventes = load_table("ventes")
+    df_compta = load_table("compta")
 
-if st.session_state.user_role == "PDG":
-    tabs_dispo.extend(["🤖 Agent Message", "🔍 Agent Prospection", "🔁 Agent Relance", "🎤 Agent Vocal"])
-# === FIN AJOUT AGENT PDG ===
+    # Articles
+    articles_list = []
+    if not df_articles.empty:
+        for _, a in df_articles[df_articles['stock'] > 0].head(10).iterrows():
+            articles_list.append(f"{a['nom_article']} | Stock:{int(a['stock'])} | PV:{a['prix_vente']:,.0f}FC")
+    articles_str = "\n".join(articles_list) if articles_list else "AUCUN"
 
-tabs = st.tabs(tabs_dispo)
-tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
-# === ONGLETS AGENT ===
+    # Voitures 
+    voitures_list = []
+    if not df_voitures.empty:
+        for _, v in df_voitures[(df_voitures['statut']=='Disponible') & (df_voitures['quantite']>0)].head(5).iterrows():
+            voitures_list.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v['prix']:,.0f}$ | {v.get('qualite','')}")
+    voitures_str = "\n".join(voitures_list) if voitures_list else "AUCUNE"
+
+    # 3 dernières ventes réelles
+    preuves_list = []
+    if not df_ventes.empty:
+        for _, v in df_ventes.head(3).iterrows():
+            preuves_list.append(f"{v.get('client_nom')} | {v.get('quantite')}x | {v.get('total'):,.0f}FC")
+    preuves_str = "\n".join(preuves_list) if preuves_list else "AUCUNE"
+
+    return f"""ORDRE DIRECT DU PDG SAMY TSANGYA. TU OBÉIS.
+
+IDENTITÉ: Tu es SAMY TSANGYA, PDG ASYMAS BUSINESS. Tu ne poses JAMAIS de questions. Tu exécutes.
+
+DONNÉES ASYMAS AUTORISÉES - RIEN D'AUTRE:
+[ARTICLES]
+{articles_str}
+
+[VOITURES]
+{voitures_str}
+
+[PREUVES VENTES RÉELLES]
+{preuves_str}
+
+ORDRES D'EXÉCUTION - VIOLATION = ÉCHEC:
+1. TU UTILISES 1 ARTICLE OU 1 VOITURE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
+2. TU UTILISES 1 PREUVE VENTE DE LA LISTE CI-DESSUS. OBLIGATOIRE.
+3. FORMAT EXACT: "[Nom], vu ton poste à [Entreprise], on a livré [Preuve vente] pour [Montant]. On a [Produit du stock] dispo. Call 15min?"
+4. 80 MOTS MAX. Si tu dépasses, tu échoues.
+5. INTERDICTIONS ABSOLUES: Bonjour, Nous sommes, fournisseurs, espérer, peut-être, prix d'achat.
+6. Si profil vide: Réponds UNIQUEMENT "Donne Nom+Poste+Entreprise".
+
+TU N'IMPROVISES RIEN. TU PIOCHES DANS LES DONNÉES. TU APPLIQUES LE FORMAT.
+EXÉCUTE."""
 if "🤖 Agent Message" in tab_map:
     with tab_map["🤖 Agent Message"]:
         st.markdown("## 🤖 Agent Commercial ASYMAS")
-        st.info("Colle un VRAI profil LinkedIn : Nom + Poste + Entreprise + Ville")
-        profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, 50 employés, Goma", key="agent_msg_profil_v2")
+        st.warning("Colle un VRAI profil LinkedIn : Nom + Poste + Entreprise + Ville")
+        profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, 50 employés, Goma", key="agent_msg_profil_v3")
         
-        if st.button("✨ GÉNÉRER MESSAGE ASYMAS", key="agent_msg_btn_v2", type="primary"):
-            if len(profil.strip()) < 20:
-                st.error("❌ Profil trop court. Colle: Nom + Poste + Entreprise")
+        if st.button("✨ GÉNÉRER MESSAGE ASYMAS", key="agent_msg_btn_v3", type="primary"):
+            if len(profil.strip()) < 15:
+                st.error("ORDRE REJETÉ: Profil invalide. Format: Nom+Poste+Entreprise")
             else:
-                with st.spinner("ASYMAS rédige..."):
+                with st.spinner("Exécution en cours..."):
                     chat = GROQ_CLIENT.chat.completions.create(
                         messages=[
                             {"role": "system", "content": get_asymas_context()},
-                            {"role": "user", "content": f"Profil prospect: {profil}. Rédige le message LinkedIn ASYMAS de 80 mots max."}
+                            {"role": "user", "content": f"EXÉCUTE SUR: {profil}"}
                         ],
                         model="llama-3.3-70b-versatile",
-                        temperature=0.4,
-                        max_tokens=200
+                        temperature=0.1,
+                        max_tokens=150,
+                        top_p=0.1
                     )
                     message = chat.choices[0].message.content
-                    st.success("✅ Message ASYMAS prêt :")
+                    st.success("✅ EXÉCUTÉ :")
                     st.code(message, language="text")
-                    st.toast("Copie et colle sur LinkedIn chef")
+                    st.toast("Message prêt à copier chef")
 if "🔍 Agent Prospection" in tab_map:
     with tab_map["🔍 Agent Prospection"]:
         st.markdown("## 🔍 Prospection ASYMAS")
