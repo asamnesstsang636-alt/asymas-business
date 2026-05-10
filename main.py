@@ -569,8 +569,8 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
- # === AGENT ASYMAS BUSINESS - SIDEBAR SOUS ACTUALISER ===
-import os, tempfile
+# === AGENT ASYMAS BUSINESS - SIDEBAR SOUS ACTUALISER ===
+import os, io
 from groq import Groq
 
 # 1. CLIENT GROQ UNIQUE
@@ -689,19 +689,20 @@ with st.sidebar:
                         )
                         st.markdown(chat.choices[0].message.content)
 
-elif agent_choix == "Vocal":
-            st.markdown("**Ordre Vocal**")
-            audio = st.audio_input("Donne un ordre", key="agent_vocal_audio_sidebar")
+        elif agent_choix == "Vocal":
+            st.markdown("**🎤 Ordre Vocal ASYMAS**")
+            audio = st.audio_input("Enregistre ton ordre", key="agent_vocal_audio_sidebar")
             if audio:
                 try:
-                    with st.spinner("Transcription..."):
-                        # FIX: On lit direct sans NamedTemporaryFile pour éviter crash
+                    with st.spinner("1/3 Transcription..."):
+                        # FIX: Envoi direct sans fichier temp
                         trans = GROQ_CLIENT.audio.transcriptions.create(
                             file=(audio.name, audio.getvalue()),
                             model="whisper-large-v3"
                         )
-                    st.success(f"Ordre reçu: {trans.text}")
-                    with st.spinner("Exécution ASYMAS..."):
+                    st.success(f"Ordre: {trans.text}")
+
+                    with st.spinner("2/3 Réflexion ASYMAS..."):
                         chat = GROQ_CLIENT.chat.completions.create(
                             messages=[
                                 {"role": "system", "content": get_asymas_context()},
@@ -711,13 +712,25 @@ elif agent_choix == "Vocal":
                             temperature=0.1,
                             max_tokens=300
                         )
-                        st.markdown("### Réponse ASYMAS:")
-                        st.write(chat.choices[0].message.content)
+                        reponse_texte = chat.choices[0].message.content
+                        st.markdown("### Réponse Texte:")
+                        st.write(reponse_texte)
+
+                    with st.spinner("3/3 Génération Voix Féminine..."):
+                        # TTS Groq - Voix féminine "Aaliyah-PlayAI"
+                        tts = GROQ_CLIENT.audio.speech.create(
+                            model="playai-tts",
+                            voice="Aaliyah-PlayAI",
+                            input=reponse_texte
+                        )
+                        audio_bytes = tts.read()
+                        st.markdown("### 🔊 Réponse Vocale:")
+                        st.audio(audio_bytes, format="audio/wav")
+
                 except Exception as e:
-                    st.error("Erreur audio. Réessaie d'enregistrer.")
+                    st.error("Erreur audio. Vérifie ta connexion ou réessaie.")
                     st.code(str(e))
 # === FIN AGENT ASYMAS ===
-
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
