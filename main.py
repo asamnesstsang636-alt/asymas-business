@@ -569,12 +569,9 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-# === AGENT ASYMAS BUSINESS - CONVERSATION CONTINUE SANS STOP ===
-import os, io, asyncio
+# === AGENT ASYMAS BUSINESS - VERSION STABLE SANS WEBRTC ===
+import os, io
 from groq import Groq
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-import av
-import numpy as np
 
 # 1. CLIENT GROQ UNIQUE
 GROQ_CLIENT = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -631,51 +628,13 @@ ORDRES - VIOLATION = ÉCHEC:
 
 EXÉCUTE."""
 
-# 3. CLASS AUDIO POUR DÉTECTION VOIX CONTINUE
-class AudioProcessor:
-    def __init__(self):
-        self.buffer = []
-        self.silence_threshold = 500 # Sensibilité
-        self.silence_frames = 0
-        self.max_silence_frames = 30 # 1sec de silence = fin de phrase
-        self.is_speaking = False
-
-    def recv(self, frame):
-        audio_array = frame.to_ndarray()
-        volume = np.sqrt(np.mean(audio_array**2))
-
-        if volume > self.silence_threshold:
-            self.is_speaking = True
-            self.silence_frames = 0
-            self.buffer.append(audio_array)
-        elif self.is_speaking:
-            self.silence_frames += 1
-            self.buffer.append(audio_array)
-            if self.silence_frames > self.max_silence_frames:
-                self.is_speaking = False
-                self.process_speech()
-                self.buffer = []
-
-        return frame
-
-    def process_speech(self):
-        if len(self.buffer) < 10: # Ignore bruits courts
-            return
-
-        # Combine audio + traite
-        audio_data = np.concatenate(self.buffer)
-        audio_bytes = (audio_data * 32767).astype(np.int16).tobytes()
-
-        # Sauvegarde pour traitement
-        st.session_state.audio_a_traiter = audio_bytes
-
-# 4. MENU AGENT DANS SIDEBAR
+# 3. MENU AGENT DANS SIDEBAR - EN DESSOUS DE "Actualiser"
 with st.sidebar:
     st.markdown("---")
     with st.expander("🤖 AGENT ASYMAS", expanded=False):
         agent_choix = st.selectbox(
             "Fonction Agent:",
-            ["Message Commercial", "Prospection", "Relance 7J", "Vocal LIVE"],
+            ["Message Commercial", "Prospection", "Relance 7J", "Vocal"],
             key="agent_choix_sidebar"
         )
 
@@ -730,17 +689,16 @@ with st.sidebar:
                         )
                         st.markdown(chat.choices[0].message.content)
 
-        elif agent_choix == "Vocal LIVE":
-            st.markdown("**🎤 Conversation Continue**")
-            st.info("Parle. Quand tu t'arrêtes 1 sec, je réponds direct. Pas de bouton STOP.")
+        elif agent_choix == "Vocal":
+            st.markdown("**🎤 Ordre Vocal ASYMAS**")
 
-            if 'audio_a_traiter' not in st.session_state:
-                st.session_state.audio_a_traiter = None
-            if 'conversation' not in st.session_state:
-                st.session_state.conversation = []
+            if 'agent_audio' not in st.session_state:
+                st.session_state.agent_audio = None
+            if 'agent_historique' not in st.session_state:
+                st.session_state.agent_historique = []
 
-            # Affiche conversation
-            for msg in st.session_state.conversation:
+            # Affiche historique
+            for msg in st.session_state.agent_historique:
                 if msg["role"] == "user":
                     st.chat_message("user").write(f"🗣️ {msg['content']}")
                 else:
@@ -748,61 +706,58 @@ with st.sidebar:
                     if 'audio' in msg:
                         st.audio(msg['audio'], format="audio/wav")
 
-            # WebRTC écoute en continu
-            webrtc_ctx = webrtc_streamer(
-                key="asymas-live",
-                mode=WebRtcMode.SENDONLY,
-                audio_processor_factory=AudioProcessor,
-                media_stream_constraints={"audio": True, "video": False},
-                async_processing=True,
-                rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
-            )
+            audio = st.audio_input("1. Enregistre ton ordre", key="agent_vocal_audio_sidebar")
 
-            # Traite l'audio quand prêt
-            if st.session_state.audio_a_traiter:
-                audio_bytes = st.session_state.audio_a_traiter
-                st.session_state.audio_a_traiter = None
+            if audio:
+                st.session_state.agent_audio = audio
+                st.success("✅ Audio enregistré. Clique Envoyer.")
 
-                try:
-                    with st.spinner("🎧 Transcription..."):
-                        trans = GROQ_CLIENT.audio.transcriptions.create(
-                            file=("live.wav", audio_bytes),
-                            model="whisper-large-v3"
-                        )
+            if st.session_state.agent_audio:
+                if st.button("📤 ENVOYER À ASYMAS", key="send_audio_btn", type="primary", use_container_width=True):
+                    try:
+                        with st.spinner("1/3 Transcription..."):
+                            trans = GROQ_CLIENT.audio.transcriptions.create(
+                                file=(st.session_state.agent_audio.name, st.session_state.agent_audio.getvalue()),
+                                model="whisper-large-v3"
+                            )
 
-                    st.session_state.conversation.append({"role": "user", "content": trans.text})
-                    st.chat_message("user").write(f"🗣️ {trans.text}")
+                        st.session_state.agent_historique.append({"role": "user", "content": trans.text})
+                        st.chat_message("user").write(f"🗣️ {trans.text}")
 
-                    with st.spinner("🧠 ASYMAS répond..."):
-                        chat = GROQ_CLIENT.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": get_asymas_context()},
-                                {"role": "user", "content": f"EXÉCUTE: {trans.text}"}
-                            ],
-                            model="llama-3.3-70b-versatile",
-                            temperature=0.1,
-                            max_tokens=300
-                        )
-                        reponse = chat.choices[0].message.content
-                        st.chat_message("assistant").write(reponse)
+                        with st.spinner("2/3 ASYMAS répond..."):
+                            chat = GROQ_CLIENT.chat.completions.create(
+                                messages=[
+                                    {"role": "system", "content": get_asymas_context()},
+                                    {"role": "user", "content": f"EXÉCUTE: {trans.text}"}
+                                ],
+                                model="llama-3.3-70b-versatile",
+                                temperature=0.1,
+                                max_tokens=300
+                            )
+                            reponse = chat.choices[0].message.content
+                            st.chat_message("assistant").write(reponse)
 
-                    with st.spinner("🔊 Voix..."):
-                        tts = GROQ_CLIENT.audio.speech.create(
-                            model="playai-tts",
-                            voice="Aaliyah-PlayAI",
-                            input=reponse
-                        )
-                        audio_reponse = tts.read()
-                        st.audio(audio_reponse, format="audio/wav", autoplay=True)
-                        st.session_state.conversation.append({"role": "assistant", "content": reponse, "audio": audio_reponse})
+                        with st.spinner("3/3 Voix féminine..."):
+                            tts = GROQ_CLIENT.audio.speech.create(
+                                model="playai-tts",
+                                voice="Aaliyah-PlayAI",
+                                input=reponse
+                            )
+                            audio_bytes = tts.read()
+                            st.audio(audio_bytes, format="audio/wav", autoplay=True)
+                            st.session_state.agent_historique.append({"role": "assistant", "content": reponse, "audio": audio_bytes})
 
-                    st.rerun()
+                        st.session_state.agent_audio = None
+                        st.rerun()
 
-                except Exception as e:
-                    st.error(f"Erreur: {e}")
+                    except Exception as e:
+                        st.error("Erreur audio. Réessaie.")
+                        st.code(str(e))
+                        st.session_state.agent_audio = None
 
             if st.button("🗑️ Effacer Conversation", use_container_width=True):
-                st.session_state.conversation = []
+                st.session_state.agent_historique = []
+                st.session_state.agent_audio = None
                 st.rerun()
 # === FIN AGENT ASYMAS ===
 perms = st.session_state.user_perms
