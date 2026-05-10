@@ -648,7 +648,7 @@ if st.session_state.get('page') == 'floki':
         st.rerun()
 
 else:
-    # === TON CODE EXISTANT COMMENCE ICI ===
+# === TON CODE EXISTANT COMMENCE ICI ===
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
