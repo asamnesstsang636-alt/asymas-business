@@ -2,13 +2,13 @@ from flask import Flask, request, jsonify
 import requests, os, json
 from supabase import create_client, Client
 from groq import Groq
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 
-# === CONFIG - UTILISE LES VARIABLES RENDER ===
+# === CONFIG ===
 META_TOKEN = os.getenv("META_TOKEN")
-PHONE_ID = os.getenv("PHONE_NUMBER_ID") # ← CORRIGÉ: on lit PHONE_NUMBER_ID
+PHONE_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "asymas_webhook_verify")
 
 # SUPABASE
@@ -16,10 +16,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# GROQ - CERVEAU IA
+# GROQ
 GROQ_CLIENT = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# === FONCTION ENVOI WHATSAPP ===
 def send_whatsapp(to, text):
     url = f"https://graph.facebook.com/v20.0/{PHONE_ID}/messages"
     headers = {"Authorization": f"Bearer {META_TOKEN}", "Content-Type": "application/json"}
@@ -37,47 +36,45 @@ def send_whatsapp(to, text):
         print(f"Erreur envoi WhatsApp: {e}")
         return None
 
-# === CERVEAU ASYMAS - IL LIT TA BASE SUPABASE ===
-def cerveau_asymas(message_client, numero_client):
-    contexte_db = ""
+def get_snapshot():
     try:
         today = str(date.today())
-        compta_jour = supabase.table("compta").select("type,montant,description").eq("date", today).execute()
+        compta_jour = supabase.table("compta").select("type,montant").eq("date", today).execute()
         revenus = sum(float(x['montant']) for x in compta_jour.data if x['type']=='Revenu')
         depenses = sum(float(x['montant']) for x in compta_jour.data if x['type']=='Depense')
-
-        articles = supabase.table("articles").select("nom_article,prix_vente,stock").gt("stock",0).limit(5).execute()
-        stock_txt = "\n".join([f"- {a['nom_article']}: {a['prix_vente']:,.0f}FC Stock:{a['stock']}" for a in articles.data])
-
-        voitures = supabase.table("voitures").select("marque,modele,prix").eq("statut","Disponible").limit(3).execute()
-        voitures_txt = "\n".join([f"- {v['marque']} {v['modele']}: {v['prix']:,.0f}$" for v in voitures.data])
-
-        contexte_db = f"""
-        COMPTA AUJOURD'HUI: Revenu {revenus:,.0f}FC | Dépense {depenses:,.0f}FC | Bénéfice {revenus-depenses:,.0f}FC
-        STOCK DISPO:
-        {stock_txt if stock_txt else 'Aucun'}
-        VOITURES DISPO:
-        {voitures_txt if voitures_txt else 'Aucune'}
-        """
+        ruptures = supabase.table("articles").select("nom_article").lt("stock", 5).execute()
+        return f"CA J: {revenus-depenses:,.0f}FC | Alertes: {len(ruptures.data)} ruptures"
     except Exception as e:
-        print(f"Erreur Supabase: {e}")
-        contexte_db = "Base temporairement inaccessible"
+        print(f"Erreur Snapshot: {e}")
+        return "CA J: 0FC | Alertes: 0 ruptures"
+
+# === FLOKI - AGENT ASYMAS ===
+def cerveau_asymas(message_client, numero_client):
+    snapshot = get_snapshot()
 
     prompt_systeme = f"""
-    Tu es SAMY TSANGYA, PDG ASYMAS BUSINESS Beni RDC. Tel: +243 995 105 623.
-    Tu gères TOUT: compta, stock, voitures, immobilier, conseils.
-    Tu parles direct, congolais, 2 lignes max. Pas de "Bonjour".
+    Tu es FLOKI, agent de terrain d'ASYMAS BUSINESS Beni RDC.
+    Style: Militaire. Sec. Exécutant. Tu attends les ordres. Zéro blabla.
 
-    DONNÉES LIVE ASYMAS:
-    {contexte_db}
+    SNAPSHOT LIVE: {snapshot}
+
+    MESSAGE DU BOSS: {message_client}
 
     RÈGLES STRICTES:
-    1. Si "situation", "bilan", "chiffre" → Donne bénéfice du jour + 1 conseil action
-    2. Si "prix" + nom produit → Donne prix exact du stock + "Tape 1 pour commander"
-    3. Si "facture" + nom + produit + montant → Réponds "OK je prépare. Confirme nom client"
-    4. Si "voiture" → Liste 1-2 voitures dispo avec prix
-    5. Si tu connais pas → "Pas en stock chef. Tu veux que je commande?"
-    6. Finis TOUJOURS par une action: "Tape 1", "Dis OUI", "Envoie photo"
+    1. Si le boss dit "Slt", "Yo", "Floki", "Situation":
+       Réponds UNIQUEMENT: "FLOKI. {snapshot}. Ordres?"
+       Ne donne RIEN de plus. Attends.
+
+    2. Si ordre clair: "Ventes", "Stock", "Bilan", "1", "Dettes", "Voiture":
+       Exécute. 3 lignes max. Chiffres + 1 action. Termine par "Autre?"
+
+    3. Si "Prix" + produit: Donne prix + stock Supabase. "Autre?"
+
+    4. Si message flou:
+       Réponds: "Ordre flou. 1.Ventes 2.Stock 3.Caisse 4.Voitures. Choix?"
+
+    5. INTERDIT: Bonjour, émojis, conseils non demandés, phrases longues.
+    6. Max 160 caractères. Tu es un agent, pas un bavard.
     """
 
     try:
@@ -87,37 +84,28 @@ def cerveau_asymas(message_client, numero_client):
                 {"role": "user", "content": message_client}
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.2,
-            max_tokens=200
+            temperature=0.1,
+            max_tokens=120
         )
         return chat.choices[0].message.content.strip()
     except Exception as e:
         print(f"Erreur Groq: {e}")
-        return "Cerveau ASYMAS en maintenance. Réessaie dans 1min chef."
+        return "Système down. Réessaie."
 
-# === WEBHOOK META ===
 @app.route("/webhook", methods=["GET", "POST"])
 def webhook():
-    # Vérification Meta - GET
     if request.method == "GET":
         mode = request.args.get("hub.mode")
         token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
-
-        print(f"Verify attempt: mode={mode}, token={token}")
-
         if mode == "subscribe" and token == VERIFY_TOKEN:
-            print("WEBHOOK_VERIFIED")
             return challenge, 200
         else:
-            print("VERIFICATION_FAILED")
             return "Forbidden", 403
 
-    # Réception message WhatsApp - POST
     if request.method == "POST":
         data = request.json
         print(f"Webhook reçu: {data}")
-
         try:
             entry = data['entry'][0]['changes'][0]['value']
             if 'messages' not in entry:
@@ -125,10 +113,28 @@ def webhook():
 
             msg = entry['messages'][0]
             numero = msg['from']
-            texte = msg['text']['body']
             nom_whatsapp = entry['contacts'][0]['profile']['name']
 
-            # 1. Log dans Supabase
+            if msg['type'] == 'text':
+                texte = msg['text']['body']
+            elif msg['type'] == 'audio':
+                audio_id = msg['audio']['id']
+                audio_url_req = requests.get(
+                    f"https://graph.facebook.com/v20.0/{audio_id}",
+                    headers={"Authorization": f"Bearer {META_TOKEN}"}
+                )
+                audio_url = audio_url_req.json()['url']
+                audio_file = requests.get(audio_url, headers={"Authorization": f"Bearer {META_TOKEN}"})
+                transcription = GROQ_CLIENT.audio.transcriptions.create(
+                    file=("audio.ogg", audio_file.content),
+                    model="whisper-large-v3",
+                    language="fr"
+                )
+                texte = transcription.text
+                print(f"Vocal transcrit: {texte}")
+            else:
+                return jsonify({"status": "unsupported_type"}), 200
+
             supabase.table("conversations").insert({
                 "numero": numero,
                 "nom_client": nom_whatsapp,
@@ -137,16 +143,12 @@ def webhook():
                 "sens": "recu"
             }).execute()
 
-            # 2. Cerveau ASYMAS réfléchit
             reponse = cerveau_asymas(texte, numero)
-
-            # 3. Envoie réponse WhatsApp
             send_whatsapp(numero, reponse)
 
-            # 4. Log réponse
             supabase.table("conversations").insert({
                 "numero": numero,
-                "nom_client": "ASYMAS BOT",
+                "nom_client": "FLOKI ASYMAS",
                 "message": reponse,
                 "date": datetime.now().isoformat(),
                 "sens": "envoye"
@@ -154,13 +156,11 @@ def webhook():
 
         except Exception as e:
             print(f"Erreur webhook: {e}")
-
         return jsonify({"status": "ok"}), 200
 
-# === TEST SANTE ===
 @app.route("/", methods=["GET"])
 def home():
-    return "ASYMAS BOT WEBHOOK ACTIF ✅", 200
+    return "FLOKI ASYMAS ACTIF ✅", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
