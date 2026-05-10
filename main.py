@@ -621,15 +621,27 @@ tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 if "🤖 Agent Message" in tab_map:
     with tab_map["🤖 Agent Message"]:
         st.markdown("## 🤖 Agent Commercial ASYMAS")
-        profil = st.text_area("Profil LinkedIn", key="agent_msg_profil_v1")
-        if st.button("✨ GÉNÉRER", key="agent_msg_btn_v1"):
-            if profil:
-                chat = GROQ_CLIENT.chat.completions.create(
-                    messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"Prospect: {profil}. Message 80 mots."}],
-                    model="llama-3.3-70b-versatile"
-                )
-                st.code(chat.choices[0].message.content)
-
+        st.info("Colle un VRAI profil LinkedIn : Nom + Poste + Entreprise + Ville")
+        profil = st.text_area("Profil LinkedIn", placeholder="Ex: Jean KABAMBA, Directeur Clinique Hope, 50 employés, Goma", key="agent_msg_profil_v2")
+        
+        if st.button("✨ GÉNÉRER MESSAGE ASYMAS", key="agent_msg_btn_v2", type="primary"):
+            if len(profil.strip()) < 20:
+                st.error("❌ Profil trop court. Colle: Nom + Poste + Entreprise")
+            else:
+                with st.spinner("ASYMAS rédige..."):
+                    chat = GROQ_CLIENT.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": get_asymas_context()},
+                            {"role": "user", "content": f"Profil prospect: {profil}. Rédige le message LinkedIn ASYMAS de 80 mots max."}
+                        ],
+                        model="llama-3.3-70b-versatile",
+                        temperature=0.4,
+                        max_tokens=200
+                    )
+                    message = chat.choices[0].message.content
+                    st.success("✅ Message ASYMAS prêt :")
+                    st.code(message, language="text")
+                    st.toast("Copie et colle sur LinkedIn chef")
 if "🔍 Agent Prospection" in tab_map:
     with tab_map["🔍 Agent Prospection"]:
         st.markdown("## 🔍 Prospection ASYMAS")
