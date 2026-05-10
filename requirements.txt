@@ -8,3 +8,6 @@ Pillow
 streamlit-qrcode-scanner
 pyzbar
 groq
+streamlit-webrtc
+av
+numpy
