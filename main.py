@@ -580,7 +580,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # === CONFIG FLOKI API ===
-FLOKI_API_URL ="https://asymas-webhook.onrender.com/chat" # Remplace par ton URL Render
+FLOKI_API_URL = "https://asymas-webhook.onrender.com" # URL RACINE SEULEMENT
 
 # === PAGE FLOKI ===
 if st.session_state.get('page') == 'floki':
@@ -618,7 +618,8 @@ if st.session_state.get('page') == 'floki':
                 audio_bytes = audio_val.getvalue()
                 if len(audio_bytes) > 2000:
                     files = {"audio": ("audio.webm", audio_bytes, "audio/webm")}
-                    res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=30)
+                    # ATTENTION : /transcribe aussi donc on garde /chat
+                    res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=50)
                     if res.status_code == 200:
                         user_input = res.json().get("text", "").strip()
                         if user_input:
@@ -633,22 +634,24 @@ if st.session_state.get('page') == 'floki':
         with st.spinner("FLOKI analyse..."):
             try:
                 res = requests.post(
-                    f"{FLOKI_API_URL}/chat",
+                    f"{FLOKI_API_URL}/chat",  # = https://asymas-webhook.onrender.com/chat ✅
                     json={"message": user_input, "numero": f"WEB_{st.session_state.user_name}"},
-                    timeout=20
+                    timeout=50  # 50sec pour laisser Render se réveiller
                 )
-                reponse_floki = res.json().get("reponse", "FLOKI bug.") if res.status_code == 200 else f"Erreur {res.status_code}"
-            except:
-                reponse_floki = "FLOKI déconnecté. Vérifie Render."
+                if res.status_code == 200:
+                    reponse_floki = res.json().get("reponse", "FLOKI bug.")
+                else:
+                    reponse_floki = f"Erreur {res.status_code}: {res.text[:100]}"
+            except requests.exceptions.Timeout:
+                reponse_floki = "FLOKI dort. Réveille-le sur Render puis retest dans 1min."
+            except Exception as e:
+                reponse_floki = f"FLOKI déconnecté. Erreur: {str(e)[:100]}"
         st.session_state.messages_floki.append({"role": "assistant", "content": reponse_floki})
         st.rerun()
 
     if st.button("⬅️ Retour Dashboard", use_container_width=True):
         st.session_state.page = "dashboard"
         st.rerun()
-
-
-# === TON CODE EXISTANT COMMENCE ICI ===
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
