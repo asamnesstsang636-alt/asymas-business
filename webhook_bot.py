@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # === CONFIG - UTILISE LES VARIABLES RENDER ===
 META_TOKEN = os.getenv("META_TOKEN")
-PHONE_ID = os.getenv("PHONE_ID")
+PHONE_ID = os.getenv("PHONE_NUMBER_ID") # ← CORRIGÉ: on lit PHONE_NUMBER_ID
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "asymas_webhook_verify")
 
 # SUPABASE
@@ -31,7 +31,7 @@ def send_whatsapp(to, text):
     }
     try:
         r = requests.post(url, headers=headers, json=data, timeout=10)
-        print(f"WhatsApp sent: {r.status_code}")
+        print(f"WhatsApp sent: {r.status_code} | Response: {r.text}")
         return r.json()
     except Exception as e:
         print(f"Erreur envoi WhatsApp: {e}")
