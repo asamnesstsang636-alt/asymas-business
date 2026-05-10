@@ -626,7 +626,7 @@ if "🤖 Agent Message" in tab_map:
             if profil:
                 chat = GROQ_CLIENT.chat.completions.create(
                     messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"Prospect: {profil}. Message 80 mots."}],
-                    model="llama-3.3-70b-versalite"
+                    model="llama-3.3-70b-versatile"
                 )
                 st.code(chat.choices[0].message.content)
 
