@@ -580,7 +580,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # === CONFIG FLOKI API ===
-FLOKI_API_URL = "https://asymas-bot.onrender.com" # Remplace par ton URL Render
+FLOKI_API_URL ="https://asymas-webhook.onrender.com/chat" # Remplace par ton URL Render
 
 # === PAGE FLOKI ===
 if st.session_state.get('page') == 'floki':
