@@ -665,7 +665,7 @@ if "🎤 Agent Vocal" in tab_map:
             st.success(f"Tu as dit: {trans.text}")
             chat = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": trans.text}],
-                model="llama3-70b-8192"
+                model="llama3-70b-versatile"
             )
             st.write(chat.choices[0].message.content)
 # === FIN ONGLETS AGENT ===
