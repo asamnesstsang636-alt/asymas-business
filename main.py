@@ -689,7 +689,7 @@ with st.sidebar:
                         )
                         st.markdown(chat.choices[0].message.content)
 
-          elif agent_choix == "Vocal":
+       elif agent_choix == "Vocal":
             st.markdown("**Ordre Vocal**")
             audio = st.audio_input("Donne un ordre", key="agent_vocal_audio_sidebar")
             if audio:
