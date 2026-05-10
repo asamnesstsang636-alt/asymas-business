@@ -626,7 +626,7 @@ if "🤖 Agent Message" in tab_map:
             if profil:
                 chat = GROQ_CLIENT.chat.completions.create(
                     messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"Prospect: {profil}. Message 80 mots."}],
-                    model="llama3-70b-8192"
+                    model="llama-3.3-70b-versalite"
                 )
                 st.code(chat.choices[0].message.content)
 
@@ -637,7 +637,7 @@ if "🔍 Agent Prospection" in tab_map:
         if st.button("🎯 PROSPECTER", key="agent_prospect_btn_v1"):
             chat = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"3 prospects {secteur} Bukavu"}],
-                model="llama3-70b-8192"
+                model="llama-3.3-70b-versalite"
             )
             st.markdown(chat.choices[0].message.content)
 
@@ -648,7 +648,7 @@ if "🔁 Agent Relance" in tab_map:
         if st.button("📅 PLANNING", key="agent_relance_btn_v1"):
             chat = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": f"Planning relance 7j. {contexte}"}],
-                model="llama3-70b-8192"
+                model="llama-3.3-70b-versatile"
             )
             st.markdown(chat.choices[0].message.content)
 
@@ -665,7 +665,7 @@ if "🎤 Agent Vocal" in tab_map:
             st.success(f"Tu as dit: {trans.text}")
             chat = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "system", "content": get_asymas_context()}, {"role": "user", "content": trans.text}],
-                model="llama3-70b-versatile"
+                model="llama-3.3-70b-versatile"
             )
             st.write(chat.choices[0].message.content)
 # === FIN ONGLETS AGENT ===
