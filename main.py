@@ -580,7 +580,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # === CONFIG FLOKI API ===
-FLOKI_API_URL = "https://asymas-bot.onrender.com" # Ton URL Render
+FLOKI_API_URL = "https://asymas-bot.onrender.com" # Remplace par ton URL Render
 
 # === PAGE FLOKI ===
 if st.session_state.get('page') == 'floki':
@@ -588,59 +588,67 @@ if st.session_state.get('page') == 'floki':
     st.caption("Parle ou écris. FLOKI exécute. Zéro blabla.")
 
     if "messages_floki" not in st.session_state:
-        st.session_state.messages_floki = [
-            {"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}
-        ]
+        st.session_state.messages_floki = [{"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}]
+    if "floki_audio_key" not in st.session_state:
+        st.session_state.floki_audio_key = 0
 
     for msg in st.session_state.messages_floki:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    col1, col2 = st.columns([5,1])
+    st.markdown("---")
+    col1, col2, col3 = st.columns([4,1,1])
+    
     with col1:
-        prompt = st.chat_input("Donne tes ordres...")
+        prompt = st.chat_input("Écris tes ordres...", key="floki_text")
     with col2:
-        audio_val = st.audio_input("🎤", key="floki_audio")
+        audio_val = st.audio_input("🎤", key=f"floki_mic_{st.session_state.floki_audio_key}")
+    with col3:
+        if st.button("🗑️ Reset", use_container_width=True):
+            st.session_state.messages_floki = [{"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}]
+            st.session_state.floki_audio_key += 1
+            st.rerun()
 
     user_input = None
     if prompt:
-        user_input = prompt
-    elif audio_val:
-        with st.spinner("Transcription..."):
-            files = {"audio": audio_val.getvalue()}
-            try:
-                res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=30)
-                user_input = res.json().get("text", "")
-                if user_input:
-                    st.toast(f"🎤 {user_input}", icon="🎤")
-            except Exception as e:
-                st.error(f"Erreur transcription: {e}")
+        user_input = prompt.strip()
+    elif audio_val is not None:
+        try:
+            with st.spinner("🎤 Transcription..."):
+                audio_bytes = audio_val.getvalue()
+                if len(audio_bytes) > 2000:
+                    files = {"audio": ("audio.webm", audio_bytes, "audio/webm")}
+                    res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=30)
+                    if res.status_code == 200:
+                        user_input = res.json().get("text", "").strip()
+                        if user_input:
+                            st.toast(f"🎤 {user_input}")
+        except Exception as e:
+            st.error(f"Erreur micro: {str(e)[:50]}")
+        finally:
+            st.session_state.floki_audio_key += 1
 
     if user_input:
         st.session_state.messages_floki.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
         with st.spinner("FLOKI analyse..."):
             try:
                 res = requests.post(
                     f"{FLOKI_API_URL}/chat",
                     json={"message": user_input, "numero": f"WEB_{st.session_state.user_name}"},
-                    timeout=30
+                    timeout=20
                 )
-                reponse_floki = res.json().get("reponse", "Erreur FLOKI")
-            except Exception as e:
-                reponse_floki = f"Erreur connexion FLOKI: {e}"
-
+                reponse_floki = res.json().get("reponse", "FLOKI bug.") if res.status_code == 200 else f"Erreur {res.status_code}"
+            except:
+                reponse_floki = "FLOKI déconnecté. Vérifie Render."
         st.session_state.messages_floki.append({"role": "assistant", "content": reponse_floki})
-        with st.chat_message("assistant"):
-            st.markdown(reponse_floki)
+        st.rerun()
 
     if st.button("⬅️ Retour Dashboard", use_container_width=True):
         st.session_state.page = "dashboard"
         st.rerun()
 
-    st.stop()
+else:
+    # === TON CODE EXISTANT COMMENCE ICI ===
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
