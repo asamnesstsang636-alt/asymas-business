@@ -570,12 +570,12 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI FINAL - 1 CHAMP + MICRO - ZÉRO DOUBLON
-    import streamlit.components.v1 as components
+        # 👑 FLOKI FINAL FONCTIONNEL - 1 CHAMP + MICRO NATIF
     from urllib.parse import quote
     import re
     import base64
     import requests
+    import streamlit.components.v1 as components
 
     st.divider()
 
@@ -590,77 +590,30 @@ with st.sidebar:
 
     if "floki_btn" not in st.session_state:
         st.session_state.floki_btn = None
-    if "floki_input" not in st.session_state:
-        st.session_state.floki_input = ""
 
-    # MICRO + CHAMP = 1 SEUL BLOC HTML
-    components.html(f"""
-        <div style="display:flex;gap:5px;margin-bottom:5px;">
-            <input type="text" id="floki_text" placeholder="FLOKI..." style="flex:1;padding:8px;border:1px solid #00ff41;border-radius:5px;background:#1E1E1E;color:white;font-size:14px;">
-            <button id="floki_mic" onclick="startMic()" style="padding:8px 12px;background:#00ff41;color:black;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">🎤</button>
-        </div>
-        <script>
-        const input = document.getElementById('floki_text');
-        const btn = document.getElementById('floki_mic');
+    # FORMULAIRE = 1 SEUL CHAMP QUI MARCHE
+    with st.form("floki_form", clear_on_submit=True):
+        col1, col2 = st.columns([5,1])
+        with col1:
+            prompt = st.text_input("", placeholder="FLOKI...", key="floki_text", label_visibility="collapsed")
+        with col2:
+            submit = st.form_submit_button("🎤", use_container_width=True)
 
-        function startMic() {{
-            if (!('webkitSpeechRecognition' in window)) {{
-                alert('Micro non supporté');
-                return;
-            }}
-            const rec = new webkitSpeechRecognition();
-            rec.lang = 'fr-FR';
-            rec.continuous = false;
-            rec.interimResults = false;
-            btn.innerHTML = '🔴';
-            btn.style.background = 'red';
+    # MICRO SÉPARÉ QUI REMPLIT LE CHAMP
+    audio = st.audio_input("", key="floki_mic", label_visibility="collapsed")
+    if audio:
+        try:
+            files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+            headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+            data = {"model": "whisper-large-v3", "language": "fr"}
+            r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+            if r.status_code == 200:
+                prompt = r.json().get("text", "").strip()
+                submit = True
+        except:
+            pass
 
-            rec.onresult = function(e) {{
-                const txt = e.results[0][0].transcript;
-                input.value = txt;
-                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                btn.innerHTML = '🎤';
-                btn.style.background = '#00ff41';
-                // Envoie auto
-                input.dispatchEvent(new KeyboardEvent('keydown', {{key: 'Enter', bubbles: true}}));
-            }};
-
-            rec.onerror = function() {{
-                btn.innerHTML = '🎤';
-                btn.style.background = '#00ff41';
-            }};
-
-            rec.onend = function() {{
-                btn.innerHTML = '🎤';
-                btn.style.background = '#00ff41';
-            }};
-
-            rec.start();
-        }}
-
-        input.addEventListener('keydown', function(e) {{
-            if (e.key === 'Enter') {{
-                const val = input.value;
-                if (val) {{
-                    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: val}}, '*');
-                    input.value = '';
-                }}
-            }}
-        }});
-        </script>
-    """, height=50)
-
-    # RÉCUPÈRE VALEUR DU HTML
-    prompt = st.session_state.get("floki_unik", "")
-
-    # ÉCOUTE LE MESSAGE DU COMPOSANT
-    if st.runtime.exists():
-        val = st.session_state.get("_floki_val", "")
-        if val:
-            prompt = val
-            st.session_state._floki_val = ""
-
-    if prompt:
+    if submit and prompt:
         # BASE ASYMAS
         ctx = []
         for nom, df in ASYMAS_TABLES.items():
@@ -723,7 +676,7 @@ with st.sidebar:
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture.txt"><button style="width:100%;padding:8px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
             reponse = f"Facture {montant} dollars"
 
-        # QUESTION
+        # QUESTION GROQ
         else:
             system = f"""FLOKI ASYMAS Beni-Butembo. MAX 8 MOTS. Chiffres.
 BASE: {contexte}
@@ -735,8 +688,8 @@ Si absent: "Beni X dollars"."""
                     headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
                     json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 20,"temperature": 0.1}, timeout=8)
                 reponse = r.json()['choices'][0]['message']['content'].strip()
-            except:
-                reponse = "Erreur"
+            except Exception as e:
+                reponse = "Erreur Groq"
 
         # SAUVE BOUTON
         if btn_html:
@@ -757,11 +710,9 @@ Si absent: "Beni X dollars"."""
                 </script>
             """, height=0)
 
-        # Reset
-        st.session_state.floki_unik = ""
         st.rerun()
 
-    # AFFICHE BOUTON SEUL
+    # AFFICHE BOUTON
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=50)
 perms = st.session_state.user_perms
