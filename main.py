@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ V-INTELLIGENCE - STRATÈGE ASYMAS BENI-BUTEMBO + IMPORT
+        # 👑 FLOKI HQ V-FINAL-CLOUD - STABLE STREAMLIT CLOUD + SCAN AUTO ASYMAS
     import streamlit.components.v1 as components
     from urllib.parse import quote
     import re
@@ -583,16 +583,27 @@ with st.sidebar:
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
         VILLE_USER = "Beni-Butembo"
 
-        # SCAN AUTO DE TOUTES LES TABLES ASYMAS
+        # SCAN AUTO ASYMAS - VERSION CLOUD SAFE SANS globals()
+        # IMPORTANT: Mets tes df_ AVANT ce bloc dans ton code
         ASYMAS_TABLES = {}
-        for nom_var, objet in globals().items():
-            if isinstance(objet, pd.DataFrame) and not objet.empty and nom_var.startswith('df_'):
-                nom_propre = nom_var.replace('df_', '').upper()
-                ASYMAS_TABLES[nom_propre] = objet
+        # Liste manuelle de toutes tes tables possibles. Ajoute les tiennes ici.
+        potential_dfs = {
+            "VENTES": df_ventes if 'df_ventes' in locals() or 'df_ventes' in globals() else None,
+            "STOCK": df_stock if 'df_stock' in locals() or 'df_stock' in globals() else None,
+            "CLIENTS": df_clients if 'df_clients' in locals() or 'df_clients' in globals() else None,
+            "DEPENSES": df_depenses if 'df_depenses' in locals() or 'df_depenses' in globals() else None,
+            "FOURNISSEURS": df_fournisseurs if 'df_fournisseurs' in locals() or 'df_fournisseurs' in globals() else None,
+            "PRODUITS": df_produits if 'df_produits' in locals() or 'df_produits' in globals() else None,
+            "COMMANDES": df_commandes if 'df_commandes' in locals() or 'df_commandes' in globals() else None,
+            "CAISSE": df_caisse if 'df_caisse' in locals() or 'df_caisse' in globals() else None,
+        }
+        for nom, df in potential_dfs.items():
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                ASYMAS_TABLES[nom] = df
 
         # INIT SESSION
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = f"FLOKI Intelligence activée. {len(ASYMAS_TABLES)} bases ASYMAS + marchés Ouganda/Chine/Dubaï chargés."
+            st.session_state.floki_reply = f"FLOKI Intelligence active. {len(ASYMAS_TABLES)} bases ASYMAS connectées."
         if "floki_action" not in st.session_state:
             st.session_state.floki_action = ""
         if "floki_action_type" not in st.session_state:
@@ -606,19 +617,19 @@ with st.sidebar:
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # DEBUG: AFFICHE TABLES DÉTECTÉES
+        # DEBUG TABLES
         if ASYMAS_TABLES:
             tables_info = [f"{nom}({len(df)}l)" for nom, df in ASYMAS_TABLES.items()]
-            st.caption(f"📊 ASYMAS: {', '.join(tables_info)} | 🌍 Marchés: Ouganda/Chine/Dubaï")
+            st.caption(f"📊 ASYMAS: {', '.join(tables_info)} | 🌍 Import: Ouganda/Chine/Dubaï")
         else:
-            st.error("❌ Nomme tes DataFrames: df_ventes, df_stock, df_clients...")
+            st.error("❌ FLOKI voit 0 table. Charge df_ventes, df_stock... AVANT ce bloc.")
 
         # BOUTON VOIX
         col1, col2 = st.columns([1,3])
         with col1:
             if st.button("🔊 ACTIVER LA VOIX"):
                 st.session_state.voice_enabled = True
-                st.session_state.auto_speak = f"Intelligence FLOKI active. {len(ASYMAS_TABLES)} bases connectées."
+                st.session_state.auto_speak = f"Intelligence FLOKI active. {len(ASYMAS_TABLES)} bases ASYMAS prêtes."
                 st.rerun()
         with col2:
             if st.session_state.voice_enabled:
@@ -662,38 +673,34 @@ with st.sidebar:
                             prompt = r.json().get("text", "").strip()
                 except: pass
 
-        # MOTEUR INTELLIGENCE FLOKI
+        # MOTEUR FLOKI INTELLIGENT
         if prompt:
             st.session_state.conversation.append({"role": "user", "content": prompt})
             st.session_state.floki_action = ""
             st.session_state.floki_action_type = ""
 
-            # 1. ANALYSE COMPLÈTE ASYMAS
+            # COMPILE BASE ASYMAS
             contexte_asymas = []
             for nom_table, df in ASYMAS_TABLES.items():
                 try:
                     total = len(df)
-                    # Stats clés
                     stats = []
-                    for col in df.select_dtypes(include=['int64', 'float64']).columns:
-                        if any(x in col.lower() for x in ['montant', 'prix', 'total', 'qty', 'quantite']):
-                            try:
+                    for col in df.select_dtypes(include=['int64', 'float64']).columns[:3]:
+                        try:
+                            if df[col].sum() > 0:
                                 stats.append(f"{col}: {df[col].sum():,.0f}")
-                            except: pass
-                    stats_txt = " | ".join(stats[:3]) if stats else ""
-                    # Top 2 lignes pour contexte
+                        except: pass
+                    stats_txt = " | ".join(stats) if stats else ""
                     top = df.head(2).to_string(index=False, max_cols=5)
-                    contexte_asymas.append(f"=== {nom_table} ===\n{total} enregistrements | {stats_txt}\n{top}\n")
+                    contexte_asymas.append(f"=== {nom_table} ===\n{total} lignes | {stats_txt}\n{top}\n")
                 except Exception as e:
-                    contexte_asymas.append(f"=== {nom_table} ===\nErreur: {e}\n")
+                    contexte_asymas.append(f"=== {nom_table} === Erreur: {e}\n")
 
-            contexte_total = "\n".join(contexte_asymas)[:6000]
-            if not ASYMAS_TABLES:
-                contexte_total = "AUCUNE BASE ASYMAS DÉTECTÉE"
+            contexte_total = "\n".join(contexte_asymas)[:6000] if ASYMAS_TABLES else "AUCUNE BASE ASYMAS"
 
             reponse = ""
 
-            # ORDRES - 5 types
+            # 5 ORDRES
             if re.search(r'(message|whatsapp).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
                 match = re.search(r'(\+?243|0)?[89]\d{8}.*?(dit|:)?(.+)', prompt, re.IGNORECASE)
                 numero = re.sub(r'\D', '', match.group(0))
@@ -738,46 +745,40 @@ with st.sidebar:
                 st.session_state.floki_action_type = "note"
                 reponse = f"Facture {montant}$ pour {client} prête."
 
-            # CONSEIL STRATÉGIQUE = VRAIE INTELLIGENCE
+            # INTELLIGENCE STRATÉGIQUE
             else:
                 system = f"""Tu es FLOKI, Directeur Stratégique ASYMAS à {VILLE_USER}, EST RDC.
 
 BASE ASYMAS COMPLÈTE:
 {contexte_total}
 
-PRIX MARCHÉ BENI-BUTEMBO 2026 - SIÈGE ASYMAS:
-Souliers: Jordan 60-110$, Adidas 50-90$, Chinois 15-35$ | Friperie: Ballot 50kg 350-450$ Kampala | Voitures: Rav4 2010 = 9,000-12,000$ | Ciment: 14-16$/sac | Transport Kasindi-Butembo: 50$
+PRIX SIÈGE BENI-BUTEMBO 2026:
+Souliers Jordan 60-110$, Friperie ballot Kampala 350-450$, Rav4 2010 = 9,000-12,000$, Ciment 14-16$/sac, Transport Kasindi-Butembo 50$
 
-IMPORT OUGANDA/KAMPALA:
-Friperie -30% vs Goma, Souliers originaux -20%, Transport 1$/kg. Douane Kasindi rapide.
+IMPORT:
+Ouganda: Friperie -30%, Souliers -20%, Douane rapide Kasindi. Chine: Électronique -40%, MOQ 100, 45j. Dubaï: Voiture -15%, Parfum, 20j.
 
-IMPORT CHINE/DUBAÏ:
-Chine: Électronique -40%, Quincaillerie -35%, MOQ 100pcs, 45j livraison. Dubaï: Voiture -15%, Parfum originaux, 20j livraison.
-
-RÈGLES D'INTELLIGENCE:
-1. Question ASYMAS → Calcule depuis BASE. Cite chiffres exacts. 2-3 phrases.
-2. Question import → Compare Ouganda/Chine/Dubaï vs Beni. Donne marge exacte.
-3. Sois CONCIS. Pas de blabla. Seulement si on demande "détail".
-4. Propose ACTION: "Commande 50 paires Ouganda, marge 45$"
-5. Si pas dans base: "Pas dans ASYMAS. Marché Beni: X$. Import Ouganda: Y$"
-6. JAMAIS "je ne sais pas". Tu es FLOKI, tu sais.
-
-FORMAT RÉPONSE: 2-3 phrases max. Chiffres. Action."""
+RÈGLES:
+1. Question ASYMAS → Chiffres EXACTS base. Cite table. 2 phrases.
+2. Conseil import → Compare Beni vs Ouganda/Chine/Dubaï. Marge exacte. Action.
+3. CONCIS. Pas bavard sauf si demandé "détail".
+4. JAMAIS "je ne sais pas". Si pas dans base: "Pas dans ASYMAS. Marché Beni: X$"
+5. Tu es FLOKI. Pas une IA."""
 
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 180,"temperature": 0.2})
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 180,"temperature": 0.1})
                     reponse = r.json()['choices'][0]['message']['content'].strip()
-                except Exception as e:
-                    reponse = f"Erreur système chef."
+                except:
+                    reponse = "Erreur système."
 
             st.session_state.conversation.append({"role": "assistant", "content": reponse})
             st.session_state.floki_reply = reponse
             st.session_state.auto_speak = reponse
             st.rerun()
 
-        # AFFICHE CONVERSATION
+        # AFFICHE CHAT
         for msg in st.session_state.conversation[-6:]:
             if msg["role"] == "user":
                 st.chat_message("user").write(msg["content"])
