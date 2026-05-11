@@ -570,8 +570,9 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI HQ V2 - EXÉCUTEUR D'ORDRES
+        # 👑 FLOKI HQ V3 - CHAT CONFORT + MICRO
     import streamlit.components.v1 as components
+    from streamlit_mic_recorder import mic_recorder
     from urllib.parse import quote
     import re
 
@@ -579,14 +580,12 @@ with st.sidebar:
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI prêt chef. Donne-moi un ordre."
-        if "floki_action" not in st.session_state:
-            st.session_state.floki_action = ""
+            st.session_state.floki_reply = "FLOKI prêt chef. Cause avec moi."
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # BOUTON VOIX + BOUTON ACTION
-        col1, col2 = st.columns(2)
+        # ZONE ACTION + VOIX
+        col1, col2 = st.columns([3,1])
         with col1:
             components.html(f"""
             <script>
@@ -598,60 +597,65 @@ with st.sidebar:
             }}
             </script>
             <button onclick="speak('{st.session_state.floki_reply.replace("'", "\\'")}')"
-                    style="width:100%; padding:10px; background:#00C853; color:white; border:none; border-radius:5px;">
+                    style="width:100%; padding:12px; background:#00C853; color:white; border:none; border-radius:5px; font-size:16px;">
                 🔊 Parler
             </button>
-            """, height=50)
+            """, height=55)
         with col2:
-            if st.session_state.floki_action:
-                st.link_button("📲 Exécuter Action", st.session_state.floki_action, use_container_width=True)
+            if st.session_state.get("floki_action"):
+                st.link_button("📲 Action", st.session_state.floki_action, use_container_width=True)
 
+        st.divider() # Sépare la réponse de la zone de chat
+
+        # ZONE POUR CAUSER - GRANDE ET CLAIRE
+        st.markdown("**Parle à FLOKI ici :**")
+
+        # MICRO QUI MARCHE + TEXTE
+        col_mic, col_text = st.columns([1,4])
+        with col_mic:
+            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='floki_rec', just_once=True)
+        with col_text:
+            prompt = st.chat_input("Donne un ordre à FLOKI...", key="floki_chat")
+
+        # TRAITEMENT MICRO
+        if audio:
+            with st.spinner("FLOKI écoute..."):
+                files = {"file": ("a.wav", audio['bytes'], "audio/wav")}
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                data = {"model": "whisper-large-v3", "language": "fr"}
+                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data)
+                prompt = r.json().get("text", "").strip()
+
+        # MOTEUR FLOKI
         def executer_ordre_floki(message):
-            # 1. DONNÉES RÉELLES ASYMAS
             nb_articles = len(df_articles) if 'df_articles' in locals() and not df_articles.empty else 0
             nb_voitures = len(df_voitures) if 'df_voitures' in locals() and not df_voitures.empty else 0
-            revenus = float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if 'df_compta' in locals() and not df_compta.empty else 0
 
-            # 2. DÉTECTE LES COMMANDES
-            action_url = ""
-            # Commande: message au 099... texte...
-            match = re.search(r'(message|sms|whatsapp).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', message, re.IGNORECASE)
+            # Commande WhatsApp
+            match = re.search(r'(message|whatsapp|sms).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', message, re.IGNORECASE)
             if match:
-                numero = match.group(2) + match.group(0).split()[2] if match.group(2) else match.group(0).split()[2]
-                numero = re.sub(r'\D', '', numero) # Garde que chiffres
+                numero = re.sub(r'\D', '', match.group(0))
                 if not numero.startswith('243'): numero = '243' + numero.lstrip('0')
                 texte = match.group(4)
-                action_url = f"https://wa.me/{numero}?text={quote(texte)}"
-                return f"Message prêt pour {numero}. Clique sur 'Exécuter Action' chef.", action_url
+                url = f"https://wa.me/{numero}?text={quote(texte)}"
+                st.session_state.floki_action = url
+                return f"Prêt à envoyer à {numero}. Clique 'Action' chef."
 
-            # 3. SINON, RÉPONSE IA NORMALE
-            if not GROQ_API_KEY: return "Clé GROQ manquante chef.", ""
+            st.session_state.floki_action = ""
+            if not GROQ_API_KEY: return "Clé GROQ manquante chef."
 
-            ctx = f"Articles:{nb_articles}, Voitures:{nb_voitures}, Revenus:{revenus}$"
-            system = f"""Tu es FLOKI, bras droit ASYMAS. Tu exécutes les ordres.
-            Données: {ctx}
-            Si le boss demande une action, dis ce que tu fais. Sinon réponds en 1 phrase. Tu n'es PAS une IA."""
+            ctx = f"Articles:{nb_articles}, Voitures:{nb_voitures}"
+            system = f"Tu es FLOKI. Tu exécutes. Données: {ctx}. Réponds en 1 phrase. Tu n'es PAS une IA."
 
             try:
-                url = "https://api.groq.com/openai/v1/chat/completions"
-                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-                data = {
-                    "model": "llama-3.3-70b-versatile",
-                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": message}],
-                    "max_tokens": 80
-                }
-                r = requests.post(url, headers=headers, json=data, timeout=8)
-                reply = r.json()['choices'][0]['message']['content'].strip()
-                return reply, ""
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": message}],"max_tokens": 80})
+                return r.json()['choices'][0]['message']['content'].strip()
             except:
-                return "Erreur Groq chef.", ""
+                return "Erreur Groq chef."
 
-        # INPUT
-        prompt = st.chat_input("Donne un ordre à FLOKI...")
+        # EXÉCUTE SI PROMPT
         if prompt:
-            reply, action = executer_ordre_floki(prompt)
-            st.session_state.floki_reply = reply
-            st.session_state.floki_action = action
+            st.session_state.floki_reply = executer_ordre_floki(prompt)
             st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
