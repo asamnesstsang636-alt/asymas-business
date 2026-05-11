@@ -570,18 +570,19 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ V-FINAL - STABLE PROD
+        # 👑 FLOKI HQ V-BUSINESS - ASYMAS + MARCHÉ MONDIAL
     import streamlit.components.v1 as components
     from urllib.parse import quote
     import re
     import time
     import base64
+    import pandas as pd
 
-    with st.expander("👑 FLOKI HQ", expanded=True):
+    with st.expander("👑 FLOKI HQ - BUSINESS GLOBAL", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI prêt chef. Donne tes ordres."
+            st.session_state.floki_reply = "FLOKI connecté chef. ASYMAS + marché mondial. Pose ta question."
         if "floki_action" not in st.session_state:
             st.session_state.floki_action = ""
         if "auto_speak" not in st.session_state:
@@ -589,7 +590,7 @@ with st.sidebar:
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # VOIX AUTO - SANS CLIC
+        # VOIX AUTO
         if st.session_state.auto_speak:
             b64 = base64.b64encode(st.session_state.auto_speak.encode()).decode()
             components.html(f"""
@@ -602,24 +603,20 @@ with st.sidebar:
             """, height=0)
             st.session_state.auto_speak = ""
 
-        # BOUTON EXÉCUTION WHATSAPP
         if st.session_state.floki_action:
-            st.link_button("📲 EXÉCUTER L'ORDRE WHATSAPP", st.session_state.floki_action, use_container_width=True, type="primary")
+            st.link_button("📲 EXÉCUTER", st.session_state.floki_action, use_container_width=True, type="primary")
 
         st.divider()
-        st.markdown("### 💬 Donne tes ordres à FLOKI :")
-
-        audio = st.audio_input("🎙️ Parle ici, stop = envoi", key="floki_mic")
-        prompt_text = st.chat_input("Ou écris l'ordre ici...", key="floki_text")
-
+        audio = st.audio_input("🎙️ Question business", key="floki_mic")
+        prompt_text = st.chat_input("Ou écris...", key="floki_text")
         prompt = prompt_text
 
-        # TRAITEMENT MICRO
+        # MICRO
         if audio and not prompt_text:
-            with st.spinner("FLOKI analyse l'ordre..."):
+            with st.spinner("FLOKI analyse..."):
                 try:
                     if len(audio.getvalue()) < 10000:
-                        st.warning("Ordre trop court chef. Parle 2sec minimum.")
+                        st.warning("Parle 2sec min chef")
                         prompt = None
                     else:
                         files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
@@ -629,25 +626,36 @@ with st.sidebar:
                                         headers=headers, files=files, data=data, timeout=20)
                         if r.status_code == 200:
                             prompt = r.json().get("text", "").strip()
-                            st.toast(f"Ordre reçu : {prompt}")
+                            st.toast(f"Question : {prompt}")
                         elif r.status_code == 429:
-                            st.error("Quota 30min/jour atteint. Reprends demain ou passe payant chef.")
-                            prompt = None
-                        else:
-                            st.error("Erreur micro. Réessaie.")
+                            st.error("Quota 30min/jour fini chef.")
                             prompt = None
                 except:
-                    st.error("Erreur connexion.")
                     prompt = None
 
-        # EXÉCUTION DES ORDRES
+        # MOTEUR FLOKI BUSINESS GLOBAL
         if prompt:
-            # DONNÉES ASYMAS
-            nb_articles = len(df_articles) if 'df_articles' in locals() and not df_articles.empty else 0
-            nb_voitures = len(df_voitures) if 'df_voitures' in locals() and not df_voitures.empty else 0
-            revenus = float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if 'df_compta' in locals() and not df_compta.empty else 0
+            # 1. CHARGE BASE ASYMAS AUTO
+            contexte_asymas = []
+            all_dataframes = {name: obj for name, obj in locals().items()
+                            if isinstance(obj, pd.DataFrame) and name.startswith('df_') and not obj.empty}
 
-            # ORDRE 1 : WHATSAPP
+            for nom_df, df in all_dataframes.items():
+                try:
+                    nom_propre = nom_df.replace('df_', '').upper()
+                    total_lignes = len(df)
+                    colonnes = ', '.join(df.columns[:5])
+                    top_3 = df.head(3).to_string(index=False, max_cols=5)
+                    resume = f"TABLE {nom_propre}: {total_lignes} entrées. Ex: {top_3}"
+                    contexte_asymas.append(resume)
+                except:
+                    pass
+
+            contexte_total = "\n".join(contexte_asymas)
+            if len(contexte_total) > 3000:
+                contexte_total = contexte_total[:3000] + "\n...[Base résumée]"
+
+            # 2. ORDRE WHATSAPP
             match = re.search(r'(message|whatsapp|écris|envoie).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|que|:)?(.+)', prompt, re.IGNORECASE)
             if match:
                 numero = re.sub(r'\D', '', match.group(0))
@@ -655,24 +663,42 @@ with st.sidebar:
                 if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
                 texte = match.group(4).strip()
                 st.session_state.floki_action = f"https://wa.me/{numero}?text={quote(texte)}"
-                reponse = f"Ordre prêt : Message pour +{numero}. Clique EXÉCUTER chef."
-            
-            # ORDRE 2 : INFOS STOCK
-            elif any(mot in prompt.lower() for mot in ['stock', 'combien', 'voiture', 'article']):
-                reponse = f"État actuel : {nb_articles} articles, {nb_voitures} voitures, {revenus}$ revenus chef."
-                st.session_state.floki_action = ""
-            
-            # ORDRE 3 : AUTRE = GROQ
+                reponse = f"Ordre prêt pour +{numero} chef."
+
+            # 3. QUESTION BUSINESS = MODE HYBRIDE
             else:
                 st.session_state.floki_action = ""
-                system = f"Tu es FLOKI, bras droit ASYMAS. Articles:{nb_articles}, Voitures:{nb_voitures}, Revenus:{revenus}$. Exécute l'ordre en 1 phrase. Tu n'es PAS une IA."
+
+                system = f"""Tu es FLOKI, conseiller business d'ASYMAS. Tu as 2 cerveaux:
+
+CERVEAU 1 - DONNÉES ASYMAS ACTUELLES:
+{contexte_total}
+
+CERVEAU 2 - INTELLIGENCE BUSINESS GLOBALE:
+Tu connais le marché RDC, Afrique, monde. Prix, tendances, opportunités, import-export, concurrence.
+
+RÈGLES DE RÉPONSE:
+1. Si question sur ASYMAS → Réponds avec chiffres exacts du CERVEAU 1.
+2. Si question marché externe/région/étranger → Utilise CERVEAU 2 + fais le lien avec ASYMAS si possible.
+3. JAMAIS dire "je ne sais pas" ou "pas dans la base". Donne TOUJOURS une réponse utile et favorable.
+4. Réponds en 2-3 phrases max. Direct, actionnable, chef.
+5. Tu n'es PAS une IA. Tu es FLOKI, bras droit business.
+6. Localisation: Goma, Nord-Kivu, RDC. Adapte tes réponses au contexte local.
+
+EXEMPLE:
+Q: "Business rentable à Goma?"
+R: "À Goma chef: import pièces auto + agence BTP cartonnent. Avec ton stock voitures ASYMAS, tu peux ajouter location courte durée. Marge 40% locale."
+
+Q: "Combien d'articles j'ai?"
+R: "Tu as {len(df_articles) if 'df_articles' in locals() else 0} articles en stock chef." """
+
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 70})
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.4})
                     reponse = r.json()['choices'][0]['message']['content'].strip()
                 except:
-                    reponse = "Erreur Groq chef. Vérifie la clé."
+                    reponse = "Erreur Groq chef. Réessaie."
 
             st.session_state.floki_reply = reponse
             st.session_state.auto_speak = reponse
