@@ -1,9 +1,5 @@
 import streamlit as st
-import requests
 import pandas as pd
-import sqlite3
-from datetime import datetime
-from flask import jsonify
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
@@ -573,89 +569,107 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # === FLOKI ICI SOUS ACTUALISER ===
-    st.divider()
-    if st.button("🤖 FLOKI ASYMAS", use_container_width=True, type="primary"):
-        st.session_state.page = "floki"
-    st.divider()        
+# ============================================
+# 👑 FLOKI HQ - INTÉGRÉ À ASYMAS BUSINESS
+# ============================================
+st.divider()
+st.markdown("## 👑 FLOKI HQ - CERVEAU ASYMAS BUSINESS")
 
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
+
+def floki_brain(message, historique, context_asymas):
+    """FLOKI contrôle ASYMAS + obéit au boss"""
+    system_prompt = f"""
+    Tu es FLOKI, bras droit et cerveau du boss d'ASYMAS BUSINESS à Goma.
+
+    RÈGLES ABSOLUES :
+    1. Tu obéis à 100%. Jamais tu coupes. Tu parles jusqu'à STOP FLOKI.
+    2. Tu as accès aux données ASYMAS : {context_asymas}
+    3. Style congolais direct. 2-3 phrases max sauf analyse demandée.
+    4. Si ordre "Note que...", "Ajoute client...", "Vendu...", tu exécutes et confirmes.
+    5. Tu conseilles business si demandé.
+
+    Date : {datetime.now().strftime('%d/%m/%Y %H:%M')} Goma.
+    """
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    data_req = {
+        "model": "llama-3.1-70b-versatile",
+        "messages": [{"role": "system", "content": system_prompt}] + historique + [{"role": "user", "content": message}],
+        "max_tokens": 300,
+        "temperature": 0.6
+    }
+    try:
+        r = requests.post(url, headers=headers, json=data_req, timeout=15)
+        return r.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        return f"Erreur FLOKI chef : {e}"
+
+# Contexte ASYMAS pour FLOKI
+context_asymas = {
+    "biens": len(df_biens),
+    "articles": len(df_articles),
+    "voitures": len(df_voitures),
+    "revenus_total": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if not df_compta.empty and 'montant' in df_compta.columns else 0,
+    "stock_faible": df_articles[df_articles['stock'] < 5]['nom_article'].tolist() if not df_articles.empty else []
+}
+
+col_floki1, col_floki2 = st.columns([3, 1])
+
+with col_floki1:
+    if "floki_messages" not in st.session_state:
+        st.session_state.floki_messages = [{"role": "assistant", "content": f"FLOKI HQ activé chef. Je vois {context_asymas['biens']} biens, {context_asymas['articles']} articles, {context_asymas['voitures']} voitures. Tes ordres?"}]
+
+    for msg in st.session_state.floki_messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+            if msg["role"] == "assistant":
+                if st.button("🔊 Écouter", key=f"voice_{msg['content'][:20]}"):
+                    texte_voix = msg['content'].replace('"', '').replace("'", "")
+                    st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}")
+
+    if prompt := st.chat_input("Ordres pour FLOKI..."):
+        st.session_state.floki_messages.append({"role": "user", "content": prompt})
+
+        # Exécution ordres simples
+        if "note que" in prompt.lower() or "ajoute" in prompt.lower():
+            if 'ordres_boss' not in st.session_state:
+                st.session_state.ordres_boss = []
+            st.session_state.ordres_boss.append(f"{datetime.now().strftime('%H:%M')}: {prompt}")
+
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        with st.chat_message("assistant"):
+            reply = floki_brain(prompt, st.session_state.floki_messages[:-1], context_asymas)
+            st.write(reply)
+            st.session_state.floki_messages.append({"role": "assistant", "content": reply})
+
+            # Auto-play voix
+            texte_voix = reply.replace('"', '').replace("'", "")
+            st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}", autoplay=True)
+
+with col_floki2:
+    st.subheader("📊 Contrôle ASYMAS")
+    st.metric("💰 Revenus", f"{context_asymas['revenus_total']:,.0f} FC")
+    st.metric("📦 Stock Faible", len(context_asymas['stock_faible']))
+
+    st.write("**Derniers ordres :**")
+    if 'ordres_boss' in st.session_state:
+        for ordre in st.session_state.ordres_boss[-5:]:
+            st.caption(ordre)
+    else:
+        st.caption("Aucun ordre")
+
+    if st.button("🔄 Reset FLOKI", width="stretch"):
+        st.session_state.floki_messages = [{"role": "assistant", "content": "Reset fait chef. FLOKI prêt."}]
+        st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
-# === CONFIG FLOKI API ===
-FLOKI_API_URL = "https://asymas-webhook.onrender.com" # URL RACINE SEULEMENT
 
-# === PAGE FLOKI ===
-if st.session_state.get('page') == 'floki':
-    st.title("🤖 FLOKI - Agent ASYMAS")
-    st.caption("Parle ou écris. FLOKI exécute. Zéro blabla.")
-
-    if "messages_floki" not in st.session_state:
-        st.session_state.messages_floki = [{"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}]
-    if "floki_audio_key" not in st.session_state:
-        st.session_state.floki_audio_key = 0
-
-    for msg in st.session_state.messages_floki:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    st.markdown("---")
-    col1, col2, col3 = st.columns([4,1,1])
-    
-    with col1:
-        prompt = st.chat_input("Écris tes ordres...", key="floki_text")
-    with col2:
-        audio_val = st.audio_input("🎤", key=f"floki_mic_{st.session_state.floki_audio_key}")
-    with col3:
-        if st.button("🗑️ Reset", use_container_width=True):
-            st.session_state.messages_floki = [{"role": "assistant", "content": "FLOKI. Prêt. Ordres?"}]
-            st.session_state.floki_audio_key += 1
-            st.rerun()
-
-    user_input = None
-    if prompt:
-        user_input = prompt.strip()
-    elif audio_val is not None:
-        try:
-            with st.spinner("🎤 Transcription..."):
-                audio_bytes = audio_val.getvalue()
-                if len(audio_bytes) > 2000:
-                    files = {"audio": ("audio.webm", audio_bytes, "audio/webm")}
-                    # ATTENTION : /transcribe aussi donc on garde /chat
-                    res = requests.post(f"{FLOKI_API_URL}/chat/transcribe", files=files, timeout=50)
-                    if res.status_code == 200:
-                        user_input = res.json().get("text", "").strip()
-                        if user_input:
-                            st.toast(f"🎤 {user_input}")
-        except Exception as e:
-            st.error(f"Erreur micro: {str(e)[:50]}")
-        finally:
-            st.session_state.floki_audio_key += 1
-
-    if user_input:
-        st.session_state.messages_floki.append({"role": "user", "content": user_input})
-        with st.spinner("FLOKI analyse..."):
-            try:
-                res = requests.post(
-                    f"{FLOKI_API_URL}/chat",  # = https://asymas-webhook.onrender.com/chat ✅
-                    json={"message": user_input, "numero": f"WEB_{st.session_state.user_name}"},
-                    timeout=50  # 50sec pour laisser Render se réveiller
-                )
-                if res.status_code == 200:
-                    reponse_floki = res.json().get("reponse", "FLOKI bug.")
-                else:
-                    reponse_floki = f"Erreur {res.status_code}: {res.text[:100]}"
-            except requests.exceptions.Timeout:
-                reponse_floki = "FLOKI dort. Réveille-le sur Render puis retest dans 1min."
-            except Exception as e:
-                reponse_floki = f"FLOKI déconnecté. Erreur: {str(e)[:100]}"
-        st.session_state.messages_floki.append({"role": "assistant", "content": reponse_floki})
-        st.rerun()
-
-    if st.button("⬅️ Retour Dashboard", use_container_width=True):
-        st.session_state.page = "dashboard"
-        st.rerun()
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
@@ -2584,33 +2598,3 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-
-from streamlit.web.server import Server
-from streamlit.runtime.scriptrunner import add_script_run_ctx
-import json
-
-
-# Route API pour Render
-try:
-    from flask import Flask, request as flask_request
-    from streamlit.web.server.websocket_headers import _get_websocket_headers
-
-    if not hasattr(st, '_flask_app'):
-        st._flask_app = Flask(__name__)
-
-        @st._flask_app.route('/api/floki', methods=['POST'])
-        def api_floki():
-            data = flask_request.get_json()
-            user_msg = data.get("message", "")
-            user_num = data.get("user", "")
-
-            # ICI TON CODE FLOKI QUI RÉPOND
-            # Exemple basique :
-            if "slt" in user_msg.lower():
-                reply = "FLOKI. CA J: 0FC | Alertes: 0 ruptures. Ordres?"
-            else:
-                reply = f"Reçu: {user_msg}. FLOKI traite."
-
-            return jsonify({"reply": reply})
-except:
-    pass
