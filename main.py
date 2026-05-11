@@ -570,53 +570,58 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI HQ - VERSION OBÉISSANTE
+    # 👑 FLOKI HQ - VOIX FORCÉE HTML
     with st.expander("👑 FLOKI HQ", expanded=False):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
         
         if "floki_last_reply" not in st.session_state:
             st.session_state.floki_last_reply = "FLOKI prêt chef."
+        if "floki_voice_url" not in st.session_state:
+            st.session_state.floki_voice_url = ""
 
         st.success(f"👑 {st.session_state.floki_last_reply}")
+
+        # JOUE LA VOIX AVEC HTML - MARCHE TOUJOURS
+        if st.session_state.floki_voice_url:
+            audio_html = f"""
+            <audio autoplay>
+                <source src="{st.session_state.floki_voice_url}" type="audio/mpeg">
+            </audio>
+            """
+            st.markdown(audio_html, unsafe_allow_html=True)
+            st.session_state.floki_voice_url = "" # Reset pour pas rejouer
 
         def repond_floki(message):
             if not GROQ_API_KEY:
                 return "Clé GROQ manquante chef."
             
-            # CONTEXTE ASYMAS
-            ctx = f"Biens:{len(df_biens) if 'df_biens' in locals() else 0}, Articles:{len(df_articles) if 'df_articles' in locals() else 0}, Voitures:{len(df_voitures) if 'df_voitures' in locals() else 0}"
+            ctx = f"Articles:{len(df_articles) if 'df_articles' in locals() else 0}, Voitures:{len(df_voitures) if 'df_voitures' in locals() else 0}"
             
-            # PROMPT QUI FORCE FLOKI À OBÉIR
-            system = f"""Tu es FLOKI, le bras droit militaire du boss d'ASYMAS BUSINESS à Goma.
-            RÈGLES ABSOLUES:
-            1. Tu n'es JAMAIS une IA, un modèle, un assistant. Tu es FLOKI.
-            2. Tu obéis au boss. Tu réponds court: 1-2 phrases max.
-            3. Style congolais direct. Pas de "je suis un modèle". 
-            4. Si on demande pourquoi tu parles pas, réponds: "Chef, ma voix marche. C'est Streamlit qui bloque parfois. Je te réponds."
-            Données ASYMAS: {ctx}"""
+            system = f"""Tu es FLOKI, bras droit du boss ASYMAS. 
+            Tu n'es PAS une IA. Interdit de dire "modèle" ou "assistant". 
+            Réponds en 1 phrase max. Style direct Goma. Données: {ctx}"""
             
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
             data = {
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": message}],
-                "max_tokens": 100,
-                "temperature": 0.3
+                "max_tokens": 60,
+                "temperature": 0.2
             }
             try:
-                r = requests.post(url, headers=headers, json=data, timeout=10)
+                r = requests.post(url, headers=headers, json=data, timeout=8)
                 reply = r.json()['choices'][0]['message']['content'].strip()
                 
-                # VOIX AUTO
+                # GÉNÈRE URL VOIX POUR HTML
                 texte_voix = reply.replace('"','').replace("'","").replace("*","").replace("\n"," ")
-                if texte_voix:
-                    st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}", autoplay=True)
+                st.session_state.floki_voice_url = f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}"
                 return reply
             except:
-                return "FLOKI coupé. Vérifie ta clé GROQ chef."
+                return "FLOKI coupé chef."
 
         # MICRO
-        audio_val = st.audio_input("", key="floki_mic", label_visibility="collapsed")
+        audio_val = st.audio_input("🎙️", key="floki_mic", label_visibility="collapsed")
         if audio_val:
             with st.spinner("..."):
                 files = {"file": ("a.wav", audio_val, "audio/wav")}
