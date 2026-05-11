@@ -570,21 +570,14 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI FIX TOTAL - PARLE + RÉPOND + BOUTONS
+        # 👑 FLOKI SIDEBAR FINAL - 1 CHAMP, 0 TEXTE, PARLE
     import streamlit.components.v1 as components
     from urllib.parse import quote
     import re
-    import time
     import base64
     import requests
 
     st.divider()
-
-    # VÉRIFIE CLÉ GROQ - AFFICHE ERREUR SI MANQUE
-    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
-    if not GROQ_API_KEY:
-        st.error("❌ Ajoute GROQ_API_KEY dans Secrets Streamlit")
-        st.stop()
 
     # TABLES ASYMAS
     ASYMAS_TABLES = {
@@ -595,11 +588,11 @@ with st.sidebar:
     }
     ASYMAS_TABLES = {k:v for k,v in ASYMAS_TABLES.items() if not v.empty}
 
-    if "last_btn" not in st.session_state:
-        st.session_state.last_btn = None
+    if "floki_btn" not in st.session_state:
+        st.session_state.floki_btn = None
 
-    # CHAMP UNIQUE
-    prompt = st.chat_input("", key="floki_fix")
+    # CHAMP UNIQUE - PAS DE LABEL
+    prompt = st.text_input("", placeholder="FLOKI...", key="floki_unik", label_visibility="collapsed")
 
     if prompt:
         # BASE ASYMAS
@@ -627,7 +620,7 @@ with st.sidebar:
             if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
             texte = match.group(3).strip()
             link = f"https://wa.me/{numero}?text={quote(texte)}"
-            btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:10px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;">📲 WHATSAPP</button></a>'
+            btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:8px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP</button></a>'
             reponse = "WhatsApp prêt"
 
         elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
@@ -635,7 +628,7 @@ with st.sidebar:
             email = match.group(1)
             corps = match.group(3).strip() if match.group(3) else prompt
             link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:10px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;">📧 EMAIL</button></a>'
+            btn_html = f'<a href="{link}"><button style="width:100%;padding:8px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
             reponse = "Email prêt"
 
         elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
@@ -644,7 +637,7 @@ with st.sidebar:
             if len(numero) == 9: numero = '243' + numero
             texte = match.group(3).strip()
             link = f"sms:{numero}?body={quote(texte)}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:10px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;">💬 SMS</button></a>'
+            btn_html = f'<a href="{link}"><button style="width:100%;padding:8px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
             reponse = "SMS prêt"
 
         elif re.search(r'(appelle|appel).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
@@ -652,7 +645,7 @@ with st.sidebar:
             numero = re.sub(r'\D', '', match.group(0))
             if len(numero) == 9: numero = '243' + numero
             link = f"tel:+{numero}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:10px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;">📞 APPELER</button></a>'
+            btn_html = f'<a href="{link}"><button style="width:100%;padding:8px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
             reponse = "Appel prêt"
 
         elif re.search(r'(facture|devis).*?(pour|client).*?([A-Za-z\s]+).*?(montant|de).*?(\d+)', prompt, re.IGNORECASE):
@@ -661,50 +654,50 @@ with st.sidebar:
             montant = match.group(4)
             note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
             b64_note = base64.b64encode(note.encode()).decode()
-            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture.txt"><button style="width:100%;padding:10px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;">📄 TÉLÉCHARGER</button></a>'
+            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture.txt"><button style="width:100%;padding:8px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
             reponse = f"Facture {montant} dollars"
 
-        # QUESTION = GROQ + VOIX FORCÉE
+        # QUESTION
         else:
-            system = f"""Tu es FLOKI ASYMAS Beni-Butembo. MAX 10 MOTS. Chiffres seulement.
+            system = f"""FLOKI ASYMAS Beni-Butembo. MAX 8 MOTS. Chiffres.
 BASE: {contexte}
 PRIX: Jordan 60-110$, Ballot 350-450$, Rav4 9000-12000$, Ciment 14-16$
-Si absent: "Beni X dollars". JAMAIS phrase longue."""
+Si absent: "Beni X dollars"."""
 
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 25,"temperature": 0.1}, timeout=10)
+                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 20,"temperature": 0.1}, timeout=8)
                 reponse = r.json()['choices'][0]['message']['content'].strip()
-            except Exception as e:
-                reponse = "Erreur Groq"
+            except:
+                reponse = "Erreur"
 
-        # SAUVE BOUTON
+        # SAUVE
         if btn_html:
-            st.session_state.last_btn = btn_html
+            st.session_state.floki_btn = btn_html
 
-        # FORCE LA VOIX - SOLUTION QUI MARCHE SUR CHROME/BRAVE
+        # PARLE DIRECT - FIX MOBILE
         if reponse:
             txt = reponse.replace("'", "\\'").replace("\n", " ").replace('"', '\\"')
             b64 = base64.b64encode(txt.encode()).decode()
             components.html(f"""
                 <script>
-                setTimeout(function() {{
+                (function() {{
                     window.speechSynthesis.cancel();
                     var u = new SpeechSynthesisUtterance(atob('{b64}'));
                     u.lang = 'fr-FR';
-                    u.rate = 1.3;
+                    u.rate = 1.4;
                     u.volume = 1;
                     window.speechSynthesis.speak(u);
-                }}, 100);
+                }})();
                 </script>
             """, height=0)
 
         st.rerun()
 
-    # AFFICHE BOUTON SI EXISTE
-    if st.session_state.get("last_btn"):
-        components.html(st.session_state.last_btn, height=50)
+    # AFFICHE BOUTON SEULEMENT
+    if st.session_state.get("floki_btn"):
+        components.html(st.session_state.floki_btn, height=50)
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
