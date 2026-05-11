@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V9 - INTELLIGENT + VOIX AUTO + NE PARLE PLUS DANS LE VIDE
+        # 👑 FLOKI V10 - SON FORCÉ + BOUTON PLAY + PDG
     from urllib.parse import quote
     import re
     import base64
@@ -586,8 +586,10 @@ with st.sidebar:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
-    if "floki_audio_id" not in st.session_state:
-        st.session_state.floki_audio_id = 0
+    if "floki_audio_b64" not in st.session_state:
+        st.session_state.floki_audio_b64 = ""
+    if "floki_tts_text" not in st.session_state:
+        st.session_state.floki_tts_text = ""
 
     # ANALYSE ASYMAS PDG
     ASYMAS = {}
@@ -600,8 +602,6 @@ with st.sidebar:
             df = locals()[var]
             lignes = len(df)
             stats_pdg.append(f"{nom}:{lignes}")
-
-            # ALERTES AUTO
             if nom == "ARTICLES":
                 try:
                     if 'quantite' in df.columns:
@@ -609,7 +609,6 @@ with st.sidebar:
                         if len(stock_faible) > 0:
                             alertes.append(f"{len(stock_faible)} articles stock bas")
                 except: pass
-
             if nom == "FACTURES":
                 try:
                     if 'montant' in df.columns and 'date' in df.columns:
@@ -623,8 +622,11 @@ with st.sidebar:
     demain = (date.today() + timedelta(days=1)).strftime('%A %d/%m')
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... parle-moi chef", key="floki_v9", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v9", label_visibility="collapsed")
+    col1, col2 = st.columns([4,1])
+    with col1:
+        prompt = st.text_input("", placeholder="FLOKI... demande-moi chef", key="floki_v10", label_visibility="collapsed")
+    with col2:
+        audio = st.audio_input("", key="floki_audio_v10", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -699,30 +701,24 @@ with st.sidebar:
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
             reponse = f"Facture {montant}$ prête chef."
 
-        # 2. CERVEAU PDG - RÉPOND NORMALEMENT
+        # 2. CERVEAU PDG
         else:
-            # Détecte si c'est juste un salut
             if re.match(r'^(slt|salut|bjr|bonjour|hello|yo)$', prompt.strip(), re.IGNORECASE):
                 reponse = f"Chef! ASYMAS {contexte_asymas}. Prêt pour la guerre business."
             else:
-                system = f"""Tu es FLOKI, PDG adjoint d'ASYMAS Beni-Butembo. Tu es intelligent, motivé, précis.
+                system = f"""Tu es FLOKI, PDG adjoint d'ASYMAS Beni-Butembo. Intelligent, motivé, précis.
 
-RÈGLES ABSOLUES:
+RÈGLES:
 1. Max 2 phrases. Max 30 mots.
-2. Réponds à LA QUESTION posée. Pas de "Commander Ouganda" si on dit salut.
-3. Si question ASYMAS: Donne VRAIS chiffres.
-4. Si question prix monde: Donne prix 2025.
-5. Si question conseil: Donne 2 actions concrètes demain.
+2. Réponds à LA QUESTION. Pas de hors-sujet.
+3. Si ASYMAS: Donne VRAIS chiffres.
+4. Si prix monde: Donne prix 2025.
+5. Si conseil: 2 actions concrètes demain.
 6. Dis "chef" 1 fois.
 
-DONNÉES ASYMAS: {contexte_asymas}
+DONNÉES: {contexte_asymas}
 ALERTES: {', '.join(alertes) if alertes else 'Rien urgent'}
-
-PRIX 2025:
-BENI: Ciment 14-16$, Ballot 350-450$, Rav4 9000-12000$
-OUGANDA: Variateur 1.5kW 80-150$, Moteur 2HP 120-200$, Ciment -30%, Transport 50$
-CHINE: Variateur 40-80$ MOQ10, -40% vs local
-DUBAÏ: Voiture -15%, Cargo 5$/kg"""
+PRIX 2025: BENI Ciment 14-16$, OUGANDA Variateur 1.5kW 80-150$ Transport 50$, CHINE Variateur 40-80$ MOQ10"""
 
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
@@ -737,40 +733,53 @@ DUBAÏ: Voiture -15%, Cargo 5$/kg"""
                 except:
                     reponse = "Connexion coupée chef."
 
-        # AFFICHE + VOIX AUTO
+        # GÉNÈRE AUDIO
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
-        st.session_state.floki_audio_id += 1
-        st.toast(f"👑 {reponse}", icon="🔊")
+        st.session_state.floki_tts_text = clean_tts(reponse)
 
-        # VOIX AUTO - MARCHE APRÈS 1ER CLIC N'IMPORTE OÙ
         try:
-            reponse_tts = clean_tts(reponse)
             tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-            tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
+            tts_data = {"model": "playai-tts", "input": st.session_state.floki_tts_text, "voice": "Atlas-PlayAI", "response_format": "wav"}
             tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
             if tts_r.status_code == 200:
-                audio_b64 = base64.b64encode(tts_r.content).decode()
-                components.html(f"""
-                    <audio autoplay id="floki_{st.session_state.floki_audio_id}">
-                        <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
-                    </audio>
-                    <script>
-                    document.getElementById('floki_{st.session_state.floki_audio_id}').play().catch(e => {{
-                        console.log('Clique une fois sur la page pour activer la voix chef');
-                    }});
-                    </script>
-                """, height=0)
+                st.session_state.floki_audio_b64 = base64.b64encode(tts_r.content).decode()
+            else:
+                st.session_state.floki_audio_b64 = "robot" # Flag pour fallback
         except:
-            txt = reponse.replace("'", "\\'").replace('"', '\\"')
-            b64 = base64.b64encode(txt.encode()).decode()
-            components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';u.rate=1.0;window.speechSynthesis.speak(u);</script>""", height=0)
+            st.session_state.floki_audio_b64 = "robot"
 
-    # AFFICHE
+    # AFFICHE RÉPONSE + BOUTON
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=70)
+
     if st.session_state.get("floki_reponse"):
-        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+        col_a, col_b = st.columns([5,1])
+        with col_a:
+            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+        with col_b:
+            # BOUTON PLAY FORCÉ - MARCHE TOUJOURS
+            if st.button("🔊", key=f"play_{st.session_state.get('floki_audio_id', 0)}", help="Écouter FLOKI"):
+                if st.session_state.floki_audio_b64 == "robot":
+                    # FALLBACK VOIX ROBOT
+                    txt = st.session_state.floki_tts_text.replace("'", "\\'").replace('"', '\\"')
+                    b64 = base64.b64encode(txt.encode()).decode()
+                    components.html(f"""
+                        <script>
+                        window.speechSynthesis.cancel();
+                        var u = new SpeechSynthesisUtterance(atob('{b64}'));
+                        u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.8;
+                        window.speechSynthesis.speak(u);
+                        </script>
+                    """, height=0)
+                else:
+                    # VRAIE VOIX GROQ
+                    components.html(f"""
+                        <audio autoplay>
+                            <source src="data:audio/wav;base64,{st.session_state.floki_audio_b64}" type="audio/wav">
+                        </audio>
+                    """, height=0)
+                st.toast(f"👑 {st.session_state.floki_reponse}", icon="🔊")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
