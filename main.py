@@ -810,6 +810,148 @@ if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) o
     tabs_dispo.append("📋 Devis")
 if st.session_state.user_role == "PDG" or perms.get('users', False):
     tabs_dispo.append("👥 Utilisateurs")
+# 👑 FLOKI UNIQUE - 1 CHAMP POUR TOUT ASYMAS BUSINESS
+    import streamlit.components.v1 as components
+    from urllib.parse import quote
+    import re
+    import time
+    import base64
+    import requests
+
+    with st.expander("👑 FLOKI - ASSISTANT ASYMAS", expanded=False):
+        GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
+        VILLE_USER = "Beni-Butembo"
+
+        # LIT TOUTES TES TABLES ASYMAS DÉJÀ CHARGÉES
+        ASYMAS_TABLES = {
+            "BIENS": df_biens,
+            "ARTICLES": df_articles,
+            "VOITURES": df_voitures,
+            "COMPTA": df_compta,
+            "FACTURES": df_factures,
+            "DEVIS": df_devis,
+            "UTILISATEURS": df_utilisateurs
+        }
+        # Garde que les tables non vides
+        ASYMAS_TABLES = {k:v for k,v in ASYMAS_TABLES.items() if not v.empty}
+
+        if "conversation" not in st.session_state:
+            st.session_state.conversation = []
+        if "auto_speak" not in st.session_state:
+            st.session_state.auto_speak = ""
+
+        # VOIX AUTO
+        if st.session_state.auto_speak:
+            texte_safe = st.session_state.auto_speak.replace("'", "\\'").replace("\n", " ").replace('"', '\\"')
+            b64 = base64.b64encode(texte_safe.encode()).decode()
+            components.html(f"""<script>window.speechSynthesis.cancel();var msg=new SpeechSynthesisUtterance(atob('{b64}'));msg.lang='fr-FR';msg.rate=1.2;window.speechSynthesis.speak(msg);</script>""", height=0)
+            st.session_state.auto_speak = ""
+
+        # 1 SEUL CHAMP UNIQUE
+        prompt = st.chat_input("FLOKI: Question ASYMAS, Conseil Import, ou Ordre...", key="floki_unique")
+
+        if prompt:
+            st.session_state.conversation.append({"role": "user", "content": prompt})
+
+            # COMPILE TOUTE LA BASE ASYMAS
+            contexte_asymas = []
+            for nom, df in ASYMAS_TABLES.items():
+                total = len(df)
+                stats = []
+                for col in df.select_dtypes(include=['int64', 'float64']).columns[:2]:
+                    try:
+                        if df[col].sum() > 0:
+                            stats.append(f"{col}:{df[col].sum():,.0f}")
+                    except: pass
+                contexte_asymas.append(f"{nom}:{total}l | {' '.join(stats)}")
+            contexte_total = "\n".join(contexte_asymas)
+
+            reponse = ""
+            action_html = ""
+
+            # ORDRES DIRECTS
+            if re.search(r'(message|whatsapp).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
+                match = re.search(r'(\+?243|0)?[89]\d{8}.*?(dit|:)?(.+)', prompt, re.IGNORECASE)
+                numero = re.sub(r'\D', '', match.group(0))
+                if len(numero) == 9: numero = '243' + numero
+                if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
+                texte = match.group(3).strip()
+                link = f"https://wa.me/{numero}?text={quote(texte)}"
+                action_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;">📲 ENVOYER WHATSAPP</button></a>'
+                reponse = f"Prêt +{numero}."
+
+            elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
+                match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}).*?(objet|:)?(.+)', prompt, re.IGNORECASE)
+                email = match.group(1)
+                corps = match.group(3).strip() if match.group(3) else prompt
+                link = f"mailto:{email}?subject=ASYMAS {VILLE_USER}&body={quote(corps)}"
+                action_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;">📧 ENVOYER EMAIL</button></a>'
+                reponse = f"Email prêt."
+
+            elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
+                match = re.search(r'(\+?243|0)?[89]\d{8}.*?(dit|:)?(.+)', prompt, re.IGNORECASE)
+                numero = re.sub(r'\D', '', match.group(0))
+                if len(numero) == 9: numero = '243' + numero
+                texte = match.group(3).strip()
+                link = f"sms:{numero}?body={quote(texte)}"
+                action_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;">💬 ENVOYER SMS</button></a>'
+                reponse = f"SMS prêt."
+
+            elif re.search(r'(appelle|appel).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
+                match = re.search(r'(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE)
+                numero = re.sub(r'\D', '', match.group(0))
+                if len(numero) == 9: numero = '243' + numero
+                link = f"tel:+{numero}"
+                action_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;">📞 APPELER</button></a>'
+                reponse = f"Appel prêt."
+
+            elif re.search(r'(facture|devis).*?(pour|client).*?([A-Za-z\s]+).*?(montant|de).*?(\d+)', prompt, re.IGNORECASE):
+                match = re.search(r'(pour|client).*?([A-Za-z\s]+).*?(montant|de).*?(\d+)', prompt, re.IGNORECASE)
+                client = match.group(2).strip().title()
+                montant = match.group(4)
+                note = f"FACTURE ASYMAS {VILLE_USER}\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
+                b64_note = base64.b64encode(note.encode()).decode()
+                action_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;">📄 TÉLÉCHARGER FACTURE</button></a>'
+                reponse = f"Facture {montant}$ prête."
+
+            # INTELLIGENCE ASYMAS
+            else:
+                system = f"""Tu es FLOKI, Directeur ASYMAS {VILLE_USER}. 2 phrases max. Chiffré direct.
+
+BASE ASYMAS:
+{contexte_total}
+
+PRIX BENI-BUTEMBO: Jordan 60-110$, Ballot Kampala 350-450$, Rav4 9,000-12,000$, Ciment 14-16$
+IMPORT: Ouganda -30% transport, Chine -40% électronique MOQ100, Dubaï voiture -15%
+
+RÈGLES:
+1. Question ASYMAS → Chiffres exacts base. Cite table.
+2. Conseil import → Compare Beni vs Ouganda/Chine/Dubaï. Marge. Action.
+3. JAMAIS bavard. JAMAIS "je ne sais pas".
+4. Pas dans base: "Pas dans ASYMAS. Beni: X$. Import Ouganda: Y$. Action: commande Z"
+5. Tu es FLOKI. Pas IA."""
+
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 100,"temperature": 0.1})
+                    reponse = r.json()['choices'][0]['message']['content'].strip()
+                except:
+                    reponse = "Erreur."
+
+            st.session_state.conversation.append({"role": "assistant", "content": reponse, "action": action_html})
+            st.session_state.auto_speak = reponse
+            st.rerun()
+
+        # AFFICHE CHAT - 1 SEUL BLOC
+        for msg in st.session_state.conversation[-8:]:
+            if msg["role"] == "user":
+                st.chat_message("user").write(msg["content"])
+            else:
+                with st.chat_message("assistant"):
+                    st.write(f"👑 {msg['content']}")
+                    if msg.get("action"):
+                        components.html(msg["action"], height=55)    
 
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
