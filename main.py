@@ -570,102 +570,98 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ - MICRO ANTI-CRASH
+        # 👑 FLOKI HQ - MODE DISCUSSION AUTO MAXIMUM
     import streamlit.components.v1 as components
     from urllib.parse import quote
     import re
     import time
+    import base64
 
-    with st.expander("👑 FLOKI HQ", expanded=True):
+    with st.expander("👑 FLOKI HQ - MODE AUTO", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI prêt chef. Appuie sur le micro pour causer."
+            st.session_state.floki_reply = "FLOKI prêt chef. Parle-moi."
         if "floki_action" not in st.session_state:
             st.session_state.floki_action = ""
-        if "processing" not in st.session_state:
-            st.session_state.processing = False
+        if "auto_speak" not in st.session_state:
+            st.session_state.auto_speak = ""
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # BOUTONS
-        col1, col2 = st.columns(2)
-        with col1:
+        # AUTO-VOIX : Joue le son dès que floki_reply change
+        if st.session_state.auto_speak:
+            b64 = base64.b64encode(st.session_state.auto_speak.encode()).decode()
             components.html(f"""
-            <script>
-            function speak(text) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance(text);
+                <script>
+                var msg = new SpeechSynthesisUtterance(atob('{b64}'));
                 msg.lang = 'fr-FR'; msg.rate = 1.1;
+                window.speechSynthesis.cancel();
                 window.speechSynthesis.speak(msg);
-            }}
-            </script>
-            <button onclick="speak('{st.session_state.floki_reply.replace("'", "\\'")}')"
-                    style="width:100%; padding:12px; background:#00C853; color:white; border:none; border-radius:8px; font-size:16px;">
-                🔊 Écouter FLOKI
-            </button>
-            """, height=60)
-        with col2:
-            if st.session_state.floki_action:
-                st.link_button("📲 Exécuter WhatsApp", st.session_state.floki_action, use_container_width=True, type="primary")
+                </script>
+            """, height=0)
+            st.session_state.auto_speak = "" # Reset pour pas boucler
+
+        # BOUTON ACTION
+        if st.session_state.floki_action:
+            st.link_button("📲 Exécuter WhatsApp", st.session_state.floki_action, use_container_width=True, type="primary")
 
         st.divider()
         st.markdown("### 💬 Parle ou écris à FLOKI :")
 
-        # MICRO + TEXTE - SANS RERUN BRUTAL
-        audio = st.audio_input("🎙️ Appuie pour parler, re-appuie pour stop", key="floki_mic", disabled=st.session_state.processing)
-        prompt_text = st.chat_input("Ou écris ton ordre ici...", key="floki_text", disabled=st.session_state.processing)
+        audio = st.audio_input("🎙️ Parle ici, stop = envoi auto", key="floki_mic")
+        prompt_text = st.chat_input("Ou écris...", key="floki_text")
 
         prompt = prompt_text
 
-        # TRAITEMENT AUDIO SANS CRASH
-        if audio and not prompt_text and not st.session_state.processing:
-            st.session_state.processing = True
-            with st.spinner("FLOKI transcrit..."):
+        # TRAITEMENT AUDIO AUTO
+        if audio and not prompt_text:
+            with st.spinner("FLOKI écoute et répond..."):
                 try:
                     files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
                     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
                     data = {"model": "whisper-large-v3", "language": "fr"}
                     r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions",
                                     headers=headers, files=files, data=data, timeout=20)
+
                     if r.status_code == 200:
                         prompt = r.json().get("text", "").strip()
-                        st.toast(f"Tu as dit : {prompt}")
+                        st.toast(f"Entendu : {prompt}")
                     else:
-                        st.error("Erreur Whisper")
+                        st.error(f"Erreur Whisper {r.status_code} : Vérifie ta clé GROQ chef")
                         prompt = None
                 except Exception as e:
-                    st.error(f"Erreur micro: {str(e)}")
+                    st.error(f"Erreur micro: {e}")
                     prompt = None
-            st.session_state.processing = False
 
-        # MOTEUR FLOKI
-        if prompt and not st.session_state.processing:
-            st.session_state.processing = True
+        # MOTEUR FLOKI + VOIX AUTO
+        if prompt:
             nb_articles = len(df_articles) if 'df_articles' in locals() and not df_articles.empty else 0
             nb_voitures = len(df_voitures) if 'df_voitures' in locals() and not df_voitures.empty else 0
 
-            match = re.search(r'(message|whatsapp|sms).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', prompt, re.IGNORECASE)
+            # WhatsApp
+            match = re.search(r'(message|whatsapp).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', prompt, re.IGNORECASE)
             if match:
                 numero = re.sub(r'\D', '', match.group(0))
                 if len(numero) == 9: numero = '243' + numero
                 if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
                 texte = match.group(4).strip()
                 st.session_state.floki_action = f"https://wa.me/{numero}?text={quote(texte)}"
-                st.session_state.floki_reply = f"Message prêt pour +{numero}. Clique Exécuter chef."
+                reponse = f"Message prêt pour +{numero}. Clique Exécuter chef."
             else:
                 st.session_state.floki_action = ""
-                system = f"Tu es FLOKI. Articles:{nb_articles}. Réponds en 1 phrase."
+                system = f"Tu es FLOKI. Articles:{nb_articles}, Voitures:{nb_voitures}. Réponds en 1 phrase max. Tu n'es PAS une IA."
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 80})
-                    st.session_state.floki_reply = r.json()['choices'][0]['message']['content'].strip()
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 60})
+                    reponse = r.json()['choices'][0]['message']['content'].strip()
                 except:
-                    st.session_state.floki_reply = "Erreur Groq chef."
+                    reponse = "Erreur Groq chef. Vérifie la clé."
 
-            st.session_state.processing = False
-            time.sleep(0.1) # Laisse respirer
+            st.session_state.floki_reply = reponse
+            st.session_state.auto_speak = reponse # DÉCLENCHE LA VOIX AUTO
+            time.sleep(0.2)
             st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
