@@ -570,28 +570,67 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ - VOIX GOOGLE GRATUITE
+    # 👑 FLOKI HQ V2 - EXÉCUTEUR D'ORDRES
+    import streamlit.components.v1 as components
+    from urllib.parse import quote
+    import re
+
     with st.expander("👑 FLOKI HQ", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI prêt chef. Écris 'test voix'"
-        if "floki_voice_url" not in st.session_state:
-            st.session_state.floki_voice_url = ""
+            st.session_state.floki_reply = "FLOKI prêt chef. Donne-moi un ordre."
+        if "floki_action" not in st.session_state:
+            st.session_state.floki_action = ""
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # PLAYER AUDIO
-        if st.session_state.floki_voice_url:
-            st.audio(st.session_state.floki_voice_url, format="audio/mp3")
-            st.session_state.floki_voice_url = ""
+        # BOUTON VOIX + BOUTON ACTION
+        col1, col2 = st.columns(2)
+        with col1:
+            components.html(f"""
+            <script>
+            function speak(text) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'fr-FR'; msg.rate = 1.1;
+                window.speechSynthesis.speak(msg);
+            }}
+            </script>
+            <button onclick="speak('{st.session_state.floki_reply.replace("'", "\\'")}')"
+                    style="width:100%; padding:10px; background:#00C853; color:white; border:none; border-radius:5px;">
+                🔊 Parler
+            </button>
+            """, height=50)
+        with col2:
+            if st.session_state.floki_action:
+                st.link_button("📲 Exécuter Action", st.session_state.floki_action, use_container_width=True)
 
-        def get_floki_reply(message):
-            if not GROQ_API_KEY:
-                return "Clé GROQ manquante chef.", ""
+        def executer_ordre_floki(message):
+            # 1. DONNÉES RÉELLES ASYMAS
+            nb_articles = len(df_articles) if 'df_articles' in locals() and not df_articles.empty else 0
+            nb_voitures = len(df_voitures) if 'df_voitures' in locals() and not df_voitures.empty else 0
+            revenus = float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if 'df_compta' in locals() and not df_compta.empty else 0
 
-            ctx = f"Stock: {len(df_articles) if 'df_articles' in locals() else 0} articles"
-            system = f"Tu es FLOKI. Tu n'es PAS une IA. Réponds en 1 phrase courte. Données: {ctx}"
+            # 2. DÉTECTE LES COMMANDES
+            action_url = ""
+            # Commande: message au 099... texte...
+            match = re.search(r'(message|sms|whatsapp).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', message, re.IGNORECASE)
+            if match:
+                numero = match.group(2) + match.group(0).split()[2] if match.group(2) else match.group(0).split()[2]
+                numero = re.sub(r'\D', '', numero) # Garde que chiffres
+                if not numero.startswith('243'): numero = '243' + numero.lstrip('0')
+                texte = match.group(4)
+                action_url = f"https://wa.me/{numero}?text={quote(texte)}"
+                return f"Message prêt pour {numero}. Clique sur 'Exécuter Action' chef.", action_url
+
+            # 3. SINON, RÉPONSE IA NORMALE
+            if not GROQ_API_KEY: return "Clé GROQ manquante chef.", ""
+
+            ctx = f"Articles:{nb_articles}, Voitures:{nb_voitures}, Revenus:{revenus}$"
+            system = f"""Tu es FLOKI, bras droit ASYMAS. Tu exécutes les ordres.
+            Données: {ctx}
+            Si le boss demande une action, dis ce que tu fais. Sinon réponds en 1 phrase. Tu n'es PAS une IA."""
 
             try:
                 url = "https://api.groq.com/openai/v1/chat/completions"
@@ -599,25 +638,20 @@ with st.sidebar:
                 data = {
                     "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": message}],
-                    "max_tokens": 50
+                    "max_tokens": 80
                 }
                 r = requests.post(url, headers=headers, json=data, timeout=8)
                 reply = r.json()['choices'][0]['message']['content'].strip()
+                return reply, ""
+            except:
+                return "Erreur Groq chef.", ""
 
-                # NOUVELLE VOIX GOOGLE GRATUITE - PAS DE CLÉ
-                from urllib.parse import quote
-                texte_voix = quote(reply)
-                voice_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=fr&client=tw-ob&q={texte_voix}"
-                return reply, voice_url
-            except Exception as e:
-                return f"Erreur: {str(e)[:50]}", ""
-
-        # TEXTE SEULEMENT
-        prompt = st.chat_input("Écris à FLOKI...")
+        # INPUT
+        prompt = st.chat_input("Donne un ordre à FLOKI...")
         if prompt:
-            reply, voice = get_floki_reply(prompt)
+            reply, action = executer_ordre_floki(prompt)
             st.session_state.floki_reply = reply
-            st.session_state.floki_voice_url = voice
+            st.session_state.floki_action = action
             st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
