@@ -599,7 +599,7 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # ============================================
-# 👑 FLOKI HQ - CERVEAU AVEC GESTION ERREUR
+# 👑 FLOKI HQ - CERVEAU AVEC NOUVEAU MODÈLE
 # ============================================
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
@@ -616,7 +616,7 @@ def floki_brain(message, historique, context_asymas):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     data_req = {
-        "model": "llama-3.1-70b-versatile",
+        "model": "llama-3.3-70b-versatile", # 👈 NOUVEAU MODÈLE ACTIF
         "messages": [{"role": "system", "content": system_prompt}] + historique + [{"role": "user", "content": message}],
         "max_tokens": 300, 
         "temperature": 0.6
@@ -626,7 +626,7 @@ def floki_brain(message, historique, context_asymas):
         data = r.json()
         
         if 'error' in data:
-            return f"Erreur Groq: {data['error'].get('message', 'Clé invalide')}"
+            return f"Erreur Groq: {data['error'].get('message', 'Erreur')}"
         
         if 'choices' not in data:
             return f"Erreur API chef. Réponse: {data}"
