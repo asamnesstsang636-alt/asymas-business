@@ -13,3 +13,5 @@ flask
 gunicorn
 requests
 flask-cors
+streamlit-webrtc==0.47.1
+av
