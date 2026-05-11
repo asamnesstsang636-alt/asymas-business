@@ -570,30 +570,56 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI HQ - INTERFACE
+    # 👑 FLOKI HQ - INTERFACE VOIX
     with st.expander("👑 FLOKI HQ", expanded=False):
+        st.markdown("""
+        <style>
+        button[data-testid="stAudioInputButton"] {
+            background-color: #00ff41 !important;
+            color: black !important;
+            border-radius: 50% !important;
+            height: 60px !important;
+            width: 60px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         if "floki_messages" not in st.session_state:
             st.session_state.floki_messages = []
         
-        for msg in st.session_state.floki_messages[-3:]:
+        # Affiche 2 derniers messages seulement
+        for msg in st.session_state.floki_messages[-2:]:
             if msg["role"] == "user":
                 st.caption(f"👤 {msg['content']}")
             else:
                 st.success(f"👑 {msg['content']}")
 
-        prompt = st.text_input("Ordre FLOKI", key="floki_input", placeholder="Parle chef...", label_visibility="collapsed")
-        col1, col2 = st.columns(2)
-        if col1.button("Envoyer", key="send_floki", use_container_width=True) and prompt:
+        # MICRO - ENREGISTRE ET ENVOIE AUTO
+        audio_val = st.audio_input("🎙️ Parle à FLOKI", key="floki_mic")
+        
+        if audio_val:
+            with st.spinner("FLOKI écoute..."):
+                # Transcription avec Whisper via Groq
+                files = {"file": ("audio.wav", audio_val, "audio/wav")}
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                data = {"model": "whisper-large-v3", "language": "fr"}
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                    transcription = r.json().get("text", "")
+                    
+                    if transcription:
+                        st.session_state.floki_messages.append({"role": "user", "content": transcription})
+                        st.session_state.floki_pending = transcription
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Micro FLOKI erreur: {e}")
+
+        # TEXTE AUSSI SI TU VEUX
+        prompt = st.text_input("Ou écris", key="floki_input", placeholder="slt...", label_visibility="collapsed")
+        if st.button("Envoyer Texte", key="send_floki", use_container_width=True) and prompt:
             st.session_state.floki_messages.append({"role": "user", "content": prompt})
             st.session_state.floki_pending = prompt
             st.rerun()
-
-        if col2.button("🔊 Voix", key="voice_floki", use_container_width=True):
-            if st.session_state.floki_messages and st.session_state.floki_messages[-1]['role']=='assistant':
-                last_reply = st.session_state.floki_messages[-1]['content']
-                texte_voix = last_reply.replace('"', '').replace("'", "")
-                st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}", autoplay=True)        
-
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
