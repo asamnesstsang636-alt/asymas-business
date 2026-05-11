@@ -570,37 +570,65 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ V-FINAL STABLE - TEXTE ILLIMITÉ + MICRO ORDRES
+        # 👑 FLOKI HQ V-FINAL PROD - TEXTE ILLIMITÉ + MICRO + VOIX H24
     import streamlit.components.v1 as components
     from urllib.parse import quote
     import re
     import time
     import base64
     import pandas as pd
+    import requests
 
     with st.expander("👑 FLOKI HQ", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
+        # INIT SESSION
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI prêt chef. Écris pour les longues questions. Micro pour ordres rapides."
+            st.session_state.floki_reply = "FLOKI prêt chef. Clique 🔊 ACTIVER LA VOIX puis parle ou écris."
         if "floki_action" not in st.session_state:
             st.session_state.floki_action = ""
         if "auto_speak" not in st.session_state:
             st.session_state.auto_speak = ""
         if "conversation" not in st.session_state:
             st.session_state.conversation = []
+        if "voice_enabled" not in st.session_state:
+            st.session_state.voice_enabled = False
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # VOIX AUTO FLOKI
-        if st.session_state.auto_speak:
-            b64 = base64.b64encode(st.session_state.auto_speak.encode()).decode()
+        # BOUTON ACTIVER VOIX - DÉBLOQUE CHROME
+        col1, col2 = st.columns([1,3])
+        with col1:
+            if st.button("🔊 ACTIVER LA VOIX"):
+                st.session_state.voice_enabled = True
+                st.session_state.auto_speak = "Voix FLOKI activée chef. Je parle maintenant."
+                st.rerun()
+        with col2:
+            if st.session_state.voice_enabled:
+                st.info("Voix activée ✅ FLOKI parle pour chaque réponse")
+            else:
+                st.warning("Clique 🔊 pour que FLOKI parle")
+
+        # VOIX AUTO FLOKI - FORCE H24
+        if st.session_state.auto_speak and st.session_state.voice_enabled:
+            texte_safe = st.session_state.auto_speak.replace("'", "\\'").replace("\n", " ").replace('"', '\\"')
+            b64 = base64.b64encode(texte_safe.encode()).decode()
             components.html(f"""
+                <div id="floki-voice"></div>
                 <script>
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance(atob('{b64}'));
-                msg.lang = 'fr-FR'; msg.rate = 1.1;
-                window.speechSynthesis.speak(msg);
+                function speakFloki() {{
+                    window.speechSynthesis.cancel();
+                    var msg = new SpeechSynthesisUtterance(atob('{b64}'));
+                    msg.lang = 'fr-FR';
+                    msg.rate = 1.15;
+                    msg.pitch = 1;
+                    msg.volume = 1;
+                    var voices = window.speechSynthesis.getVoices();
+                    var frVoice = voices.find(v => v.lang.startsWith('fr'));
+                    if(frVoice) msg.voice = frVoice;
+                    window.speechSynthesis.speak(msg);
+                }}
+                speakFloki();
                 </script>
             """, height=0)
             st.session_state.auto_speak = ""
@@ -610,10 +638,10 @@ with st.sidebar:
             st.link_button("📲 EXÉCUTER L'ORDRE WHATSAPP", st.session_state.floki_action, use_container_width=True, type="primary")
 
         st.divider()
-        st.markdown("### 💬 Mode Texte : Questions longues, stratégie, business")
-        prompt_text = st.chat_input("Écris ici... Illimité, gratuit", key="floki_text")
+        st.markdown("### 💬 Mode Texte : Questions longues, stratégie, business - ILLIMITÉ GRATUIT")
+        prompt_text = st.chat_input("Écris ici...", key="floki_text")
 
-        st.markdown("### 🎙️ Mode Micro : Ordres courts < 5sec")
+        st.markdown("### 🎙️ Mode Micro : Ordres courts < 5sec - 30min/jour")
         audio = st.audio_input("Ex: 'Message au 099... dit...'", key="floki_mic")
 
         prompt = None
@@ -641,8 +669,10 @@ with st.sidebar:
                             st.toast(f"Ordre vocal : {prompt}")
                         elif r.status_code == 429:
                             st.error("Quota micro 30min/jour fini. Utilise le texte chef.")
-                except:
-                    st.error("Erreur micro. Utilise le texte.")
+                            prompt = None
+                except Exception as e:
+                    st.error(f"Erreur micro: {e}")
+                    prompt = None
 
         # MOTEUR FLOKI
         if prompt:
@@ -654,9 +684,15 @@ with st.sidebar:
             for nom_df, df in all_dfs.items():
                 try:
                     nom = nom_df.replace('df_', '').upper()
-                    contexte_asymas.append(f"{nom}: {len(df)} lignes. Ex: {df.head(2).to_string(index=False, max_cols=4)}")
-                except: pass
-            contexte_total = "\n".join(contexte_asymas)[:3500]
+                    total = len(df)
+                    colonnes = ', '.join(df.columns[:5])
+                    top = df.head(3).to_string(index=False, max_cols=4)
+                    contexte_asymas.append(f"TABLE {nom}: {total} lignes. Colonnes: {colonnes}. Ex:\n{top}")
+                except:
+                    pass
+            contexte_total = "\n\n".join(contexte_asymas)[:3500]
+            if len(contexte_total) > 3400:
+                contexte_total += "\n...[Base résumée]"
 
             # 2. ORDRE WHATSAPP
             match = re.search(r'(message|whatsapp|écris|envoie|dis à).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|que|:)?(.+)', prompt, re.IGNORECASE)
@@ -671,31 +707,32 @@ with st.sidebar:
             # 3. QUESTION BUSINESS = GROQ HYBRIDE
             else:
                 st.session_state.floki_action = ""
-                system = f"""Tu es FLOKI, conseiller business d'ASYMAS à Goma, RDC.
+                system = f"""Tu es FLOKI, conseiller business d'ASYMAS à Goma, Nord-Kivu, RDC.
 
-BASE ASYMAS:
+DONNÉES ASYMAS ACTUELLES:
 {contexte_total}
 
-CONNAISSANCE: Tu connais marché RDC, Afrique, Dubaï, import-export, tendances.
+CONNAISSANCE: Tu connais marché RDC, Afrique, Dubaï, import-export, tendances, prix.
 
 RÈGLES:
 1. Questions ASYMAS → Chiffres exacts de la base.
-2. Questions business externe → Réponds utile + favorable + actionnable. JAMAIS "je sais pas".
+2. Questions business externe → Réponds utile + favorable + actionnable. JAMAIS "je sais pas" ou "pas dans la base".
 3. 2-3 phrases max. Direct chef.
-4. Tu n'es PAS une IA."""
+4. Tu n'es PAS une IA. Tu es FLOKI, bras droit.
+5. Si on demande opportunités: donne 3 idées chiffrées avec marge."""
 
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                         json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}] + st.session_state.conversation[-8:],"max_tokens": 200,"temperature": 0.4})
                     reponse = r.json()['choices'][0]['message']['content'].strip()
-                except:
-                    reponse = "Erreur Groq chef."
+                except Exception as e:
+                    reponse = "Erreur Groq chef. Vérifie ta clé."
 
             st.session_state.conversation.append({"role": "assistant", "content": reponse})
             st.session_state.floki_reply = reponse
-            if mode == "micro": # Parle seulement si ordre vocal
-                st.session_state.auto_speak = reponse
+            st.session_state.auto_speak = reponse # PARLE H24
+            time.sleep(0.1)
             st.rerun()
 
         # AFFICHE CONVERSATION
@@ -703,7 +740,7 @@ RÈGLES:
             if msg["role"] == "user":
                 st.chat_message("user").write(msg["content"])
             else:
-                st.chat_message("assistant").write(msg["content"])
+                st.chat_message("assistant").write(f"👑 {msg['content']}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
