@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V5 - RÉPONSE PROPRE + 2 PHRASES MAX + ORDRES
+        # 👑 FLOKI V6 - VOIX FORCÉE + MOTIVÉ + INTELLIGENT ASYMAS
     from urllib.parse import quote
     import re
     import base64
@@ -586,6 +586,14 @@ with st.sidebar:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
+    if "floki_voice_on" not in st.session_state:
+        st.session_state.floki_voice_on = False
+
+    # BOUTON ACTIVER VOIX - 1 CLIC = VOIX DÉBLOQUÉE POUR TOUJOURS
+    if not st.session_state.floki_voice_on:
+        if st.button("🔊 ACTIVER LA VOIX DE FLOKI", type="primary", use_container_width=True):
+            st.session_state.floki_voice_on = True
+            st.rerun()
 
     # TABLES ASYMAS
     ASYMAS = {}
@@ -593,7 +601,7 @@ with st.sidebar:
         if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
             ASYMAS[nom] = locals()[var]
 
-    # BASE ASYMAS RÉSUMÉE - COURTE
+    # BASE ASYMAS RÉSUMÉE
     base_asymas = []
     for nom, df in ASYMAS.items():
         try:
@@ -603,14 +611,14 @@ with st.sidebar:
                 try:
                     total = df[col].sum()
                     if pd.notna(total) and total > 0:
-                        base_asymas.append(f"Total {col}: {total:,.0f}")
+                        base_asymas.append(f"Total {col}: {total:,.0f}$")
                 except: pass
         except: continue
     contexte = " | ".join(base_asymas)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... ordres ou questions", key="floki_v5", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v5", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... ordres ou questions", key="floki_v6", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v6", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -629,29 +637,18 @@ with st.sidebar:
         btn_html = None
         reponse = ""
 
-        # FONCTION NETTOYAGE RÉPONSE - ANTI PÊLE-MÊLE
-        def clean_response(text):
-            # 1. Garde que 2 phrases max
-            phrases = re.split(r'[.!?]+', text)
-            text = '. '.join([p.strip() for p in phrases[:2] if p.strip()]) + '.'
-            # 2. Max 25 mots
-            mots = text.split()
-            if len(mots) > 25:
-                text = ' '.join(mots[:25]) + '...'
-            # 3. Supprime * # ** etc
-            text = re.sub(r'[*#_`]', '', text)
-            return text.strip()
-
+        # NETTOYAGE ANTI COPYRIGHT TTS
         def clean_tts(text):
             remplacements = {
-                "Jordan": "chaussure sport", "Nike": "marque", "Adidas": "marque",
-                "Coca": "boisson", "iPhone": "téléphone", "Samsung": "téléphone"
+                "Jordan": "basket", "Nike": "marque", "Adidas": "marque",
+                "Coca": "boisson", "iPhone": "téléphone", "Samsung": "téléphone",
+                "Toyota": "voiture", "Mercedes": "voiture"
             }
             for mot, sub in remplacements.items():
                 text = re.sub(rf'\b{mot}\b', sub, text, flags=re.IGNORECASE)
             return text
 
-        # 1. ORDRES - RÉPONSES COURTES
+        # 1. ORDRES
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
             if nums:
@@ -662,15 +659,15 @@ with st.sidebar:
                 texte = texte_match.group(2).strip() if texte_match else "Message ASYMAS"
                 link = f"https://wa.me/{numero}?text={quote(texte)}"
                 btn_html = f'<a href="{link}" target="_blank" rel="noopener noreferrer"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;cursor:pointer;">📲 ENVOYER WHATSAPP +{numero}</button></a>'
-                reponse = f"WhatsApp prêt chef. Clique envoyer."
+                reponse = f"Mission acceptée chef! WhatsApp pour +{numero} est armé. Feu!"
 
         elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
             email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
             corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
             corps = corps_match.group(2).strip() if corps_match else "Message ASYMAS"
-            link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
+            link = f"mailto:{email}?subject=ASYMAS Beni-Butembo&body={quote(corps)}"
             btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 ENVOYER EMAIL</button></a>'
-            reponse = f"Email pour {email} prêt chef."
+            reponse = f"Email verrouillé sur {email} chef. Tirez!"
 
         elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
@@ -681,7 +678,7 @@ with st.sidebar:
                 texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
                 link = f"sms:+{numero}?body={quote(texte)}"
                 btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 ENVOYER SMS</button></a>'
-                reponse = f"SMS pour +{numero} prêt chef."
+                reponse = f"SMS chargé pour +{numero} chef. Envoi!"
 
         elif re.search(r'(appelle|appel).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
@@ -690,7 +687,7 @@ with st.sidebar:
                 if len(numero) == 9: numero = '243' + numero
                 link = f"tel:+{numero}"
                 btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER +{numero}</button></a>'
-                reponse = f"Appel vers +{numero} prêt chef."
+                reponse = f"Connexion directe +{numero} chef. Décrochez!"
 
         elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE):
             match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE)
@@ -699,68 +696,75 @@ with st.sidebar:
             note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
             b64_note = base64.b64encode(note.encode()).decode()
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
-            reponse = f"Facture {montant}$ pour {client} prête chef."
+            reponse = f"Facture {montant}$ pour {client} bouclée chef. Encaissez!"
 
-        # 2. INTELLIGENCE - RÉPONSE COURTE FORCÉE
+        # 2. INTELLIGENCE MOTIVÉE ASYMAS
         else:
-            system = f"""Tu es FLOKI ASYMAS. RÈGLES STRICTES:
-1. Réponds en 1 ou 2 phrases MAX.
-2. Max 20 mots total.
-3. Donne le chiffre direct si question ASYMAS.
-4. Dis "chef" 1 fois.
-5. Pas de bla-bla, pas d'étoiles, pas de liste.
+            system = f"""Tu es FLOKI, le bras droit d'ASYMAS Beni-Butembo. Tu es un PATRON congolais: motivé, direct, intelligent, fier.
 
-BASE: {contexte}
-PRIX BENI: Ciment 14-16$, Transport Ouganda -30%, Chine -40%"""
+RÈGLES:
+1. Max 2 phrases. Max 25 mots.
+2. Toujours commencer par "Chef" ou finir par "chef".
+3. Donne le chiffre ASYMAS direct si demandé.
+4. Sois motivant: "On avance", "On encaisse", "Mission claire".
+5. Pas de * # liste. Parle comme un humain.
+
+BASE ASYMAS: {contexte}
+PRIX BENI: Ciment 14-16$, Transport Ouganda -30%, Chine -40% MOQ100, Voiture Dubaï -15%"""
 
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 60,"temperature": 0.3}, timeout=10)
+                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 70,"temperature": 0.8}, timeout=10)
                 if r.status_code == 200:
                     reponse = r.json()['choices'][0]['message']['content'].strip()
-                    reponse = clean_response(reponse) # NETTOIE PÊLE-MÊLE
+                    # Force 2 phrases max
+                    phrases = re.split(r'[.!?]+', reponse)
+                    reponse = '. '.join([p.strip() for p in phrases[:2] if p.strip()]) + '.'
                 else:
-                    reponse = "Erreur Groq chef."
+                    reponse = "Groq occupé chef. On réessaie."
             except:
-                reponse = "Connexion plantée chef."
+                reponse = "Connexion coupée chef. On relance."
 
         # AFFICHE
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
         st.toast(f"👑 {reponse}", icon="🔊")
 
-        # VOIX RÉELLE COURTE
-        try:
-            reponse_tts = clean_tts(reponse)
-            tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-            tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
-            tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
-            if tts_r.status_code == 200:
-                audio_b64 = base64.b64encode(tts_r.content).decode()
+        # VOIX RÉELLE SI ACTIVÉE
+        if st.session_state.floki_voice_on:
+            try:
+                reponse_tts = clean_tts(reponse)
+                tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
+                tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
+                if tts_r.status_code == 200:
+                    audio_b64 = base64.b64encode(tts_r.content).decode()
+                    components.html(f"""
+                        <audio autoplay>
+                            <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
+                        </audio>
+                    """, height=0)
+                else:
+                    raise Exception("TTS")
+            except:
+                # FALLBACK ROBOT
+                txt = reponse.replace("'", "\\'").replace('"', '\\"')
+                b64 = base64.b64encode(txt.encode()).decode()
                 components.html(f"""
-                    <audio autoplay id="floki_audio">
-                        <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
-                    </audio>
+                    <script>
+                    window.speechSynthesis.cancel();
+                    var u = new SpeechSynthesisUtterance(atob('{b64}'));
+                    u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9;
+                    window.speechSynthesis.speak(u);
+                    </script>
                 """, height=0)
-        except:
-            # FALLBACK ROBOT
-            txt = reponse.replace("'", "\\'").replace('"', '\\"')
-            b64 = base64.b64encode(txt.encode()).decode()
-            components.html(f"""
-                <script>
-                window.speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(atob('{b64}'));
-                u.lang = 'fr-FR'; u.rate = 1.1;
-                window.speechSynthesis.speak(u);
-                </script>
-            """, height=0)
 
     # AFFICHE
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=70)
     if st.session_state.get("floki_reponse"):
-        st.success(f"👑 {st.session_state.floki_reponse}")
+        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
