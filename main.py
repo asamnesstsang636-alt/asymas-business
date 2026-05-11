@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI STABLE - 1 CHAMP + MICRO + DEBUG
+    # 👑 FLOKI SIMPLE QUI MARCHE - 0 BUG
     from urllib.parse import quote
     import re
     import base64
@@ -578,6 +578,12 @@ with st.sidebar:
     import streamlit.components.v1 as components
 
     st.divider()
+
+    # INIT
+    if "floki_reponse" not in st.session_state:
+        st.session_state.floki_reponse = ""
+    if "floki_btn" not in st.session_state:
+        st.session_state.floki_btn = None
 
     # TABLES ASYMAS
     ASYMAS_TABLES = {
@@ -588,36 +594,29 @@ with st.sidebar:
     }
     ASYMAS_TABLES = {k:v for k,v in ASYMAS_TABLES.items() if not v.empty}
 
-    if "floki_btn" not in st.session_state:
-        st.session_state.floki_btn = None
-    if "floki_last_voice" not in st.session_state:
-        st.session_state.floki_last_voice = ""
+    # 1 SEUL CHAMP TEXTE
+    prompt = st.text_input("", placeholder="FLOKI... tape ou clique 🎤", key="floki_input_unique", label_visibility="collapsed")
 
-    # 1 SEUL CHAMP + MICRO EN LIGNE
-    col1, col2 = st.columns([6,1])
-    with col1:
-        prompt = st.text_input("", placeholder="FLOKI...", key="floki_text_input", label_visibility="collapsed")
-    with col2:
-        mic_clicked = st.button("🎤", key="floki_mic_btn", use_container_width=True)
+    # MICRO SÉPARÉ EN DESSOUS
+    audio = st.audio_input("", key="floki_audio_unique", label_visibility="collapsed")
 
-    # MICRO NATIF STREAMLIT - TRANSCRIPTION DIRECTE
-    if mic_clicked:
-        audio = st.audio_input("", key="floki_audio_temp", label_visibility="collapsed")
-        if audio:
-            try:
-                files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-                headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                data = {"model": "whisper-large-v3", "language": "fr"}
+    # SI MICRO PARLE
+    if audio:
+        try:
+            files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+            headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+            data = {"model": "whisper-large-v3", "language": "fr"}
+            with st.spinner("🎤 Transcription..."):
                 r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                if r.status_code == 200:
-                    prompt = r.json().get("text", "").strip()
-                    st.session_state.floki_text_input = prompt
-                else:
-                    st.toast("❌ Erreur micro", icon="🔇")
-            except Exception as e:
-                st.toast(f"❌ Micro: {e}", icon="🔇")
+            if r.status_code == 200:
+                prompt = r.json().get("text", "").strip()
+                st.toast(f"🎤 {prompt}", icon="🔊")
+            else:
+                st.error("Micro échoué")
+        except Exception as e:
+            st.error(f"Micro: {e}")
 
-    # TRAITEMENT SI TEXTE
+    # SI ON A DU TEXTE
     if prompt:
         # BASE ASYMAS
         ctx = []
@@ -634,7 +633,7 @@ with st.sidebar:
         contexte = " | ".join(ctx)
 
         btn_html = None
-        reponse = "Erreur"
+        reponse = "OK"
 
         # ORDRES
         if re.search(r'(message|whatsapp).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
@@ -695,39 +694,38 @@ Si absent: "Beni X dollars"."""
                 if r.status_code == 200:
                     reponse = r.json()['choices'][0]['message']['content'].strip()
                 else:
-                    reponse = f"Erreur Groq {r.status_code}"
+                    reponse = f"Erreur {r.status_code}"
             except Exception as e:
-                reponse = "Connexion Groq échouée"
+                reponse = "Groq down"
 
-        # SAUVE
-        if btn_html:
-            st.session_state.floki_btn = btn_html
-        st.session_state.floki_last_voice = reponse
+        # AFFICHE RÉPONSE + PARLE
+        st.session_state.floki_btn = btn_html
+        st.session_state.floki_reponse = reponse
 
-        # PARLE OBLIGATOIRE + FALLBACK TOAST SI MUET
-        if reponse:
-            txt = reponse.replace("'", "\\'").replace("\n", " ").replace('"', '\\"')
-            b64 = base64.b64encode(txt.encode()).decode()
-            components.html(f"""
-                <script>
-                function speak() {{
-                    window.speechSynthesis.cancel();
-                    var u = new SpeechSynthesisUtterance(atob('{b64}'));
-                    u.lang = 'fr-FR';
-                    u.rate = 1.5;
-                    u.volume = 1;
-                    u.onend = function() {{ console.log('FLOKI OK'); }};
-                    u.onerror = function() {{ console.log('FLOKI MUET'); }};
-                    window.speechSynthesis.speak(u);
-                }}
-                setTimeout(speak, 200);
-                </script>
-            """, height=0)
-            st.toast(f"👑 {reponse}", icon="🔊")
+        # TOAST TOUJOURS VISIBLE
+        st.toast(f"👑 {reponse}", icon="🔊")
 
-    # AFFICHE BOUTON
+        # VOIX
+        txt = reponse.replace("'", "\\'").replace("\n", " ").replace('"', '\\"')
+        b64 = base64.b64encode(txt.encode()).decode()
+        components.html(f"""
+            <script>
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(atob('{b64}'));
+            u.lang = 'fr-FR';
+            u.rate = 1.5;
+            u.volume = 1;
+            window.speechSynthesis.speak(u);
+            </script>
+        """, height=0)
+
+    # AFFICHE BOUTON SI EXISTE
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=50)
+
+    # AFFICHE DERNIÈRE RÉPONSE
+    if st.session_state.get("floki_reponse"):
+        st.caption(f"👑 {st.session_state.floki_reponse}")        
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
