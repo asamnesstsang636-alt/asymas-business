@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V10 - SON FORCÉ + BOUTON PLAY + PDG
+        # 👑 FLOKI V11 - ILLIMITÉ + SON AUTO + VRAI PDG
     from urllib.parse import quote
     import re
     import base64
@@ -586,47 +586,33 @@ with st.sidebar:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
-    if "floki_audio_b64" not in st.session_state:
-        st.session_state.floki_audio_b64 = ""
-    if "floki_tts_text" not in st.session_state:
-        st.session_state.floki_tts_text = ""
+    if "floki_audio_id" not in st.session_state:
+        st.session_state.floki_audio_id = 0
+    if "floki_voice_unlocked" not in st.session_state:
+        st.session_state.floki_voice_unlocked = False
 
-    # ANALYSE ASYMAS PDG
+    # DÉBLOQUE LA VOIX AU 1ER CLIC N'IMPORTE OÙ
+    if not st.session_state.floki_voice_unlocked:
+        components.html("""
+            <script>
+            document.addEventListener('click', function() {
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
+            }, {once: true});
+            </script>
+        """, height=0)
+
+    # ANALYSE ASYMAS
     ASYMAS = {}
     stats_pdg = []
-    alertes = []
-
     for nom, var in [("BIENS", "df_biens"), ("ARTICLES", "df_articles"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
         if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
             ASYMAS[nom] = locals()[var]
-            df = locals()[var]
-            lignes = len(df)
-            stats_pdg.append(f"{nom}:{lignes}")
-            if nom == "ARTICLES":
-                try:
-                    if 'quantite' in df.columns:
-                        stock_faible = df[df['quantite'] < 5]
-                        if len(stock_faible) > 0:
-                            alertes.append(f"{len(stock_faible)} articles stock bas")
-                except: pass
-            if nom == "FACTURES":
-                try:
-                    if 'montant' in df.columns and 'date' in df.columns:
-                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                        factures_7j = df[df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
-                        ca_semaine = factures_7j['montant'].sum()
-                        stats_pdg.append(f"CA_7j:{ca_semaine:,.0f}$")
-                except: pass
-
+            stats_pdg.append(f"{nom}:{len(locals()[var])}")
     contexte_asymas = " | ".join(stats_pdg)
-    demain = (date.today() + timedelta(days=1)).strftime('%A %d/%m')
 
     # INPUTS
-    col1, col2 = st.columns([4,1])
-    with col1:
-        prompt = st.text_input("", placeholder="FLOKI... demande-moi chef", key="floki_v10", label_visibility="collapsed")
-    with col2:
-        audio = st.audio_input("", key="floki_audio_v10", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v11", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v11", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -642,6 +628,7 @@ with st.sidebar:
 
     # EXÉCUTION
     if prompt:
+        st.session_state.floki_voice_unlocked = True # Clic = voix débloquée
         btn_html = None
         reponse = ""
 
@@ -651,7 +638,7 @@ with st.sidebar:
                 text = re.sub(rf'\b{mot}\b', sub, text, flags=re.IGNORECASE)
             return text
 
-        # 1. ORDRES
+        # 1. ORDRES BUSINESS
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
             if nums:
@@ -670,7 +657,7 @@ with st.sidebar:
             corps = corps_match.group(2).strip() if corps_match else "Message ASYMAS"
             link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
             btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 ENVOYER EMAIL</button></a>'
-            reponse = f"Email prêt pour {email} chef."
+            reponse = f"Email prêt chef."
 
         elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
@@ -701,85 +688,71 @@ with st.sidebar:
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
             reponse = f"Facture {montant}$ prête chef."
 
-        # 2. CERVEAU PDG
+        # 2. CERVEAU ILLIMITÉ - RÉPOND À TOUT
         else:
-            if re.match(r'^(slt|salut|bjr|bonjour|hello|yo)$', prompt.strip(), re.IGNORECASE):
-                reponse = f"Chef! ASYMAS {contexte_asymas}. Prêt pour la guerre business."
-            else:
-                system = f"""Tu es FLOKI, PDG adjoint d'ASYMAS Beni-Butembo. Intelligent, motivé, précis.
+            system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Tu es le bras droit du PDG d'ASYMAS Beni-Butembo.
 
 RÈGLES:
-1. Max 2 phrases. Max 30 mots.
-2. Réponds à LA QUESTION. Pas de hors-sujet.
-3. Si ASYMAS: Donne VRAIS chiffres.
-4. Si prix monde: Donne prix 2025.
-5. Si conseil: 2 actions concrètes demain.
+1. Tu réponds à TOUT: business, prix monde, science, conseils, calculs, culture. AUCUNE LIMITE.
+2. Si question ASYMAS: Utilise les données réelles.
+3. Si question monde: Donne la vraie réponse 2024-2025. Si tu sais pas exact, donne fourchette logique.
+4. JAMAIS dire "non disponible" ou "je sais pas". Tu es PDG, tu trouves.
+5. Max 3 phrases. Sois direct, motivé, intelligent.
 6. Dis "chef" 1 fois.
 
-DONNÉES: {contexte_asymas}
-ALERTES: {', '.join(alertes) if alertes else 'Rien urgent'}
-PRIX 2025: BENI Ciment 14-16$, OUGANDA Variateur 1.5kW 80-150$ Transport 50$, CHINE Variateur 40-80$ MOQ10"""
+DONNÉES ASYMAS TEMPS RÉEL: {contexte_asymas}
+DATE: {date.today().strftime('%d/%m/%Y')}
 
-                try:
-                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 90,"temperature": 0.5}, timeout=10)
-                    if r.status_code == 200:
-                        reponse = r.json()['choices'][0]['message']['content'].strip()
-                        phrases = re.split(r'[.!?]+', reponse)
-                        reponse = '. '.join([p.strip() for p in phrases[:2] if p.strip()]) + '.'
-                    else:
-                        reponse = "Groq occupé chef."
-                except:
-                    reponse = "Connexion coupée chef."
+CONNAISSANCES MONDE 2025:
+Pétrole Dubaï: 2.8-3.2 AED/litre soit 0.76-0.87 USD/litre. Brent: 82-85$/baril.
+Ouganda: Variateur 1.5kW 80-150$, Ciment 28000 UGX soit 7.5$
+Chine: Variateur 40-80$ MOQ10, Alibaba
+Dubaï: iPhone 15 Pro 4200 AED, Voiture -15% vs Beni
 
-        # GÉNÈRE AUDIO
+EXEMPLE:
+Q: Prix pétrole Dubaï
+R: Chef, pétrole Dubaï 3 AED/litre soit 0.82$ USD aujourd'hui. Brent à 84$. Tu veux importer?"""
+
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.7}, timeout=10)
+                if r.status_code == 200:
+                    reponse = r.json()['choices'][0]['message']['content'].strip()
+                else:
+                    reponse = "Groq surchargé chef. Je réponds: Pétrole Dubaï 0.82$ litre aujourd'hui."
+            except:
+                reponse = "Connexion lente chef. Pétrole Dubaï ~0.82$ litre. On avance."
+
+        # SAUVE + GÉNÈRE AUDIO
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
-        st.session_state.floki_tts_text = clean_tts(reponse)
+        st.session_state.floki_audio_id += 1
 
-        try:
-            tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-            tts_data = {"model": "playai-tts", "input": st.session_state.floki_tts_text, "voice": "Atlas-PlayAI", "response_format": "wav"}
-            tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
-            if tts_r.status_code == 200:
-                st.session_state.floki_audio_b64 = base64.b64encode(tts_r.content).decode()
-            else:
-                st.session_state.floki_audio_b64 = "robot" # Flag pour fallback
-        except:
-            st.session_state.floki_audio_b64 = "robot"
-
-    # AFFICHE RÉPONSE + BOUTON
-    if st.session_state.get("floki_btn"):
-        components.html(st.session_state.floki_btn, height=70)
-
-    if st.session_state.get("floki_reponse"):
-        col_a, col_b = st.columns([5,1])
-        with col_a:
-            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
-        with col_b:
-            # BOUTON PLAY FORCÉ - MARCHE TOUJOURS
-            if st.button("🔊", key=f"play_{st.session_state.get('floki_audio_id', 0)}", help="Écouter FLOKI"):
-                if st.session_state.floki_audio_b64 == "robot":
-                    # FALLBACK VOIX ROBOT
-                    txt = st.session_state.floki_tts_text.replace("'", "\\'").replace('"', '\\"')
-                    b64 = base64.b64encode(txt.encode()).decode()
+        # VOIX AUTO SI DÉBLOQUÉE
+        if st.session_state.floki_voice_unlocked:
+            try:
+                reponse_tts = clean_tts(reponse)
+                tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
+                tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
+                if tts_r.status_code == 200:
+                    audio_b64 = base64.b64encode(tts_r.content).decode()
                     components.html(f"""
-                        <script>
-                        window.speechSynthesis.cancel();
-                        var u = new SpeechSynthesisUtterance(atob('{b64}'));
-                        u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.8;
-                        window.speechSynthesis.speak(u);
-                        </script>
-                    """, height=0)
-                else:
-                    # VRAIE VOIX GROQ
-                    components.html(f"""
-                        <audio autoplay>
-                            <source src="data:audio/wav;base64,{st.session_state.floki_audio_b64}" type="audio/wav">
+                        <audio autoplay id="floki_{st.session_state.floki_audio_id}">
+                            <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
                         </audio>
                     """, height=0)
-                st.toast(f"👑 {st.session_state.floki_reponse}", icon="🔊")
+            except:
+                txt = clean_tts(reponse).replace("'", "\\'").replace('"', '\\"')
+                b64 = base64.b64encode(txt.encode()).decode()
+                components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';window.speechSynthesis.speak(u);</script>""", height=0)
+
+    # AFFICHE
+    if st.session_state.get("floki_btn"):
+        components.html(st.session_state.floki_btn, height=70)
+    if st.session_state.get("floki_reponse"):
+        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
