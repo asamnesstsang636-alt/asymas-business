@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import requests
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
