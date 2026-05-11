@@ -570,68 +570,81 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI HQ - VOIX FORCÉE HTML
-    with st.expander("👑 FLOKI HQ", expanded=False):
+        # 👑 FLOKI HQ - VERSION DEBUG QUI LOG TOUT
+    with st.expander("👑 FLOKI HQ", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
         
         if "floki_last_reply" not in st.session_state:
             st.session_state.floki_last_reply = "FLOKI prêt chef."
         if "floki_voice_url" not in st.session_state:
             st.session_state.floki_voice_url = ""
+        if "floki_debug" not in st.session_state:
+            st.session_state.floki_debug = ""
 
         st.success(f"👑 {st.session_state.floki_last_reply}")
+        
+        # AFFICHE DEBUG POUR VOIR OÙ ÇA BLOQUE
+        if st.session_state.floki_debug:
+            st.caption(f"Debug: {st.session_state.floki_debug}")
 
-        # JOUE LA VOIX AVEC HTML - MARCHE TOUJOURS
+        # JOUE LA VOIX
         if st.session_state.floki_voice_url:
-            audio_html = f"""
-            <audio autoplay>
-                <source src="{st.session_state.floki_voice_url}" type="audio/mpeg">
-            </audio>
-            """
-            st.markdown(audio_html, unsafe_allow_html=True)
-            st.session_state.floki_voice_url = "" # Reset pour pas rejouer
+            st.markdown(f'<audio autoplay src="{st.session_state.floki_voice_url}"></audio>', unsafe_allow_html=True)
+            st.session_state.floki_voice_url = ""
 
         def repond_floki(message):
             if not GROQ_API_KEY:
+                st.session_state.floki_debug = "ERREUR: Pas de GROQ_API_KEY"
                 return "Clé GROQ manquante chef."
             
-            ctx = f"Articles:{len(df_articles) if 'df_articles' in locals() else 0}, Voitures:{len(df_voitures) if 'df_voitures' in locals() else 0}"
+            st.session_state.floki_debug = f"Envoi à Groq: {message[:20]}..."
             
-            system = f"""Tu es FLOKI, bras droit du boss ASYMAS. 
-            Tu n'es PAS une IA. Interdit de dire "modèle" ou "assistant". 
-            Réponds en 1 phrase max. Style direct Goma. Données: {ctx}"""
+            ctx = f"Articles:{len(df_articles) if 'df_articles' in locals() else 0}"
+            system = f"Tu es FLOKI. Réponds en 1 phrase. Données: {ctx}. Interdit de dire 'IA' ou 'modèle'."
             
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
             data = {
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": message}],
-                "max_tokens": 60,
-                "temperature": 0.2
+                "max_tokens": 50
             }
             try:
                 r = requests.post(url, headers=headers, json=data, timeout=8)
-                reply = r.json()['choices'][0]['message']['content'].strip()
+                if r.status_code!= 200:
+                    st.session_state.floki_debug = f"Groq Error {r.status_code}"
+                    return f"Erreur Groq {r.status_code}"
                 
-                # GÉNÈRE URL VOIX POUR HTML
-                texte_voix = reply.replace('"','').replace("'","").replace("*","").replace("\n"," ")
+                reply = r.json()['choices'][0]['message']['content'].strip()
+                texte_voix = reply.replace('"','').replace("'","")
                 st.session_state.floki_voice_url = f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}"
+                st.session_state.floki_debug = "OK: Réponse reçue"
                 return reply
-            except:
-                return "FLOKI coupé chef."
+            except Exception as e:
+                st.session_state.floki_debug = f"Exception: {str(e)[:50]}"
+                return "FLOKI HS chef."
 
-        # MICRO
-        audio_val = st.audio_input("🎙️", key="floki_mic", label_visibility="collapsed")
+        # MICRO AVEC DEBUG
+        audio_val = st.audio_input("🎙️ Max 10sec", key="floki_mic")
         if audio_val:
-            with st.spinner("..."):
-                files = {"file": ("a.wav", audio_val, "audio/wav")}
-                headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-                data = {"model": "whisper-large-v3"}
-                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data)
-                transcription = r.json().get("text", "")
-                if transcription:
+            st.session_state.floki_debug = "Transcription..."
+            files = {"file": ("a.wav", audio_val, "audio/wav")}
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            data = {"model": "whisper-large-v3", "language": "fr"}
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                transcription = r.json().get("text", "").strip()
+                
+                if not transcription:
+                    st.session_state.floki_debug = "Whisper: Texte vide"
+                    st.session_state.floki_last_reply = "J'ai rien entendu chef."
+                else:
+                    st.session_state.floki_debug = f"Transcrit: {transcription[:20]}"
                     st.session_state.floki_last_reply = repond_floki(transcription)
-                    st.rerun()
+                st.rerun()
+            except Exception as e:
+                st.session_state.floki_debug = f"Whisper Error: {str(e)[:50]}"
+                st.rerun()
 
         # TEXTE
         prompt = st.chat_input("Parle à FLOKI...", key="floki_chat")
