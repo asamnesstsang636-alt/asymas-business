@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V11 - ILLIMITÉ + SON AUTO + VRAI PDG
+        # 👑 FLOKI V12 - ILLIMITÉ + VOIX 1 CLIC POUR TOUJOURS
     from urllib.parse import quote
     import re
     import base64
@@ -588,18 +588,22 @@ with st.sidebar:
         st.session_state.floki_reponse = ""
     if "floki_audio_id" not in st.session_state:
         st.session_state.floki_audio_id = 0
-    if "floki_voice_unlocked" not in st.session_state:
-        st.session_state.floki_voice_unlocked = False
+    if "floki_voice_enabled" not in st.session_state:
+        st.session_state.floki_voice_enabled = False
 
-    # DÉBLOQUE LA VOIX AU 1ER CLIC N'IMPORTE OÙ
-    if not st.session_state.floki_voice_unlocked:
-        components.html("""
-            <script>
-            document.addEventListener('click', function() {
-                window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
-            }, {once: true});
-            </script>
-        """, height=0)
+    # BOUTON UNIQUE POUR DÉBLOQUER LA VOIX À VIE
+    if not st.session_state.floki_voice_enabled:
+        st.warning("👇 CLIQUE ICI 1 SEULE FOIS POUR ACTIVER LA VOIX DE FLOKI À VIE")
+        if st.button("🔊 ACTIVER VOIX FLOKI", type="primary", use_container_width=True):
+            st.session_state.floki_voice_enabled = True
+            # Joue un son silencieux pour débloquer Chrome
+            components.html("""
+                <audio autoplay>
+                    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
+                </audio>
+            """, height=0)
+            st.rerun()
+        st.stop() # Bloque le reste tant que voix pas activée
 
     # ANALYSE ASYMAS
     ASYMAS = {}
@@ -611,8 +615,8 @@ with st.sidebar:
     contexte_asymas = " | ".join(stats_pdg)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v11", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v11", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v12", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v12", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -628,17 +632,16 @@ with st.sidebar:
 
     # EXÉCUTION
     if prompt:
-        st.session_state.floki_voice_unlocked = True # Clic = voix débloquée
         btn_html = None
         reponse = ""
 
         def clean_tts(text):
-            remplacements = {"Jordan": "basket", "Nike": "marque", "Toyota": "voiture", "Coca": "boisson"}
+            remplacements = {"Jordan": "basket", "Nike": "marque", "Toyota": "voiture"}
             for mot, sub in remplacements.items():
                 text = re.sub(rf'\b{mot}\b', sub, text, flags=re.IGNORECASE)
             return text
 
-        # 1. ORDRES BUSINESS
+        # 1. ORDRES
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
             if nums:
@@ -649,7 +652,7 @@ with st.sidebar:
                 texte = texte_match.group(2).strip() if texte_match else "Message ASYMAS"
                 link = f"https://wa.me/{numero}?text={quote(texte)}"
                 btn_html = f'<a href="{link}" target="_blank" rel="noopener noreferrer"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;cursor:pointer;">📲 ENVOYER WHATSAPP +{numero}</button></a>'
-                reponse = f"WhatsApp prêt chef. Clique envoyer."
+                reponse = f"WhatsApp prêt chef."
 
         elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
             email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
@@ -688,30 +691,26 @@ with st.sidebar:
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
             reponse = f"Facture {montant}$ prête chef."
 
-        # 2. CERVEAU ILLIMITÉ - RÉPOND À TOUT
+        # 2. CERVEAU ILLIMITÉ
         else:
-            system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Tu es le bras droit du PDG d'ASYMAS Beni-Butembo.
+            system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS Beni-Butembo.
 
 RÈGLES:
 1. Tu réponds à TOUT: business, prix monde, science, conseils, calculs, culture. AUCUNE LIMITE.
 2. Si question ASYMAS: Utilise les données réelles.
-3. Si question monde: Donne la vraie réponse 2024-2025. Si tu sais pas exact, donne fourchette logique.
-4. JAMAIS dire "non disponible" ou "je sais pas". Tu es PDG, tu trouves.
+3. Si question monde: Donne la vraie réponse 2025. Si tu sais pas exact, donne fourchette logique.
+4. JAMAIS dire "non disponible". Tu trouves toujours.
 5. Max 3 phrases. Sois direct, motivé, intelligent.
 6. Dis "chef" 1 fois.
 
-DONNÉES ASYMAS TEMPS RÉEL: {contexte_asymas}
+DONNÉES ASYMAS: {contexte_asymas}
 DATE: {date.today().strftime('%d/%m/%Y')}
 
-CONNAISSANCES MONDE 2025:
-Pétrole Dubaï: 2.8-3.2 AED/litre soit 0.76-0.87 USD/litre. Brent: 82-85$/baril.
-Ouganda: Variateur 1.5kW 80-150$, Ciment 28000 UGX soit 7.5$
-Chine: Variateur 40-80$ MOQ10, Alibaba
-Dubaï: iPhone 15 Pro 4200 AED, Voiture -15% vs Beni
-
-EXEMPLE:
-Q: Prix pétrole Dubaï
-R: Chef, pétrole Dubaï 3 AED/litre soit 0.82$ USD aujourd'hui. Brent à 84$. Tu veux importer?"""
+CONNAISSANCES 2025:
+Pétrole Dubaï: 2.8-3.2 AED/litre soit 0.76-0.87 USD. Brent: 82-85$/baril.
+USD/CNY: 6.8-7.2 CNY pour 1 USD.
+Ouganda: Variateur 1.5kW 80-150$, Ciment 28000 UGX.
+Chine: Variateur 40-80$ MOQ10."""
 
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
@@ -720,33 +719,32 @@ R: Chef, pétrole Dubaï 3 AED/litre soit 0.82$ USD aujourd'hui. Brent à 84$. T
                 if r.status_code == 200:
                     reponse = r.json()['choices'][0]['message']['content'].strip()
                 else:
-                    reponse = "Groq surchargé chef. Je réponds: Pétrole Dubaï 0.82$ litre aujourd'hui."
+                    reponse = "Groq surchargé chef. Je réponds: USD/CNY ~7.0."
             except:
-                reponse = "Connexion lente chef. Pétrole Dubaï ~0.82$ litre. On avance."
+                reponse = "Connexion lente chef. USD/CNY ~7.0."
 
-        # SAUVE + GÉNÈRE AUDIO
+        # SAUVE + PARLE AUTO
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
         st.session_state.floki_audio_id += 1
 
-        # VOIX AUTO SI DÉBLOQUÉE
-        if st.session_state.floki_voice_unlocked:
-            try:
-                reponse_tts = clean_tts(reponse)
-                tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
-                tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
-                if tts_r.status_code == 200:
-                    audio_b64 = base64.b64encode(tts_r.content).decode()
-                    components.html(f"""
-                        <audio autoplay id="floki_{st.session_state.floki_audio_id}">
-                            <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
-                        </audio>
-                    """, height=0)
-            except:
-                txt = clean_tts(reponse).replace("'", "\\'").replace('"', '\\"')
-                b64 = base64.b64encode(txt.encode()).decode()
-                components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';window.speechSynthesis.speak(u);</script>""", height=0)
+        # VOIX AUTO - MARCHE CAR DÉBLOQUÉE
+        try:
+            reponse_tts = clean_tts(reponse)
+            tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+            tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
+            tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
+            if tts_r.status_code == 200:
+                audio_b64 = base64.b64encode(tts_r.content).decode()
+                components.html(f"""
+                    <audio autoplay id="floki_{st.session_state.floki_audio_id}">
+                        <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
+                    </audio>
+                """, height=0)
+        except:
+            txt = clean_tts(reponse).replace("'", "\\'").replace('"', '\\"')
+            b64 = base64.b64encode(txt.encode()).decode()
+            components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';window.speechSynthesis.speak(u);</script>""", height=0)
 
     # AFFICHE
     if st.session_state.get("floki_btn"):
