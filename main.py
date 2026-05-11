@@ -570,14 +570,14 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V12 - ILLIMITÉ + VOIX 1 CLIC POUR TOUJOURS
+        # 👑 FLOKI V13 FINAL - VOIX ROBOT 100% + CERVEAU ILLIMITÉ
     from urllib.parse import quote
     import re
     import base64
     import requests
     import streamlit.components.v1 as components
     import pandas as pd
-    from datetime import date, timedelta
+    from datetime import date
 
     st.divider()
 
@@ -586,24 +586,8 @@ with st.sidebar:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
-    if "floki_audio_id" not in st.session_state:
-        st.session_state.floki_audio_id = 0
-    if "floki_voice_enabled" not in st.session_state:
-        st.session_state.floki_voice_enabled = False
-
-    # BOUTON UNIQUE POUR DÉBLOQUER LA VOIX À VIE
-    if not st.session_state.floki_voice_enabled:
-        st.warning("👇 CLIQUE ICI 1 SEULE FOIS POUR ACTIVER LA VOIX DE FLOKI À VIE")
-        if st.button("🔊 ACTIVER VOIX FLOKI", type="primary", use_container_width=True):
-            st.session_state.floki_voice_enabled = True
-            # Joue un son silencieux pour débloquer Chrome
-            components.html("""
-                <audio autoplay>
-                    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
-                </audio>
-            """, height=0)
-            st.rerun()
-        st.stop() # Bloque le reste tant que voix pas activée
+    if "floki_speak_id" not in st.session_state:
+        st.session_state.floki_speak_id = 0
 
     # ANALYSE ASYMAS
     ASYMAS = {}
@@ -615,8 +599,8 @@ with st.sidebar:
     contexte_asymas = " | ".join(stats_pdg)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v12", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v12", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v13", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v13", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -628,18 +612,13 @@ with st.sidebar:
                 r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
             if r.status_code == 200:
                 prompt = r.json().get("text", "").strip()
-        except: pass
+        except: 
+            st.error("Micro error chef")
 
     # EXÉCUTION
     if prompt:
         btn_html = None
         reponse = ""
-
-        def clean_tts(text):
-            remplacements = {"Jordan": "basket", "Nike": "marque", "Toyota": "voiture"}
-            for mot, sub in remplacements.items():
-                text = re.sub(rf'\b{mot}\b', sub, text, flags=re.IGNORECASE)
-            return text
 
         # 1. ORDRES
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
@@ -693,58 +672,58 @@ with st.sidebar:
 
         # 2. CERVEAU ILLIMITÉ
         else:
-            system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS Beni-Butembo.
+            if re.match(r'^(slt|salut|bjr|bonjour|hello|yo|parle)$', prompt.strip(), re.IGNORECASE):
+                reponse = f"Chef! ASYMAS {contexte_asymas}. Je réponds à tout. On frappe quoi aujourd'hui?"
+            else:
+                system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS.
 
 RÈGLES:
-1. Tu réponds à TOUT: business, prix monde, science, conseils, calculs, culture. AUCUNE LIMITE.
-2. Si question ASYMAS: Utilise les données réelles.
-3. Si question monde: Donne la vraie réponse 2025. Si tu sais pas exact, donne fourchette logique.
-4. JAMAIS dire "non disponible". Tu trouves toujours.
-5. Max 3 phrases. Sois direct, motivé, intelligent.
-6. Dis "chef" 1 fois.
+1. Tu réponds à TOUT: business, prix monde, science, conseils, calculs. AUCUNE LIMITE.
+2. Si ASYMAS: Donne VRAIS chiffres.
+3. Si monde: Donne réponse 2025. JAMAIS "non disponible".
+4. Max 3 phrases. Sois direct, motivé.
+5. Dis "chef" 1 fois.
 
 DONNÉES ASYMAS: {contexte_asymas}
 DATE: {date.today().strftime('%d/%m/%Y')}
 
 CONNAISSANCES 2025:
-Pétrole Dubaï: 2.8-3.2 AED/litre soit 0.76-0.87 USD. Brent: 82-85$/baril.
-USD/CNY: 6.8-7.2 CNY pour 1 USD.
-Ouganda: Variateur 1.5kW 80-150$, Ciment 28000 UGX.
+Pétrole Dubaï: 0.82$ USD/litre. Brent: 84$/baril.
+USD/CNY: 7.0 CNY pour 1 USD.
+Ouganda: Variateur 1.5kW 80-150$, Ciment 7.5$.
 Chine: Variateur 40-80$ MOQ10."""
 
-            try:
-                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.7}, timeout=10)
-                if r.status_code == 200:
-                    reponse = r.json()['choices'][0]['message']['content'].strip()
-                else:
-                    reponse = "Groq surchargé chef. Je réponds: USD/CNY ~7.0."
-            except:
-                reponse = "Connexion lente chef. USD/CNY ~7.0."
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.7}, timeout=10)
+                    if r.status_code == 200:
+                        reponse = r.json()['choices'][0]['message']['content'].strip()
+                    else:
+                        reponse = "Groq occupé chef. USD/CNY 7.0. Pétrole Dubaï 0.82$."
+                except:
+                    reponse = "Connexion lente chef. Je réponds quand même: USD/CNY 7.0."
 
-        # SAUVE + PARLE AUTO
+        # SAUVE
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
-        st.session_state.floki_audio_id += 1
+        st.session_state.floki_speak_id += 1
 
-        # VOIX AUTO - MARCHE CAR DÉBLOQUÉE
-        try:
-            reponse_tts = clean_tts(reponse)
-            tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-            tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
-            tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
-            if tts_r.status_code == 200:
-                audio_b64 = base64.b64encode(tts_r.content).decode()
-                components.html(f"""
-                    <audio autoplay id="floki_{st.session_state.floki_audio_id}">
-                        <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
-                    </audio>
-                """, height=0)
-        except:
-            txt = clean_tts(reponse).replace("'", "\\'").replace('"', '\\"')
-            b64 = base64.b64encode(txt.encode()).decode()
-            components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';window.speechSynthesis.speak(u);</script>""", height=0)
+        # VOIX ROBOT FORCÉE - MARCHE TOUJOURS
+        txt_clean = re.sub(r'[*#_`]', '', reponse) # Enlève markdown
+        txt_clean = txt_clean.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
+        b64 = base64.b64encode(txt_clean.encode()).decode()
+        components.html(f"""
+            <script>
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(atob('{b64}'));
+            u.lang = 'fr-FR'; 
+            u.rate = 1.0; 
+            u.pitch = 0.9;
+            u.volume = 1.0;
+            window.speechSynthesis.speak(u);
+            </script>
+        """, height=0)
 
     # AFFICHE
     if st.session_state.get("floki_btn"):
