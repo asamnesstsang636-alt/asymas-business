@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V8 - CERVEAU PDG ASYMAS + CONSEILLER DEMAIN
+        # 👑 FLOKI V9 - INTELLIGENT + VOIX AUTO + NE PARLE PLUS DANS LE VIDE
     from urllib.parse import quote
     import re
     import base64
@@ -586,16 +586,10 @@ with st.sidebar:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
-    if "floki_voice_on" not in st.session_state:
-        st.session_state.floki_voice_on = False
+    if "floki_audio_id" not in st.session_state:
+        st.session_state.floki_audio_id = 0
 
-    # BOUTON VOIX
-    if not st.session_state.floki_voice_on:
-        if st.button("🔊 ACTIVER LA VOIX DE FLOKI", type="primary", use_container_width=True):
-            st.session_state.floki_voice_on = True
-            st.rerun()
-
-    # ANALYSE ASYMAS AUTOMATIQUE - CERVEAU PDG
+    # ANALYSE ASYMAS PDG
     ASYMAS = {}
     stats_pdg = []
     alertes = []
@@ -607,15 +601,13 @@ with st.sidebar:
             lignes = len(df)
             stats_pdg.append(f"{nom}:{lignes}")
 
-            # ALERTES AUTO PDG
+            # ALERTES AUTO
             if nom == "ARTICLES":
                 try:
-                    if 'quantite' in df.columns and 'prix' in df.columns:
+                    if 'quantite' in df.columns:
                         stock_faible = df[df['quantite'] < 5]
                         if len(stock_faible) > 0:
-                            alertes.append(f"STOCK CRITIQUE: {len(stock_faible)} articles <5 pièces")
-                        valeur_stock = (df['quantite'] * df['prix']).sum()
-                        stats_pdg.append(f"ValeurStock:{valeur_stock:,.0f}$")
+                            alertes.append(f"{len(stock_faible)} articles stock bas")
                 except: pass
 
             if nom == "FACTURES":
@@ -625,27 +617,14 @@ with st.sidebar:
                         factures_7j = df[df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
                         ca_semaine = factures_7j['montant'].sum()
                         stats_pdg.append(f"CA_7j:{ca_semaine:,.0f}$")
-                        if ca_semaine < 1000:
-                            alertes.append("CA SEMAINE FAIBLE <1000$")
-                except: pass
-
-            if nom == "COMPTA":
-                try:
-                    if 'montant' in df.columns and 'type' in df.columns:
-                        entrees = df[df['type'].str.contains('entree|vente', case=False, na=False)]['montant'].sum()
-                        sorties = df[df['type'].str.contains('sortie|achat', case=False, na=False)]['montant'].sum()
-                        marge = entrees - sorties
-                        stats_pdg.append(f"Marge:{marge:,.0f}$")
-                        if marge < 0:
-                            alertes.append("MARGE NÉGATIVE URGENT")
                 except: pass
 
     contexte_asymas = " | ".join(stats_pdg)
     demain = (date.today() + timedelta(days=1)).strftime('%A %d/%m')
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... demande conseil, ordres, prix...", key="floki_v8", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v8", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... parle-moi chef", key="floki_v9", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v9", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -670,7 +649,7 @@ with st.sidebar:
                 text = re.sub(rf'\b{mot}\b', sub, text, flags=re.IGNORECASE)
             return text
 
-        # 1. ORDRES BUSINESS
+        # 1. ORDRES
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
             if nums:
@@ -681,7 +660,7 @@ with st.sidebar:
                 texte = texte_match.group(2).strip() if texte_match else "Message ASYMAS"
                 link = f"https://wa.me/{numero}?text={quote(texte)}"
                 btn_html = f'<a href="{link}" target="_blank" rel="noopener noreferrer"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;cursor:pointer;">📲 ENVOYER WHATSAPP +{numero}</button></a>'
-                reponse = f"Mission acceptée chef! WhatsApp armé. Feu!"
+                reponse = f"WhatsApp prêt chef. Clique envoyer."
 
         elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
             email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
@@ -689,7 +668,7 @@ with st.sidebar:
             corps = corps_match.group(2).strip() if corps_match else "Message ASYMAS"
             link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
             btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 ENVOYER EMAIL</button></a>'
-            reponse = f"Email verrouillé chef. Tirez!"
+            reponse = f"Email prêt pour {email} chef."
 
         elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
@@ -700,7 +679,7 @@ with st.sidebar:
                 texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
                 link = f"sms:+{numero}?body={quote(texte)}"
                 btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 ENVOYER SMS</button></a>'
-                reponse = f"SMS chargé chef. Envoi!"
+                reponse = f"SMS prêt chef."
 
         elif re.search(r'(appelle|appel).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
@@ -709,7 +688,7 @@ with st.sidebar:
                 if len(numero) == 9: numero = '243' + numero
                 link = f"tel:+{numero}"
                 btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER +{numero}</button></a>'
-                reponse = f"Connexion directe chef. Décrochez!"
+                reponse = f"Appel prêt chef."
 
         elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE):
             match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE)
@@ -718,69 +697,74 @@ with st.sidebar:
             note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
             b64_note = base64.b64encode(note.encode()).decode()
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
-            reponse = f"Facture {montant}$ bouclée chef. Encaissez!"
+            reponse = f"Facture {montant}$ prête chef."
 
-        # 2. CERVEAU PDG - CONSEIL DEMAIN
+        # 2. CERVEAU PDG - RÉPOND NORMALEMENT
         else:
-            system = f"""Tu es FLOKI, bras droit PDG d'ASYMAS Beni-Butembo. Tu es stratège, motivé, tu connais tout.
+            # Détecte si c'est juste un salut
+            if re.match(r'^(slt|salut|bjr|bonjour|hello|yo)$', prompt.strip(), re.IGNORECASE):
+                reponse = f"Chef! ASYMAS {contexte_asymas}. Prêt pour la guerre business."
+            else:
+                system = f"""Tu es FLOKI, PDG adjoint d'ASYMAS Beni-Butembo. Tu es intelligent, motivé, précis.
 
-MISSION: Conseiller le PDG pour DEMAIN {demain}.
+RÈGLES ABSOLUES:
+1. Max 2 phrases. Max 30 mots.
+2. Réponds à LA QUESTION posée. Pas de "Commander Ouganda" si on dit salut.
+3. Si question ASYMAS: Donne VRAIS chiffres.
+4. Si question prix monde: Donne prix 2025.
+5. Si question conseil: Donne 2 actions concrètes demain.
+6. Dis "chef" 1 fois.
 
-RÈGLES:
-1. Max 3 phrases. Max 35 mots.
-2. Commence par "Chef" ou "PDG".
-3. Donne 1-3 actions CONCRÈTES basées sur les données.
-4. Sois motivant: "On frappe", "Priorité", "Urgent", "On encaisse".
-5. Si question prix: Donne prix Beni/Ouganda/Chine 2025.
+DONNÉES ASYMAS: {contexte_asymas}
+ALERTES: {', '.join(alertes) if alertes else 'Rien urgent'}
 
-DONNÉES ASYMAS TEMPS RÉEL: {contexte_asymas}
-ALERTES URGENTES: {', '.join(alertes) if alertes else 'Aucune'}
+PRIX 2025:
+BENI: Ciment 14-16$, Ballot 350-450$, Rav4 9000-12000$
+OUGANDA: Variateur 1.5kW 80-150$, Moteur 2HP 120-200$, Ciment -30%, Transport 50$
+CHINE: Variateur 40-80$ MOQ10, -40% vs local
+DUBAÏ: Voiture -15%, Cargo 5$/kg"""
 
-PRIX MARCHÉ 2025:
-BENI: Ciment 14-16$, Ballot friperie 350-450$, Rav4 9000-12000$
-OUGANDA: Variateur 1.5kW 80-150$, Moteur 2HP 120-200$, Ciment -30%, Transport Beni 50$
-CHINE: Variateur 40-80$ MOQ10, Alibaba -40%, DDP Beni +60%
-DUBAÏ: Voiture -15%, Électronique -20%, Cargo 5$/kg
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 90,"temperature": 0.5}, timeout=10)
+                    if r.status_code == 200:
+                        reponse = r.json()['choices'][0]['message']['content'].strip()
+                        phrases = re.split(r'[.!?]+', reponse)
+                        reponse = '. '.join([p.strip() for p in phrases[:2] if p.strip()]) + '.'
+                    else:
+                        reponse = "Groq occupé chef."
+                except:
+                    reponse = "Connexion coupée chef."
 
-EXEMPLES:
-Q: Que faire demain
-R: Chef, stock critique sur 3 articles. Priorité: Commander Ouganda -30%. CA semaine faible 800$. Relance clients demain. On frappe fort.
-
-Q: Prix variateur Ouganda
-R: Chef, variateur 1.5kW Kampala 80-150$. Transport Beni 50$. Marge +40% vs Beni. J'importe?"""
-
-            try:
-                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 100,"temperature": 0.7}, timeout=10)
-                if r.status_code == 200:
-                    reponse = r.json()['choices'][0]['message']['content'].strip()
-                    phrases = re.split(r'[.!?]+', reponse)
-                    reponse = '. '.join([p.strip() for p in phrases[:3] if p.strip()]) + '.'
-                else:
-                    reponse = "Groq occupé chef. On relance demain."
-            except:
-                reponse = "Connexion coupée chef. Priorité: Vérifier internet demain."
-
-        # AFFICHE
+        # AFFICHE + VOIX AUTO
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
+        st.session_state.floki_audio_id += 1
         st.toast(f"👑 {reponse}", icon="🔊")
 
-        # VOIX SI ACTIVÉE
-        if st.session_state.floki_voice_on:
-            try:
-                reponse_tts = clean_tts(reponse)
-                tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
-                tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
-                if tts_r.status_code == 200:
-                    audio_b64 = base64.b64encode(tts_r.content).decode()
-                    components.html(f"""<audio autoplay><source src="data:audio/wav;base64,{audio_b64}" type="audio/wav"></audio>""", height=0)
-            except:
-                txt = reponse.replace("'", "\\'").replace('"', '\\"')
-                b64 = base64.b64encode(txt.encode()).decode()
-                components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';u.rate=1.0;window.speechSynthesis.speak(u);</script>""", height=0)
+        # VOIX AUTO - MARCHE APRÈS 1ER CLIC N'IMPORTE OÙ
+        try:
+            reponse_tts = clean_tts(reponse)
+            tts_headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+            tts_data = {"model": "playai-tts", "input": reponse_tts, "voice": "Atlas-PlayAI", "response_format": "wav"}
+            tts_r = requests.post("https://api.groq.com/openai/v1/audio/speech", headers=tts_headers, json=tts_data, timeout=15)
+            if tts_r.status_code == 200:
+                audio_b64 = base64.b64encode(tts_r.content).decode()
+                components.html(f"""
+                    <audio autoplay id="floki_{st.session_state.floki_audio_id}">
+                        <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
+                    </audio>
+                    <script>
+                    document.getElementById('floki_{st.session_state.floki_audio_id}').play().catch(e => {{
+                        console.log('Clique une fois sur la page pour activer la voix chef');
+                    }});
+                    </script>
+                """, height=0)
+        except:
+            txt = reponse.replace("'", "\\'").replace('"', '\\"')
+            b64 = base64.b64encode(txt.encode()).decode()
+            components.html(f"""<script>window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(atob('{b64}'));u.lang='fr-FR';u.rate=1.0;window.speechSynthesis.speak(u);</script>""", height=0)
 
     # AFFICHE
     if st.session_state.get("floki_btn"):
