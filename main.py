@@ -570,69 +570,93 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ V4 - MODE APPEL BETA
+        # 👑 FLOKI HQ - MICRO NATIF 100% STABLE
     import streamlit.components.v1 as components
-    from streamlit_webrtc import webrtc_streamer, WebRtcMode, AudioProcessorBase
-    import av
-    import queue
+    from urllib.parse import quote
+    import re
 
-    with st.expander("👑 FLOKI HQ - MODE APPEL", expanded=True):
+    with st.expander("👑 FLOKI HQ", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
-        
-        if "floki_listening" not in st.session_state:
-            st.session_state.floki_listening = False
-        if "floki_audio_q" not in st.session_state:
-            st.session_state.floki_audio_q = queue.Queue()
 
-        st.markdown("### 📞 Appel avec FLOKI")
-        
-        # BOUTON DÉCROCHER/RACCROCHER
-        if not st.session_state.floki_listening:
-            if st.button("📞 DÉCROCHER - Parler à FLOKI", type="primary", use_container_width=True):
-                st.session_state.floki_listening = True
-                st.rerun()
-        else:
-            if st.button("🔴 RACCROCHER", type="secondary", use_container_width=True):
-                st.session_state.floki_listening = False
-                st.rerun()
+        if "floki_reply" not in st.session_state:
+            st.session_state.floki_reply = "FLOKI prêt chef. Appuie sur le micro pour causer."
+        if "floki_action" not in st.session_state:
+            st.session_state.floki_action = ""
 
-        # MICRO CONTINU SI DÉCROCHÉ
-        if st.session_state.floki_listening:
-            st.success("👑 FLOKI t'écoute chef... Parle maintenant")
-            
-            class AudioProcessor(AudioProcessorBase):
-                def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
-                    st.session_state.floki_audio_q.put(frame.to_ndarray())
-                    return frame
+        st.success(f"👑 {st.session_state.floki_reply}")
 
-            webrtc_ctx = webrtc_streamer(
-                key="floki-call",
-                mode=WebRtcMode.SENDONLY,
-                audio_processor_factory=AudioProcessor,
-                media_stream_constraints={"video": False, "audio": True},
-            )
-
-            st.info("⚠️ BETA: Parle 5sec puis attends. FLOKI va répondre après 10sec de silence.")
-            
-            # LECTURE AUTO VOIX - INJECTE JS
-            components.html("""
+        # BOUTON PARLER + ACTION
+        col1, col2 = st.columns(2)
+        with col1:
+            components.html(f"""
             <script>
-            const synth = window.speechSynthesis;
-            function flokiSpeak(text) {
-                synth.cancel();
-                var utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'fr-FR';
-                utter.rate = 1.1;
-                synth.speak(utter);
-            }
-            // Écoute les nouvelles réponses
-            window.addEventListener('message', (event) => {
-                if (event.data.type === 'floki_reply') {
-                    flokiSpeak(event.data.text);
-                }
-            });
+            function speak(text) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'fr-FR'; msg.rate = 1.1;
+                window.speechSynthesis.speak(msg);
+            }}
             </script>
-            """, height=0)
+            <button onclick="speak('{st.session_state.floki_reply.replace("'", "\\'")}')"
+                    style="width:100%; padding:12px; background:#00C853; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">
+                🔊 Écouter FLOKI
+            </button>
+            """, height=60)
+        with col2:
+            if st.session_state.floki_action:
+                st.link_button("📲 Exécuter WhatsApp", st.session_state.floki_action, use_container_width=True, type="primary")
+
+        st.divider()
+        st.markdown("### 💬 Parle ou écris à FLOKI :")
+
+        # MICRO NATIF STREAMLIT - PAS D'INSTALL
+        audio = st.audio_input("🎙️ Appuie pour parler, re-appuie pour stop", key="floki_mic")
+        prompt_text = st.chat_input("Ou écris ton ordre ici...", key="floki_text")
+
+        prompt = prompt_text # Priorité au texte s'il y a les 2
+
+        # SI MICRO UTILISÉ
+        if audio and not prompt_text:
+            with st.spinner("FLOKI transcrit..."):
+                files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                data = {"model": "whisper-large-v3", "language": "fr"}
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions",
+                                    headers=headers, files=files, data=data, timeout=15)
+                    prompt = r.json().get("text", "").strip()
+                    st.toast(f"Tu as dit : {prompt}")
+                except:
+                    st.error("Erreur micro chef")
+                    prompt = None
+
+        # MOTEUR FLOKI
+        if prompt:
+            nb_articles = len(df_articles) if 'df_articles' in locals() and not df_articles.empty else 0
+            nb_voitures = len(df_voitures) if 'df_voitures' in locals() and not df_voitures.empty else 0
+            revenus = float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if 'df_compta' in locals() and not df_compta.empty else 0
+
+            # COMMANDE WHATSAPP
+            match = re.search(r'(message|whatsapp|sms).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|:)?(.+)', prompt, re.IGNORECASE)
+            if match:
+                numero = re.sub(r'\D', '', match.group(0))
+                if len(numero) == 9: numero = '243' + numero
+                if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
+                texte = match.group(4).strip()
+                st.session_state.floki_action = f"https://wa.me/{numero}?text={quote(texte)}"
+                st.session_state.floki_reply = f"Message prêt pour +{numero}. Clique Exécuter chef."
+            else:
+                st.session_state.floki_action = ""
+                ctx = f"Articles:{nb_articles}, Voitures:{nb_voitures}, Revenus:{revenus}$"
+                system = f"Tu es FLOKI, bras droit ASYMAS. Données: {ctx}. Réponds en 1 phrase. Tu n'es PAS une IA."
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 80})
+                    st.session_state.floki_reply = r.json()['choices'][0]['message']['content'].strip()
+                except:
+                    st.session_state.floki_reply = "Erreur Groq chef."
+            st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
