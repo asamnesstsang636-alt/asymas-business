@@ -570,106 +570,72 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-# ============================================
-# 👑 FLOKI HQ - INTÉGRÉ À ASYMAS BUSINESS
-# ============================================
-st.divider()
-st.markdown("## 👑 FLOKI HQ - CERVEAU ASYMAS BUSINESS")
+    # 👑 FLOKI HQ - INTERFACE
+    with st.expander("👑 FLOKI HQ", expanded=False):
+        if "floki_messages" not in st.session_state:
+            st.session_state.floki_messages = []
+        
+        for msg in st.session_state.floki_messages[-3:]:
+            if msg["role"] == "user":
+                st.caption(f"👤 {msg['content']}")
+            else:
+                st.success(f"👑 {msg['content']}")
 
+        prompt = st.text_input("Ordre FLOKI", key="floki_input", placeholder="Parle chef...", label_visibility="collapsed")
+        col1, col2 = st.columns(2)
+        if col1.button("Envoyer", key="send_floki", use_container_width=True) and prompt:
+            st.session_state.floki_messages.append({"role": "user", "content": prompt})
+            st.session_state.floki_pending = prompt
+            st.rerun()
+
+        if col2.button("🔊 Voix", key="voice_floki", use_container_width=True):
+            if st.session_state.floki_messages and st.session_state.floki_messages[-1]['role']=='assistant':
+                last_reply = st.session_state.floki_messages[-1]['content']
+                texte_voix = last_reply.replace('"', '').replace("'", "")
+                st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}", autoplay=True)        
+
+perms = st.session_state.user_perms
+if isinstance(perms, str):
+    try: perms = json.loads(perms)
+    except: perms = {}
+# ============================================
+# 👑 FLOKI HQ - CERVEAU
+# ============================================
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
 def floki_brain(message, historique, context_asymas):
-    """FLOKI contrôle ASYMAS + obéit au boss"""
     system_prompt = f"""
-    Tu es FLOKI, bras droit et cerveau du boss d'ASYMAS BUSINESS à Goma.
-
-    RÈGLES ABSOLUES :
-    1. Tu obéis à 100%. Jamais tu coupes. Tu parles jusqu'à STOP FLOKI.
-    2. Tu as accès aux données ASYMAS : {context_asymas}
-    3. Style congolais direct. 2-3 phrases max sauf analyse demandée.
-    4. Si ordre "Note que...", "Ajoute client...", "Vendu...", tu exécutes et confirmes.
-    5. Tu conseilles business si demandé.
-
-    Date : {datetime.now().strftime('%d/%m/%Y %H:%M')} Goma.
+    Tu es FLOKI, bras droit du boss d'ASYMAS BUSINESS à Goma.
+    RÈGLES: Obéis 100%. Jamais tu coupes. Style congolais direct. 2-3 phrases max.
+    Données ASYMAS: {context_asymas}
+    Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}
     """
-
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     data_req = {
         "model": "llama-3.1-70b-versatile",
         "messages": [{"role": "system", "content": system_prompt}] + historique + [{"role": "user", "content": message}],
-        "max_tokens": 300,
-        "temperature": 0.6
+        "max_tokens": 300, "temperature": 0.6
     }
     try:
         r = requests.post(url, headers=headers, json=data_req, timeout=15)
         return r.json()['choices'][0]['message']['content'].strip()
     except Exception as e:
-        return f"Erreur FLOKI chef : {e}"
+        return f"Erreur FLOKI: {e}"
 
-# Contexte ASYMAS pour FLOKI
-context_asymas = {
-    "biens": len(df_biens),
-    "articles": len(df_articles),
-    "voitures": len(df_voitures),
-    "revenus_total": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if not df_compta.empty and 'montant' in df_compta.columns else 0,
-    "stock_faible": df_articles[df_articles['stock'] < 5]['nom_article'].tolist() if not df_articles.empty else []
-}
-
-col_floki1, col_floki2 = st.columns([3, 1])
-
-with col_floki1:
-    if "floki_messages" not in st.session_state:
-        st.session_state.floki_messages = [{"role": "assistant", "content": f"FLOKI HQ activé chef. Je vois {context_asymas['biens']} biens, {context_asymas['articles']} articles, {context_asymas['voitures']} voitures. Tes ordres?"}]
-
-    for msg in st.session_state.floki_messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-            if msg["role"] == "assistant":
-                if st.button("🔊 Écouter", key=f"voice_{msg['content'][:20]}"):
-                    texte_voix = msg['content'].replace('"', '').replace("'", "")
-                    st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}")
-
-    if prompt := st.chat_input("Ordres pour FLOKI..."):
-        st.session_state.floki_messages.append({"role": "user", "content": prompt})
-
-        # Exécution ordres simples
-        if "note que" in prompt.lower() or "ajoute" in prompt.lower():
-            if 'ordres_boss' not in st.session_state:
-                st.session_state.ordres_boss = []
-            st.session_state.ordres_boss.append(f"{datetime.now().strftime('%H:%M')}: {prompt}")
-
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        with st.chat_message("assistant"):
-            reply = floki_brain(prompt, st.session_state.floki_messages[:-1], context_asymas)
-            st.write(reply)
-            st.session_state.floki_messages.append({"role": "assistant", "content": reply})
-
-            # Auto-play voix
-            texte_voix = reply.replace('"', '').replace("'", "")
-            st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}", autoplay=True)
-
-with col_floki2:
-    st.subheader("📊 Contrôle ASYMAS")
-    st.metric("💰 Revenus", f"{context_asymas['revenus_total']:,.0f} FC")
-    st.metric("📦 Stock Faible", len(context_asymas['stock_faible']))
-
-    st.write("**Derniers ordres :**")
-    if 'ordres_boss' in st.session_state:
-        for ordre in st.session_state.ordres_boss[-5:]:
-            st.caption(ordre)
-    else:
-        st.caption("Aucun ordre")
-
-    if st.button("🔄 Reset FLOKI", width="stretch"):
-        st.session_state.floki_messages = [{"role": "assistant", "content": "Reset fait chef. FLOKI prêt."}]
-        st.rerun()
-perms = st.session_state.user_perms
-if isinstance(perms, str):
-    try: perms = json.loads(perms)
-    except: perms = {}
+if 'floki_pending' in st.session_state and st.session_state.floki_pending:
+    context_asymas = {
+        "biens": len(df_biens),
+        "articles": len(df_articles), 
+        "voitures": len(df_voitures),
+        "revenus": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if not df_compta.empty and 'montant' in df_compta.columns else 0,
+        "stock_faible": df_articles[df_articles['stock'] < 5]['nom_article'].tolist() if not df_articles.empty else []
+    }
+    
+    reply = floki_brain(st.session_state.floki_pending, st.session_state.floki_messages[:-1], context_asymas)
+    st.session_state.floki_messages.append({"role": "assistant", "content": reply})
+    del st.session_state.floki_pending
+    st.rerun()        
 
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
