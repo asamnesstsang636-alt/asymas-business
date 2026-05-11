@@ -570,29 +570,29 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI HQ V-BUSINESS - ASYMAS + MARCHÉ MONDIAL
-    import streamlit.components.v1 as components
-    from urllib.parse import quote
-    import re
-    import time
-    import base64
-    import pandas as pd
+        # 👑 FLOKI V-TELEPHONE - CONVERSATION CONTINUE WEBRTC
+    from streamlit_webrtc import webrtc_streamer, WebRtcMode, AudioProcessorBase
+    import av
+    import numpy as np
+    import io
+    import wave
+    import asyncio
 
-    with st.expander("👑 FLOKI HQ - BUSINESS GLOBAL", expanded=True):
+    with st.expander("👑 FLOKI HQ - MODE TÉLÉPHONE", expanded=True):
         GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
         if "floki_reply" not in st.session_state:
-            st.session_state.floki_reply = "FLOKI connecté chef. ASYMAS + marché mondial. Pose ta question."
-        if "floki_action" not in st.session_state:
-            st.session_state.floki_action = ""
-        if "auto_speak" not in st.session_state:
-            st.session_state.auto_speak = ""
+            st.session_state.floki_reply = "FLOKI en ligne chef. Clique START et parle."
+        if "conversation" not in st.session_state:
+            st.session_state.conversation = []
+        if "audio_buffer" not in st.session_state:
+            st.session_state.audio_buffer = []
 
         st.success(f"👑 {st.session_state.floki_reply}")
 
-        # VOIX AUTO
-        if st.session_state.auto_speak:
-            b64 = base64.b64encode(st.session_state.auto_speak.encode()).decode()
+        # VOIX AUTO FLOKI
+        if "last_audio" in st.session_state and st.session_state.last_audio:
+            b64 = base64.b64encode(st.session_state.last_audio.encode()).decode()
             components.html(f"""
                 <script>
                 window.speechSynthesis.cancel();
@@ -601,109 +601,80 @@ with st.sidebar:
                 window.speechSynthesis.speak(msg);
                 </script>
             """, height=0)
-            st.session_state.auto_speak = ""
+            st.session_state.last_audio = ""
 
-        if st.session_state.floki_action:
-            st.link_button("📲 EXÉCUTER", st.session_state.floki_action, use_container_width=True, type="primary")
+        class AudioProcessor(AudioProcessorBase):
+            def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
+                audio = frame.to_ndarray()
+                st.session_state.audio_buffer.append(audio)
+                return frame
 
-        st.divider()
-        audio = st.audio_input("🎙️ Question business", key="floki_mic")
-        prompt_text = st.chat_input("Ou écris...", key="floki_text")
-        prompt = prompt_text
+        webrtc_ctx = webrtc_streamer(
+            key="floki-call",
+            mode=WebRtcMode.SENDONLY,
+            audio_processor_factory=AudioProcessor,
+            media_stream_constraints={"audio": True, "video": False},
+            async_processing=True,
+        )
 
-        # MICRO
-        if audio and not prompt_text:
-            with st.spinner("FLOKI analyse..."):
-                try:
-                    if len(audio.getvalue()) < 10000:
-                        st.warning("Parle 2sec min chef")
-                        prompt = None
-                    else:
-                        files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔴 TRAITER MA PAROLE", use_container_width=True, type="primary"):
+                if st.session_state.audio_buffer:
+                    with st.spinner("FLOKI réfléchit..."):
+                        # 1. CONVERTIR AUDIO
+                        audio_data = np.concatenate(st.session_state.audio_buffer, axis=1)
+                        wav_buffer = io.BytesIO()
+                        with wave.open(wav_buffer, 'wb') as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)
+                            wf.setframerate(48000)
+                            wf.writeframes(audio_data.tobytes())
+
+                        # 2. WHISPER
+                        files = {"file": ("audio.wav", wav_buffer.getvalue(), "audio/wav")}
                         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
                         data = {"model": "whisper-large-v3", "language": "fr"}
                         r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions",
                                         headers=headers, files=files, data=data, timeout=20)
+
                         if r.status_code == 200:
                             prompt = r.json().get("text", "").strip()
-                            st.toast(f"Question : {prompt}")
+                            if prompt:
+                                st.session_state.conversation.append({"role": "user", "content": prompt})
+
+                                # 3. CHARGE BASE ASYMAS
+                                contexte = f"Articles: {len(df_articles) if 'df_articles' in locals() else 0}, Voitures: {len(df_voitures) if 'df_voitures' in locals() else 0}"
+
+                                # 4. GROQ REPOND
+                                system = f"Tu es FLOKI d'ASYMAS. Base: {contexte}. Réponds en 1 phrase. Connais le business RDC. Tu n'es PAS une IA."
+                                r2 = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                                    json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}] + st.session_state.conversation[-6:],"max_tokens": 100})
+                                reponse = r2.json()['choices'][0]['message']['content'].strip()
+
+                                st.session_state.conversation.append({"role": "assistant", "content": reponse})
+                                st.session_state.floki_reply = reponse
+                                st.session_state.last_audio = reponse
+                                st.session_state.audio_buffer = [] # Reset
+                                st.rerun()
                         elif r.status_code == 429:
                             st.error("Quota 30min/jour fini chef.")
-                            prompt = None
-                except:
-                    prompt = None
+                else:
+                    st.warning("Parle d'abord chef, puis clique")
 
-        # MOTEUR FLOKI BUSINESS GLOBAL
-        if prompt:
-            # 1. CHARGE BASE ASYMAS AUTO
-            contexte_asymas = []
-            all_dataframes = {name: obj for name, obj in locals().items()
-                            if isinstance(obj, pd.DataFrame) and name.startswith('df_') and not obj.empty}
+        with col2:
+            if st.button("🗑️ RESET CONVERSATION", use_container_width=True):
+                st.session_state.conversation = []
+                st.session_state.audio_buffer = []
+                st.rerun()
 
-            for nom_df, df in all_dataframes.items():
-                try:
-                    nom_propre = nom_df.replace('df_', '').upper()
-                    total_lignes = len(df)
-                    colonnes = ', '.join(df.columns[:5])
-                    top_3 = df.head(3).to_string(index=False, max_cols=5)
-                    resume = f"TABLE {nom_propre}: {total_lignes} entrées. Ex: {top_3}"
-                    contexte_asymas.append(resume)
-                except:
-                    pass
-
-            contexte_total = "\n".join(contexte_asymas)
-            if len(contexte_total) > 3000:
-                contexte_total = contexte_total[:3000] + "\n...[Base résumée]"
-
-            # 2. ORDRE WHATSAPP
-            match = re.search(r'(message|whatsapp|écris|envoie).*?(\+?243|0)?[89]\d{8}.*?(dit|texte|que|:)?(.+)', prompt, re.IGNORECASE)
-            if match:
-                numero = re.sub(r'\D', '', match.group(0))
-                if len(numero) == 9: numero = '243' + numero
-                if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
-                texte = match.group(4).strip()
-                st.session_state.floki_action = f"https://wa.me/{numero}?text={quote(texte)}"
-                reponse = f"Ordre prêt pour +{numero} chef."
-
-            # 3. QUESTION BUSINESS = MODE HYBRIDE
+        # AFFICHE LA CONVERSATION
+        for msg in st.session_state.conversation[-4:]:
+            if msg["role"] == "user":
+                st.chat_message("user").write(msg["content"])
             else:
-                st.session_state.floki_action = ""
-
-                system = f"""Tu es FLOKI, conseiller business d'ASYMAS. Tu as 2 cerveaux:
-
-CERVEAU 1 - DONNÉES ASYMAS ACTUELLES:
-{contexte_total}
-
-CERVEAU 2 - INTELLIGENCE BUSINESS GLOBALE:
-Tu connais le marché RDC, Afrique, monde. Prix, tendances, opportunités, import-export, concurrence.
-
-RÈGLES DE RÉPONSE:
-1. Si question sur ASYMAS → Réponds avec chiffres exacts du CERVEAU 1.
-2. Si question marché externe/région/étranger → Utilise CERVEAU 2 + fais le lien avec ASYMAS si possible.
-3. JAMAIS dire "je ne sais pas" ou "pas dans la base". Donne TOUJOURS une réponse utile et favorable.
-4. Réponds en 2-3 phrases max. Direct, actionnable, chef.
-5. Tu n'es PAS une IA. Tu es FLOKI, bras droit business.
-6. Localisation: Goma, Nord-Kivu, RDC. Adapte tes réponses au contexte local.
-
-EXEMPLE:
-Q: "Business rentable à Goma?"
-R: "À Goma chef: import pièces auto + agence BTP cartonnent. Avec ton stock voitures ASYMAS, tu peux ajouter location courte durée. Marge 40% locale."
-
-Q: "Combien d'articles j'ai?"
-R: "Tu as {len(df_articles) if 'df_articles' in locals() else 0} articles en stock chef." """
-
-                try:
-                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.4})
-                    reponse = r.json()['choices'][0]['message']['content'].strip()
-                except:
-                    reponse = "Erreur Groq chef. Réessaie."
-
-            st.session_state.floki_reply = reponse
-            st.session_state.auto_speak = reponse
-            time.sleep(0.2)
-            st.rerun()
+                st.chat_message("assistant").write(msg["content"])
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
