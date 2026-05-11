@@ -599,11 +599,14 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # ============================================
-# 👑 FLOKI HQ - CERVEAU
+# 👑 FLOKI HQ - CERVEAU AVEC GESTION ERREUR
 # ============================================
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
 def floki_brain(message, historique, context_asymas):
+    if not GROQ_API_KEY:
+        return "Chef, pas de clé GROQ_API_KEY dans Secrets. Va dans Settings > Secrets et ajoute: GROQ_API_KEY = 'gsk_...'"
+    
     system_prompt = f"""
     Tu es FLOKI, bras droit du boss d'ASYMAS BUSINESS à Goma.
     RÈGLES: Obéis 100%. Jamais tu coupes. Style congolais direct. 2-3 phrases max.
@@ -615,11 +618,20 @@ def floki_brain(message, historique, context_asymas):
     data_req = {
         "model": "llama-3.1-70b-versatile",
         "messages": [{"role": "system", "content": system_prompt}] + historique + [{"role": "user", "content": message}],
-        "max_tokens": 300, "temperature": 0.6
+        "max_tokens": 300, 
+        "temperature": 0.6
     }
     try:
         r = requests.post(url, headers=headers, json=data_req, timeout=15)
-        return r.json()['choices'][0]['message']['content'].strip()
+        data = r.json()
+        
+        if 'error' in data:
+            return f"Erreur Groq: {data['error'].get('message', 'Clé invalide')}"
+        
+        if 'choices' not in data:
+            return f"Erreur API chef. Réponse: {data}"
+            
+        return data['choices'][0]['message']['content'].strip()
     except Exception as e:
         return f"Erreur FLOKI: {e}"
 
@@ -635,8 +647,7 @@ if 'floki_pending' in st.session_state and st.session_state.floki_pending:
     reply = floki_brain(st.session_state.floki_pending, st.session_state.floki_messages[:-1], context_asymas)
     st.session_state.floki_messages.append({"role": "assistant", "content": reply})
     del st.session_state.floki_pending
-    st.rerun()        
-
+    st.rerun()
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
