@@ -570,94 +570,63 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI HQ - INTERFACE CORRIGÉE
+    # 👑 FLOKI HQ - VERSION SIMPLE QUI MARCHE
     with st.expander("👑 FLOKI HQ", expanded=False):
-        if "floki_messages" not in st.session_state:
-            st.session_state.floki_messages = []
+        GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
         
-        # Affiche que le dernier échange
-        if st.session_state.floki_messages:
-            msg = st.session_state.floki_messages[-1]
-            if msg["role"] == "assistant":
-                st.success(f"👑 {msg['content']}")
+        if "floki_chat" not in st.session_state:
+            st.session_state.floki_chat = [{"role": "assistant", "content": "FLOKI prêt chef."}]
 
-        # MICRO AUTO-ENVOI
-        audio_val = st.audio_input("🎙️ Parle à FLOKI", key="floki_mic")
-        
-        if audio_val and 'floki_processing' not in st.session_state:
-            st.session_state.floki_processing = True
-            with st.spinner("FLOKI écoute..."):
-                files = {"file": ("audio.wav", audio_val, "audio/wav")}
+        # Affiche le dernier message
+        st.write(f"👑 {st.session_state.floki_chat[-1]['content']}")
+
+        # Input texte + micro ensemble
+        col1, col2 = st.columns([4,1])
+        with col1:
+            user_input = st.chat_input("Parle à FLOKI...", key="floki_chat_input")
+        with col2:
+            audio = st.audio_input("", key="floki_audio", label_visibility="collapsed")
+
+        prompt = None
+        if user_input:
+            prompt = user_input
+        elif audio:
+            with st.spinner("..."):
+                files = {"file": ("a.wav", audio, "audio/wav")}
                 headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-                data = {"model": "whisper-large-v3", "language": "fr"}
-                try:
-                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                    transcription = r.json().get("text", "").strip()
-                    if transcription:
-                        st.session_state.floki_messages.append({"role": "user", "content": transcription})
-                        st.session_state.floki_pending = transcription
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Micro erreur: {e}")
-                finally:
-                    if 'floki_processing' in st.session_state:
-                        del st.session_state.floki_processing
+                data = {"model": "whisper-large-v3"}
+                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data)
+                prompt = r.json().get("text", "")
 
-        # TEXTE MANUEL
-        prompt = st.text_input("Ou écris", key="floki_input", placeholder="Parle chef...", label_visibility="collapsed")
-        if st.button("Envoyer", key="send_floki", use_container_width=True) and prompt:
-            st.session_state.floki_messages.append({"role": "user", "content": prompt})
-            st.session_state.floki_pending = prompt
+        # Si on a un message, FLOKI répond
+        if prompt:
+            ctx = f"{len(df_articles)} articles, {len(df_voitures)} voitures"
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            data = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": f"Tu es FLOKI. Réponds en 1 phrase. Données: {ctx}"},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 80
+            }
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=8)
+                reply = r.json()['choices'][0]['message']['content']
+            except:
+                reply = "Erreur Groq chef. Vérifie ta clé."
+            
+            st.session_state.floki_chat.append({"role": "assistant", "content": reply})
+            
+            # VOIX AUTO
+            txt = reply.replace('"','').replace("'","")
+            st.audio(f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={txt}", autoplay=True)
             st.rerun()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
-# ============================================
-# 👑 FLOKI HQ - CERVEAU + VOIX AUTO FIX
-# ============================================
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
-def floki_brain(message, context_asymas):
-    system_prompt = f"""
-    Tu es FLOKI, bras droit du boss d'ASYMAS BUSINESS à Goma.
-    RÈGLES: Réponds DIRECT à la question. Style congolais court. 1-2 phrases max. Pas de bonjour si on t'a déjà salué.
-    Données ASYMAS: {context_asymas}
-    """
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    data_req = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": message}],
-        "max_tokens": 150, 
-        "temperature": 0.5
-    }
-    try:
-        r = requests.post(url, headers=headers, json=data_req, timeout=10)
-        return r.json()['choices'][0]['message']['content'].strip()
-    except:
-        return "FLOKI bloqué chef. Réessaye."
-
-# TRAITE LE MESSAGE EN ATTENTE
-if 'floki_pending' in st.session_state and st.session_state.floki_pending:
-    user_msg = st.session_state.floki_pending
-    
-    context_asymas = {
-        "biens": len(df_biens) if 'df_biens' in locals() else 0,
-        "articles": len(df_articles) if 'df_articles' in locals() else 0, 
-        "voitures": len(df_voitures) if 'df_voitures' in locals() else 0,
-        "revenus": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if 'df_compta' in locals() and not df_compta.empty else 0
-    }
-    
-    reply = floki_brain(user_msg, context_asymas)
-    st.session_state.floki_messages.append({"role": "assistant", "content": reply})
-    
-    # VOIX AUTO - SANS RERUN QUI COUPE
-    texte_voix = reply.replace('"', '').replace("'", "").replace("*", "").replace("\n", " ")
-    audio_url = f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}"
-    st.audio(audio_url, autoplay=True)
-    
-    del st.session_state.floki_pending
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
