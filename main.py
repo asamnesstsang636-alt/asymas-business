@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import sqlite3
 from datetime import datetime
+from flask import jsonify
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
@@ -2583,3 +2584,33 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
+
+from streamlit.web.server import Server
+from streamlit.runtime.scriptrunner import add_script_run_ctx
+import json
+
+
+# Route API pour Render
+try:
+    from flask import Flask, request as flask_request
+    from streamlit.web.server.websocket_headers import _get_websocket_headers
+
+    if not hasattr(st, '_flask_app'):
+        st._flask_app = Flask(__name__)
+
+        @st._flask_app.route('/api/floki', methods=['POST'])
+        def api_floki():
+            data = flask_request.get_json()
+            user_msg = data.get("message", "")
+            user_num = data.get("user", "")
+
+            # ICI TON CODE FLOKI QUI RÉPOND
+            # Exemple basique :
+            if "slt" in user_msg.lower():
+                reply = "FLOKI. CA J: 0FC | Alertes: 0 ruptures. Ordres?"
+            else:
+                reply = f"Reçu: {user_msg}. FLOKI traite."
+
+            return jsonify({"reply": reply})
+except:
+    pass
