@@ -9,7 +9,7 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 
 # CONFIG
-STREAMLIT_URL = "https://ton-app.streamlit.app"  # ← REMPLACE AVEC TA VRAIE URL
+STREAMLIT_URL = "https://ypglhjpmflkj8lxvqsetao.streamlit.app/"  # ← REMPLACE AVEC TA VRAIE URL
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = "FLOKI2026"  # ← MÊME TOKEN QUE DANS META
