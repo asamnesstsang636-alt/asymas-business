@@ -625,38 +625,33 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 # ============================================
-# 👑 FLOKI HQ - CERVEAU AVEC NOUVEAU MODÈLE
+# 👑 FLOKI HQ - CERVEAU AVEC VOIX AUTO
 # ============================================
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 
 def floki_brain(message, historique, context_asymas):
     if not GROQ_API_KEY:
-        return "Chef, pas de clé GROQ_API_KEY dans Secrets. Va dans Settings > Secrets et ajoute: GROQ_API_KEY = 'gsk_...'"
+        return "Chef, pas de clé GROQ_API_KEY dans Secrets."
     
     system_prompt = f"""
     Tu es FLOKI, bras droit du boss d'ASYMAS BUSINESS à Goma.
-    RÈGLES: Obéis 100%. Jamais tu coupes. Style congolais direct. 2-3 phrases max.
+    RÈGLES: Obéis 100%. Jamais tu coupes. Style congolais direct. 2-3 phrases max. Pas d'emojis.
     Données ASYMAS: {context_asymas}
     Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}
     """
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     data_req = {
-        "model": "llama-3.3-70b-versatile", # 👈 NOUVEAU MODÈLE ACTIF
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "system", "content": system_prompt}] + historique + [{"role": "user", "content": message}],
-        "max_tokens": 300, 
+        "max_tokens": 200, 
         "temperature": 0.6
     }
     try:
         r = requests.post(url, headers=headers, json=data_req, timeout=15)
         data = r.json()
-        
         if 'error' in data:
             return f"Erreur Groq: {data['error'].get('message', 'Erreur')}"
-        
-        if 'choices' not in data:
-            return f"Erreur API chef. Réponse: {data}"
-            
         return data['choices'][0]['message']['content'].strip()
     except Exception as e:
         return f"Erreur FLOKI: {e}"
@@ -666,14 +661,24 @@ if 'floki_pending' in st.session_state and st.session_state.floki_pending:
         "biens": len(df_biens),
         "articles": len(df_articles), 
         "voitures": len(df_voitures),
-        "revenus": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if not df_compta.empty and 'montant' in df_compta.columns else 0,
-        "stock_faible": df_articles[df_articles['stock'] < 5]['nom_article'].tolist() if not df_articles.empty else []
+        "revenus": float(df_compta[df_compta['type']=='Revenu']['montant'].sum()) if not df_compta.empty and 'montant' in df_compta.columns else 0
     }
     
     reply = floki_brain(st.session_state.floki_pending, st.session_state.floki_messages[:-1], context_asymas)
     st.session_state.floki_messages.append({"role": "assistant", "content": reply})
+    
+    # 👑 FLOKI PARLE AUTO - PLUS BESOIN DE CLIQUER VOIX
+    texte_voix = reply.replace('"', '').replace("'", "").replace("*", "").replace("#", "")
+    audio_url = f"https://api.streamelements.com/kappa/v2/speech?voice=onyx&text={texte_voix}"
+    st.session_state.floki_auto_audio = audio_url
+    
     del st.session_state.floki_pending
     st.rerun()
+
+# JOUE LA VOIX AUTO SI ELLE EXISTE
+if 'floki_auto_audio' in st.session_state and st.session_state.floki_auto_audio:
+    st.audio(st.session_state.floki_auto_audio, autoplay=True)
+    del st.session_state.floki_auto_audio
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
