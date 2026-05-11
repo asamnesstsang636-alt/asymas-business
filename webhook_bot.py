@@ -8,15 +8,60 @@ app = Flask(__name__)
 CORS(app)
 logging.basicConfig(level=logging.INFO)
 
-# CONFIG
-STREAMLIT_URL = "https://ypglhjpmflkj8lxvqsetao.streamlit.app/"  # ← REMPLACE AVEC TA VRAIE URL
+# CONFIG RENDER - Variables d'environnement
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-VERIFY_TOKEN = "FLOKI2026"  # ← MÊME TOKEN QUE DANS META
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "FLOKI2026") # Même que dans Meta
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+def get_floki_reply(message_text, user_number):
+    """Appelle Groq API pour avoir la réponse de FLOKI"""
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {
+                "role": "system",
+                "content": "Tu es FLOKI, assistant WhatsApp du boss à Goma. Style congolais, direct, 1 phrase max. Pas de blabla. Tu réponds aux clients."
+            },
+            {"role": "user", "content": message_text}
+        ],
+        "max_tokens": 80,
+        "temperature": 0.7
+    }
+    try:
+        r = requests.post(url, headers=headers, json=data, timeout=10)
+        r.raise_for_status()
+        reply = r.json()['choices'][0]['message']['content'].strip()
+        logging.info(f"GROQ REPLY: {reply}")
+        return reply
+    except Exception as e:
+        logging.error(f"GROQ ERROR: {e}")
+        return "FLOKI bug chef, réessaye dans 1 min"
+
+def send_whatsapp_message(to, text):
+    """Envoie le message sur WhatsApp"""
+    url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "text": {"body": text}
+    }
+    r = requests.post(url, headers=headers, json=data)
+    logging.info(f"WA SEND: {r.status_code} {r.text}")
+    return r.status_code == 200
 
 @app.route('/', methods=['GET'])
 def home():
-    return "FLOKI ASYMAS - ONLINE", 200
+    return "FLOKI ASYMAS - ONLINE 🔥", 200
 
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
@@ -24,7 +69,7 @@ def verify_webhook():
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
-    
+
     if mode == "subscribe" and token == VERIFY_TOKEN:
         logging.info("WEBHOOK_VERIFIED")
         return challenge, 200
@@ -43,41 +88,22 @@ def handle_message():
             for entry in data.get("entry", []):
                 for change in entry.get("changes", []):
                     value = change.get("value", {})
-                    for msg in value.get("messages", []):
+                    messages = value.get("messages", [])
+
+                    for msg in messages:
                         user_number = msg["from"]
                         user_text = msg["text"]["body"]
-                        
+
                         logging.info(f"MSG FROM {user_number}: {user_text}")
 
-                        # 1. Appelle Streamlit FLOKI
-                        try:
-                            r = requests.post(
-                                f"{STREAMLIT_URL}/api/floki",
-                                json={"message": user_text, "user": user_number},
-                                timeout=15
-                            )
-                            r.raise_for_status()
-                            floki_reply = r.json().get("reply", "FLOKI ne répond pas.")
-                        except Exception as e:
-                            logging.error(f"STREAMLIT ERROR: {e}")
-                            floki_reply = "FLOKI KO. Erreur serveur."
+                        # 1. Appelle Groq pour réponse FLOKI
+                        floki_reply = get_floki_reply(user_text, user_number)
 
                         # 2. Renvoie sur WhatsApp
-                        url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
-                        headers = {
-                            "Authorization": f"Bearer {WHATSAPP_TOKEN}",
-                            "Content-Type": "application/json"
-                        }
-                        data_out = {
-                            "messaging_product": "whatsapp",
-                            "to": user_number,
-                            "text": {"body": floki_reply}
-                        }
-                        wa_response = requests.post(url, headers=headers, json=data_out)
-                        logging.info(f"WA SEND: {wa_response.status_code}")
+                        send_whatsapp_message(user_number, floki_reply)
 
         return jsonify({"status": "ok"}), 200
-    
+
     except Exception as e:
         logging.error(f"GLOBAL ERROR: {e}")
         return jsonify({"error": str(e)}), 500
