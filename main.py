@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V13 FINAL - VOIX ROBOT 100% + CERVEAU ILLIMITÉ
+        # 👑 FLOKI V14 - MÉMOIRE 6 TOURS + CONTEXTE + ILLIMITÉ
     from urllib.parse import quote
     import re
     import base64
@@ -581,13 +581,15 @@ with st.sidebar:
 
     st.divider()
 
-    # INIT
+    # INIT + MÉMOIRE
     if "floki_btn" not in st.session_state:
         st.session_state.floki_btn = None
     if "floki_reponse" not in st.session_state:
         st.session_state.floki_reponse = ""
     if "floki_speak_id" not in st.session_state:
         st.session_state.floki_speak_id = 0
+    if "floki_history" not in st.session_state:
+        st.session_state.floki_history = [] # Mémoire 6 derniers tours
 
     # ANALYSE ASYMAS
     ASYMAS = {}
@@ -599,28 +601,33 @@ with st.sidebar:
     contexte_asymas = " | ".join(stats_pdg)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v13", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v13", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v14", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v14", label_visibility="collapsed")
 
-    # MICRO
+    # MICRO - FIX ERROR
     if audio:
         try:
-            files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-            headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-            data = {"model": "whisper-large-v3", "language": "fr"}
-            with st.spinner("🎤"):
-                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-            if r.status_code == 200:
-                prompt = r.json().get("text", "").strip()
-        except: 
-            st.error("Micro error chef")
+            if len(audio.getvalue()) < 1000: # Audio trop court
+                st.warning("Parle plus fort chef")
+            else:
+                files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+                headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                data = {"model": "whisper-large-v3", "language": "fr"}
+                with st.spinner("🎤"):
+                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                if r.status_code == 200:
+                    prompt = r.json().get("text", "").strip()
+                    if not prompt:
+                        st.warning("Rien entendu chef")
+        except Exception as e:
+            st.error(f"Micro error: {str(e)[:50]}")
 
     # EXÉCUTION
     if prompt:
         btn_html = None
         reponse = ""
 
-        # 1. ORDRES
+        # 1. ORDRES BUSINESS
         if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
             if nums:
@@ -670,15 +677,16 @@ with st.sidebar:
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
             reponse = f"Facture {montant}$ prête chef."
 
-        # 2. CERVEAU ILLIMITÉ
+        # 2. CERVEAU ILLIMITÉ + MÉMOIRE
         else:
             if re.match(r'^(slt|salut|bjr|bonjour|hello|yo|parle)$', prompt.strip(), re.IGNORECASE):
-                reponse = f"Chef! ASYMAS {contexte_asymas}. Je réponds à tout. On frappe quoi aujourd'hui?"
+                reponse = f"Chef! ASYMAS {contexte_asymas}. Je retiens nos 6 derniers échanges. On frappe quoi?"
             else:
-                system = f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS.
+                # CONSTRUIT HISTORIQUE POUR GROQ
+                messages = [{"role": "system", "content": f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS.
 
 RÈGLES:
-1. Tu réponds à TOUT: business, prix monde, science, conseils, calculs. AUCUNE LIMITE.
+1. Tu réponds à TOUT en utilisant l'historique de conversation.
 2. Si ASYMAS: Donne VRAIS chiffres.
 3. Si monde: Donne réponse 2025. JAMAIS "non disponible".
 4. Max 3 phrases. Sois direct, motivé.
@@ -691,12 +699,19 @@ CONNAISSANCES 2025:
 Pétrole Dubaï: 0.82$ USD/litre. Brent: 84$/baril.
 USD/CNY: 7.0 CNY pour 1 USD.
 Ouganda: Variateur 1.5kW 80-150$, Ciment 7.5$.
-Chine: Variateur 40-80$ MOQ10."""
+Chine: Variateur 40-80$ MOQ10."""}]
+
+                # Ajoute les 6 derniers tours de mémoire
+                for tour in st.session_state.floki_history[-6:]:
+                    messages.append({"role": "user", "content": tour["user"]})
+                    messages.append({"role": "assistant", "content": tour["floki"]})
+
+                messages.append({"role": "user", "content": prompt})
 
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],"max_tokens": 200,"temperature": 0.7}, timeout=10)
+                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 200,"temperature": 0.7}, timeout=10)
                     if r.status_code == 200:
                         reponse = r.json()['choices'][0]['message']['content'].strip()
                     else:
@@ -704,32 +719,41 @@ Chine: Variateur 40-80$ MOQ10."""
                 except:
                     reponse = "Connexion lente chef. Je réponds quand même: USD/CNY 7.0."
 
-        # SAUVE
+        # SAUVE DANS MÉMOIRE
+        st.session_state.floki_history.append({"user": prompt, "floki": reponse})
+        if len(st.session_state.floki_history) > 6:
+            st.session_state.floki_history.pop(0) # Garde que 6 tours
+
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
         st.session_state.floki_speak_id += 1
 
-        # VOIX ROBOT FORCÉE - MARCHE TOUJOURS
-        txt_clean = re.sub(r'[*#_`]', '', reponse) # Enlève markdown
+        # VOIX ROBOT FORCÉE
+        txt_clean = re.sub(r'[*#_`]', '', reponse)
         txt_clean = txt_clean.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
         b64 = base64.b64encode(txt_clean.encode()).decode()
         components.html(f"""
             <script>
             window.speechSynthesis.cancel();
             var u = new SpeechSynthesisUtterance(atob('{b64}'));
-            u.lang = 'fr-FR'; 
-            u.rate = 1.0; 
-            u.pitch = 0.9;
-            u.volume = 1.0;
+            u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
             window.speechSynthesis.speak(u);
             </script>
         """, height=0)
 
-    # AFFICHE
+    # AFFICHE + HISTORIQUE
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=70)
     if st.session_state.get("floki_reponse"):
         st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+
+    # AFFICHE MÉMOIRE
+    if len(st.session_state.floki_history) > 1:
+        with st.expander("🧠 Mémoire FLOKI - 6 derniers échanges"):
+            for i, tour in enumerate(st.session_state.floki_history[-6:]):
+                st.caption(f"**Toi:** {tour['user']}")
+                st.caption(f"**FLOKI:** {tour['floki']}")
+                st.divider()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
