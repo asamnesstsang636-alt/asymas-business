@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V14 - MÉMOIRE 6 TOURS + CONTEXTE + ILLIMITÉ
+        # 👑 FLOKI V15 - ZÉRO BLABLA + COMPREND TOUT + DASHBOARD AUTO
     from urllib.parse import quote
     import re
     import base64
@@ -589,27 +589,45 @@ with st.sidebar:
     if "floki_speak_id" not in st.session_state:
         st.session_state.floki_speak_id = 0
     if "floki_history" not in st.session_state:
-        st.session_state.floki_history = [] # Mémoire 6 derniers tours
+        st.session_state.floki_history = []
 
-    # ANALYSE ASYMAS
+    # ANALYSE ASYMAS - DASHBOARD
     ASYMAS = {}
     stats_pdg = []
-    for nom, var in [("BIENS", "df_biens"), ("ARTICLES", "df_articles"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
+    alertes = []
+    dashboard = "ASYMAS: "
+
+    for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
         if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
             ASYMAS[nom] = locals()[var]
-            stats_pdg.append(f"{nom}:{len(locals()[var])}")
-    contexte_asymas = " | ".join(stats_pdg)
+            df = locals()[var]
+            lignes = len(df)
+            stats_pdg.append(f"{nom}:{lignes}")
+
+            # ALERTES AUTO
+            if nom == "ARTICLES" and 'quantite' in df.columns:
+                try:
+                    stock_bas = len(df[df['quantite'] < 5])
+                    if stock_bas > 0: alertes.append(f"Stock bas:{stock_bas}")
+                except: pass
+            if nom == "FACTURES" and 'montant' in df.columns and 'date' in df.columns:
+                try:
+                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                    ca_semaine = df[df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7)]['montant'].sum()
+                    if ca_semaine > 0: stats_pdg.append(f"CA_7j:{ca_semaine:,.0f}$")
+                except: pass
+
+    dashboard += " | ".join(stats_pdg)
+    if alertes: dashboard += " | " + " | ".join(alertes)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="FLOKI... demande-moi N'IMPORTE QUOI chef", key="floki_v14", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v14", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="FLOKI... tape ou parle chef", key="floki_v15", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v15", label_visibility="collapsed")
 
-    # MICRO - FIX ERROR
+    # MICRO - TOLÉRANT
     if audio:
         try:
-            if len(audio.getvalue()) < 1000: # Audio trop court
-                st.warning("Parle plus fort chef")
-            else:
+            if len(audio.getvalue()) > 800:
                 files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
                 headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
                 data = {"model": "whisper-large-v3", "language": "fr"}
@@ -617,143 +635,131 @@ with st.sidebar:
                     r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
                 if r.status_code == 200:
                     prompt = r.json().get("text", "").strip()
-                    if not prompt:
-                        st.warning("Rien entendu chef")
-        except Exception as e:
-            st.error(f"Micro error: {str(e)[:50]}")
+        except: pass
 
     # EXÉCUTION
     if prompt:
         btn_html = None
         reponse = ""
+        prompt_clean = prompt.strip().lower()
 
-        # 1. ORDRES BUSINESS
-        if re.search(r'(whatsapp|message).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
+        # 1. ORDRES BUSINESS - DÉTECTION LARGE
+        if re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
             if nums:
                 numero = re.sub(r'\D', '', nums[0])
                 if len(numero) == 9: numero = '243' + numero
                 if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
                 texte_match = re.search(r'(dit|que|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-                texte = texte_match.group(2).strip() if texte_match else "Message ASYMAS"
+                texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
                 link = f"https://wa.me/{numero}?text={quote(texte)}"
-                btn_html = f'<a href="{link}" target="_blank" rel="noopener noreferrer"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;cursor:pointer;">📲 ENVOYER WHATSAPP +{numero}</button></a>'
-                reponse = f"WhatsApp prêt chef."
+                btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP +{numero}</button></a>'
+                reponse = f"WhatsApp +{numero} prêt"
 
-        elif re.search(r'(email|mail).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt, re.IGNORECASE):
+        elif re.search(r'(mail|mel|email).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt_clean):
             email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
             corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-            corps = corps_match.group(2).strip() if corps_match else "Message ASYMAS"
+            corps = corps_match.group(2).strip() if corps_match else "ASYMAS"
             link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 ENVOYER EMAIL</button></a>'
-            reponse = f"Email prêt chef."
+            btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
+            reponse = f"Email {email} prêt"
 
-        elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
+        elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
             if nums:
                 numero = re.sub(r'\D', '', nums[0])
                 if len(numero) == 9: numero = '243' + numero
                 texte_match = re.search(r'(dit|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
                 texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
                 link = f"sms:+{numero}?body={quote(texte)}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 ENVOYER SMS</button></a>'
-                reponse = f"SMS prêt chef."
+                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
+                reponse = f"SMS +{numero} prêt"
 
-        elif re.search(r'(appelle|appel).*?(\+?243|0)?[89]\d{8}', prompt, re.IGNORECASE):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt)
+        elif re.search(r'(appel|call|tel).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
             if nums:
                 numero = re.sub(r'\D', '', nums[0])
                 if len(numero) == 9: numero = '243' + numero
                 link = f"tel:+{numero}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER +{numero}</button></a>'
-                reponse = f"Appel prêt chef."
+                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
+                reponse = f"Appel +{numero} prêt"
 
-        elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE):
-            match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt, re.IGNORECASE)
+        elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean):
+            match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean)
             client = match.group(2).strip().title()
             montant = match.group(3)
             note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
             b64_note = base64.b64encode(note.encode()).decode()
-            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 TÉLÉCHARGER FACTURE</button></a>'
-            reponse = f"Facture {montant}$ prête chef."
+            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
+            reponse = f"Facture {client} {montant}$"
 
-        # 2. CERVEAU ILLIMITÉ + MÉMOIRE
+        # 2. SALUT = DASHBOARD AUTO - COMPREND MAL ÉCRIT
+        elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
+            reponse = dashboard
+
+        # 3. CERVEAU ILLIMITÉ + TOLÉRANT AUX FAUTES
         else:
-            if re.match(r'^(slt|salut|bjr|bonjour|hello|yo|parle)$', prompt.strip(), re.IGNORECASE):
-                reponse = f"Chef! ASYMAS {contexte_asymas}. Je retiens nos 6 derniers échanges. On frappe quoi?"
-            else:
-                # CONSTRUIT HISTORIQUE POUR GROQ
-                messages = [{"role": "system", "content": f"""Tu es FLOKI, l'IA la plus intelligente d'Afrique. Bras droit du PDG d'ASYMAS.
+            # HISTORIQUE POUR CONTEXTE
+            messages = [{"role": "system", "content": f"""Tu es FLOKI. Bras droit PDG ASYMAS. RÈGLES ABSOLUES:
 
-RÈGLES:
-1. Tu réponds à TOUT en utilisant l'historique de conversation.
-2. Si ASYMAS: Donne VRAIS chiffres.
-3. Si monde: Donne réponse 2025. JAMAIS "non disponible".
-4. Max 3 phrases. Sois direct, motivé.
-5. Dis "chef" 1 fois.
+1. ZÉRO BLABLA. 1 ligne max. Chiffres direct.
+2. COMPRENDS MAL ÉCRIT: "prix petrole dubai", "usd cny", "combien article" = tu piges.
+3. JAMAIS "je sais pas". Si tu piges pas: Donne DASHBOARD ASYMAS + "Précise chef".
+4. Si question monde: Donne chiffre 2025 direct.
+5. Dis "chef" 1 fois seulement si phrase.
 
-DONNÉES ASYMAS: {contexte_asymas}
+DASHBOARD ASYMAS: {dashboard}
 DATE: {date.today().strftime('%d/%m/%Y')}
 
-CONNAISSANCES 2025:
-Pétrole Dubaï: 0.82$ USD/litre. Brent: 84$/baril.
-USD/CNY: 7.0 CNY pour 1 USD.
-Ouganda: Variateur 1.5kW 80-150$, Ciment 7.5$.
-Chine: Variateur 40-80$ MOQ10."""}]
+PRIX 2025:
+Pétrole Dubaï: 0.82$/litre. Brent: 84$/baril.
+USD/CNY: 7.0. EUR/USD: 1.08.
+Ouganda Variateur 1.5kW: 80-150$. Ciment: 7.5$.
+Chine Variateur: 40-80$ MOQ10."""}]
 
-                # Ajoute les 6 derniers tours de mémoire
-                for tour in st.session_state.floki_history[-6:]:
-                    messages.append({"role": "user", "content": tour["user"]})
-                    messages.append({"role": "assistant", "content": tour["floki"]})
+            for tour in st.session_state.floki_history[-4:]: # 4 tours mémoire
+                messages.append({"role": "user", "content": tour["user"]})
+                messages.append({"role": "assistant", "content": tour["floki"]})
 
-                messages.append({"role": "user", "content": prompt})
+            messages.append({"role": "user", "content": prompt})
 
-                try:
-                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 200,"temperature": 0.7}, timeout=10)
-                    if r.status_code == 200:
-                        reponse = r.json()['choices'][0]['message']['content'].strip()
-                    else:
-                        reponse = "Groq occupé chef. USD/CNY 7.0. Pétrole Dubaï 0.82$."
-                except:
-                    reponse = "Connexion lente chef. Je réponds quand même: USD/CNY 7.0."
+            try:
+                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                    json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 100,"temperature": 0.3}, timeout=10)
+                if r.status_code == 200:
+                    reponse = r.json()['choices'][0]['message']['content'].strip()
+                else:
+                    reponse = f"{dashboard} | Précise chef"
+            except:
+                reponse = f"{dashboard} | Connexion lente"
 
-        # SAUVE DANS MÉMOIRE
+        # SAUVE MÉMOIRE
         st.session_state.floki_history.append({"user": prompt, "floki": reponse})
         if len(st.session_state.floki_history) > 6:
-            st.session_state.floki_history.pop(0) # Garde que 6 tours
+            st.session_state.floki_history.pop(0)
 
         st.session_state.floki_btn = btn_html
         st.session_state.floki_reponse = reponse
         st.session_state.floki_speak_id += 1
 
-        # VOIX ROBOT FORCÉE
-        txt_clean = re.sub(r'[*#_`]', '', reponse)
-        txt_clean = txt_clean.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
+        # VOIX ROBOT
+        txt_clean = re.sub(r'[*#_`]', '', reponse).replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
         b64 = base64.b64encode(txt_clean.encode()).decode()
         components.html(f"""
             <script>
             window.speechSynthesis.cancel();
             var u = new SpeechSynthesisUtterance(atob('{b64}'));
-            u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
+            u.lang = 'fr-FR'; u.rate = 1.1; u.pitch = 0.9; u.volume = 1.0;
             window.speechSynthesis.speak(u);
             </script>
         """, height=0)
 
-    # AFFICHE + HISTORIQUE
+    # AFFICHE
     if st.session_state.get("floki_btn"):
         components.html(st.session_state.floki_btn, height=70)
     if st.session_state.get("floki_reponse"):
-        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
-
-    # AFFICHE MÉMOIRE
-    if len(st.session_state.floki_history) > 1:
-        with st.expander("🧠 Mémoire FLOKI - 6 derniers échanges"):
-            for i, tour in enumerate(st.session_state.floki_history[-6:]):
-                st.caption(f"**Toi:** {tour['user']}")
-                st.caption(f"**FLOKI:** {tour['floki']}")
-                st.divider()
+        st.success(f"👑 {st.session_state.floki_reponse}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
