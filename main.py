@@ -570,14 +570,14 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V28 - AUTO-DÉTECTION COLONNES ASYMAS
+        # 👑 FLOKI V30 FINAL - ACCÈS TOTAL LIVE ASYMAS + CACHE OFF
     from urllib.parse import quote
     import re
     import base64
     import requests
     import streamlit.components.v1 as components
     import pandas as pd
-    from datetime import date, datetime
+    from datetime import date, datetime, timedelta
     import unicodedata
     import json
     import os
@@ -589,7 +589,7 @@ with st.sidebar:
 
     if is_pdg:
         st.divider()
-        st.caption("🔒 Mode PDG activé - FLOKI privé")
+        st.caption("🔒 Mode PDG activé - FLOKI LIVE")
 
         # INIT
         if "floki_btn" not in st.session_state:
@@ -622,40 +622,62 @@ with st.sidebar:
         if "floki_memory_long" not in st.session_state:
             st.session_state.floki_memory_long = load_memory()
 
-        # ANALYSE ASYMAS - VRAIES DONNÉES
-        ASYMAS = {}
-        stats_pdg = []
-        for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
-            if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
-                ASYMAS[nom] = locals()[var]
-                stats_pdg.append(f"{nom}:{len(locals()[var])}")
+        # CHARGE LIVE - CACHE 1 SEC SEULEMENT
+        @st.cache_data(ttl=1) # 1 SECONDE = LIVE
+        def load_table_live(table_name):
+            try:
+                data = supabase.table(table_name).select("*").execute()
+                return pd.DataFrame(data.data)
+            except:
+                return pd.DataFrame()
+
+        # CHARGE TOUTES LES TABLES ASYMAS EN DIRECT
+        df_biens = load_table_live("biens")
+        df_articles = load_table_live("articles")
+        df_voitures = load_table_live("voitures")
+        df_compta = load_table_live("compta")
+        df_factures = load_table_live("factures_proforma")
+        df_devis = load_table_live("devis")
+        df_utilisateurs = load_table_live("utilisateurs")
+
+        ASYMAS = {
+            "BIENS": df_biens,
+            "ARTICLES": df_articles,
+            "VOITURES": df_voitures,
+            "COMPTA": df_compta,
+            "FACTURES": df_factures,
+            "DEVIS": df_devis,
+            "UTILISATEURS": df_utilisateurs
+        }
+        stats_pdg = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
         contexte_asymas = " | ".join(stats_pdg)
 
         # FONCTION AUTO-DÉTECTION COLONNES ULTRA
         def get_colonnes_auto(df):
-            cols_lower = [c.lower() for c in df.columns]
+            cols_lower = [c.lower().strip() for c in df.columns]
             col_nom = None
             col_prix = None
             col_stock = None
+            col_qte = None
 
-            # Cherche nom - TOUS LES CAS POSSIBLES
-            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description']:
+            # Cherche nom
+            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description', 'titre']:
                 for i, col in enumerate(cols_lower):
                     if pattern in col:
                         col_nom = df.columns[i]
                         break
                 if col_nom: break
 
-            # Cherche prix - TOUS LES CAS POSSIBLES ASYMAS
+            # Cherche prix
             for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif']:
                 for i, col in enumerate(cols_lower):
-                    if pattern in col:
+                    if pattern == col or pattern in col:
                         col_prix = df.columns[i]
                         break
                 if col_prix: break
 
             # Cherche stock
-            for pattern in ['stock', 'qte', 'quantite', 'quantity']:
+            for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
                 for i, col in enumerate(cols_lower):
                     if pattern in col:
                         col_stock = df.columns[i]
@@ -664,8 +686,8 @@ with st.sidebar:
 
             return col_nom, col_prix, col_stock
 
-        # FONCTION CHERCHE ARTICLE PAR NOM - ULTRA ROBUSTE
-        def chercher_article_nom(nom_recherche):
+        # FONCTION CHERCHE ARTICLE - TOUT PRODUIT
+        def chercher_article_live(nom_recherche):
             try:
                 resultats = []
                 nom_recherche = nom_recherche.lower().strip()
@@ -687,50 +709,78 @@ with st.sidebar:
                     for idx, row in df_filtre.iterrows():
                         nom_article = str(row[col_nom]).title()
                         prix_article = row[col_prix]
-                        stock = row[col_stock] if col_stock and col_stock in df.columns else 0
-                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock:.0f} - {nom_table}")
+                        stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
+                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock} - {nom_table}")
 
                 if resultats:
                     return f"Trouvé: " + " | ".join(resultats[:5])
                 else:
-                    return f"Aucun {nom_recherche} trouvé dans ASYMAS chef. Colonnes détectées: {list(df.columns) if 'df' in locals() else 'Aucune'}"
+                    return f"Aucun {nom_recherche} trouvé chef"
             except Exception as e:
-                return f"Erreur recherche: {str(e)[:100]}"
+                return f"Erreur: {str(e)[:100]}"
 
-        # FONCTION CHERCHE PAR PRIX
-        def chercher_article_prix(prix_cible, marge=200):
+        # FONCTION REVENU PAR UTILISATEUR
+        def get_revenu_user(nom_user, periode="aujourd'hui"):
             try:
-                resultats = []
-                prix_cible = float(prix_cible)
-                prix_min = prix_cible - marge
-                prix_max = prix_cible + marge
+                if df_compta.empty: return "Aucune donnée compta chef"
 
-                for nom_table, df in ASYMAS.items():
-                    if df.empty: continue
-                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                    if not col_nom or not col_prix: continue
+                df_temp = df_compta.copy()
+                df_temp['date'] = pd.to_datetime(df_temp['date'], errors='coerce')
+                df_temp['utilisateur'] = df_temp['utilisateur'].astype(str).str.lower()
+                df_temp['montant'] = pd.to_numeric(df_temp['montant'], errors='coerce')
+                df_temp['type'] = df_temp['type'].astype(str).str.lower()
 
-                    df_temp = df.copy()
-                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                    df_temp = df_temp.dropna(subset=[col_prix])
-                    df_filtre = df_temp[(df_temp[col_prix] >= prix_min) & (df_temp[col_prix] <= prix_max)]
+                # Filtre utilisateur
+                df_user = df_temp[df_temp['utilisateur'].str.contains(nom_user.lower(), na=False)]
 
-                    for idx, row in df_filtre.iterrows():
-                        nom_article = str(row[col_nom]).title()
-                        prix_article = row[col_prix]
-                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - {nom_table}")
+                # Filtre date
+                today = date.today()
+                if periode == "aujourd'hui":
+                    df_user = df_user[df_user['date'].dt.date == today]
+                elif periode == "hier":
+                    df_user = df_user[df_user['date'].dt.date == (today - timedelta(days=1))]
+                elif periode == "semaine":
+                    df_user = df_user[df_user['date'].dt.date >= (today - timedelta(days=7))]
 
-                if resultats:
-                    return f"Trouvé: " + " | ".join(resultats[:3])
+                # Filtre revenus
+                df_revenus = df_user[df_user['type'].str.contains('revenu', na=False)]
+                total = df_revenus['montant'].sum()
+
+                nb_ops = len(df_revenus)
+                return f"{nom_user}: {total:,.0f}fc de revenus - {nb_ops} opérations {periode}"
+            except Exception as e:
+                return f"Erreur calcul revenu chef"
+
+        # FONCTION QUI A TRAVAILLÉ
+        def qui_a_travaille(periode="aujourd'hui"):
+            try:
+                if df_compta.empty: return "Aucune donnée compta chef"
+
+                df_temp = df_compta.copy()
+                df_temp['date'] = pd.to_datetime(df_temp['date'], errors='coerce')
+                df_temp['utilisateur'] = df_temp['utilisateur'].astype(str)
+
+                today = date.today()
+                if periode == "aujourd'hui":
+                    df_filtre = df_temp[df_temp['date'].dt.date == today]
+                elif periode == "hier":
+                    df_filtre = df_temp[df_temp['date'].dt.date == (today - timedelta(days=1))]
                 else:
-                    return f"Aucun article entre {prix_min:.0f}fc et {prix_max:.0f}fc chef"
+                    df_filtre = df_temp
+
+                users = df_filtre['utilisateur'].value_counts()
+                if not users.empty:
+                    resultats = [f"{user}: {count} opérations" for user, count in users.items()]
+                    return f"Travailleurs {periode}: " + " | ".join(resultats[:5])
+                else:
+                    return f"Personne n'a travaillé {periode} chef"
             except:
-                return f"Erreur recherche prix chef"
+                return "Erreur analyse travailleurs chef"
 
         # FONCTION MOINS CHER
         def get_moins_cher_asymas():
             try:
-                moins_cher_global = {"nom": "", "prix": float('inf'), "table": ""}
+                moins_cher_global = {"nom": "", "prix": float('inf'), "table": "", "stock": 0}
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
                     col_nom, col_prix, col_stock = get_colonnes_auto(df)
@@ -745,10 +795,11 @@ with st.sidebar:
                         prix_min = df_temp.loc[idx_min, col_prix]
                         if prix_min < moins_cher_global["prix"]:
                             nom_article = str(df_temp.loc[idx_min, col_nom]).title()
-                            moins_cher_global = {"nom": nom_article, "prix": prix_min, "table": nom_table}
+                            stock = df_temp.loc[idx_min, col_stock] if col_stock else 0
+                            moins_cher_global = {"nom": nom_article, "prix": prix_min, "table": nom_table, "stock": stock}
 
                 if moins_cher_global["prix"]!= float('inf'):
-                    return f"Moins cher: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f}fc - {moins_cher_global['table']}"
+                    return f"Moins cher: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f}fc - Stock:{moins_cher_global['stock']:.0f} - {moins_cher_global['table']}"
                 else:
                     return "Aucun prix trouvé dans ASYMAS chef"
             except:
@@ -759,6 +810,24 @@ with st.sidebar:
             try:
                 q = query.lower()
 
+                # COMBIEN DE [PRODUIT]
+                combien_match = re.search(r'combi[en]+\s+(?:de\s+)?(\w+)', q)
+                if combien_match:
+                    produit = combien_match.group(1)
+                    return chercher_article_live(produit)
+
+                # QUI A TRAVAILLÉ
+                if 'qui a travaillé' in q or 'qui travaille' in q:
+                    periode = "hier" if "hier" in q else "aujourd'hui"
+                    return qui_a_travaille(periode)
+
+                # REVENU UTILISATEUR
+                revenu_match = re.search(r'(?:revenu|gagné|fait)\s+(?:de\s+)?(\w+)', q)
+                if revenu_match:
+                    nom = revenu_match.group(1)
+                    periode = "hier" if "hier" in q else "aujourd'hui"
+                    return get_revenu_user(nom, periode)
+
                 # RECHERCHE PAR PRIX
                 prix_match = re.search(r'(\d+)\s*fc', q)
                 if prix_match:
@@ -766,11 +835,9 @@ with st.sidebar:
                     marge = 300 if 'presque' in q or 'environ' in q else 100
                     return chercher_article_prix(prix, marge)
 
-                # RECHERCHE PAR NOM - TOUS PRODUITS COURANTS
-                produits = ['sucre', 'riz', 'huile', 'savon', 'farine', 'sel', 'ciment', 'tôle', 'fer', 'eau', 'pain', 'lait']
-                for produit in produits:
-                    if produit in q:
-                        return chercher_article_nom(produit)
+                # RECHERCHE PAR NOM DIRECT
+                if len(q.split()) <= 3 and not any(x in q for x in ['combien', 'qui', 'quoi', 'comment']):
+                    return chercher_article_live(q)
 
                 # MOINS CHER
                 if 'moins cher' in q or 'prix bas' in q or 'pas cher' in q:
@@ -798,8 +865,8 @@ with st.sidebar:
                     return f"ASYMAS: {contexte_asymas}"
 
                 return None
-            except:
-                return None
+            except Exception as e:
+                return f"Erreur: {str(e)[:100]}"
 
         # FONCTION GOOGLE
         def google_search_smart(query):
@@ -859,8 +926,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v28", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v28", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v30", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v30", label_visibility="collapsed")
 
         # MICRO
         if audio:
@@ -882,7 +949,7 @@ with st.sidebar:
             prompt_clean = prompt.strip().lower()
             today = date.today()
 
-            # 1. PRIORITÉ 1: VRAIES DONNÉES ASYMAS
+            # 1. PRIORITÉ 1: VRAIES DONNÉES ASYMAS LIVE
             asymas_data = get_asymas_data(prompt_clean)
             if asymas_data:
                 reponse = asymas_data
