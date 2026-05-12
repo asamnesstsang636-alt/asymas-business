@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V22 - ACCÈS PDG UNIQUEMENT + MÉMOIRE LONGUE + GOOGLE
+        # 👑 FLOKI V22-FIX - ACCÈS PDG UNIQUEMENT SANS CASSER L'APP
     from urllib.parse import quote
     import re
     import base64
@@ -582,241 +582,240 @@ with st.sidebar:
     import json
     import os
 
-    # 🔒 CONTRÔLE ACCÈS PDG - SI PAS PDG, FLOKI DISPARAÎT
-    role_user = st.session_state.get("user_role", "") # Ton app doit définir st.session_state.user_role
-    nom_user = st.session_state.get("user_name", "") # Ou st.session_state.user_name
+    # 🔒 VÉRIFIE RÔLE MAIS NE COUPE PAS L'APP
+    role_user = st.session_state.get("user_role", "")
+    nom_user = st.session_state.get("user_name", "")
+    is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-    # REMPLACE "PDG" PAR TON VRAI RÔLE OU NOM
-    if role_user.upper()!= "PDG" and nom_user.upper()!= "PDG":
-        st.stop() # STOP. FLOKI N'EXISTE PAS POUR LES AUTRES
+    # SI PAS PDG, ON SAUTE JUSTE LE BLOC FLOKI
+    if is_pdg:
+        st.divider()
+        st.caption("🔒 Mode PDG activé - FLOKI privé")
 
-    st.divider()
-    st.caption("🔒 Mode PDG activé - FLOKI privé")
+        # INIT
+        if "floki_btn" not in st.session_state:
+            st.session_state.floki_btn = None
+        if "floki_reponse" not in st.session_state:
+            st.session_state.floki_reponse = ""
+        if "floki_speak_id" not in st.session_state:
+            st.session_state.floki_speak_id = 0
+        if "floki_history" not in st.session_state:
+            st.session_state.floki_history = []
+        if "floki_last_date" not in st.session_state:
+            st.session_state.floki_last_date = None
 
-    # INIT
-    if "floki_btn" not in st.session_state:
-        st.session_state.floki_btn = None
-    if "floki_reponse" not in st.session_state:
-        st.session_state.floki_reponse = ""
-    if "floki_speak_id" not in st.session_state:
-        st.session_state.floki_speak_id = 0
-    if "floki_history" not in st.session_state:
-        st.session_state.floki_history = []
-    if "floki_last_date" not in st.session_state:
-        st.session_state.floki_last_date = None
+        # FICHIER MÉMOIRE LONGUE PDG
+        MEMORY_FILE = "floki_pdg_memory.json"
 
-    # FICHIER MÉMOIRE LONGUE PDG
-    MEMORY_FILE = "floki_pdg_memory.json"
+        def load_memory():
+            if os.path.exists(MEMORY_FILE):
+                try:
+                    with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except:
+                    return {}
+            return {}
 
-    def load_memory():
-        if os.path.exists(MEMORY_FILE):
+        def save_memory(mem):
             try:
-                with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(mem, f, ensure_ascii=False, indent=2)
             except:
-                return {}
-        return {}
+                pass
 
-    def save_memory(mem):
-        try:
-            with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-                json.dump(mem, f, ensure_ascii=False, indent=2)
-        except:
-            pass
+        if "floki_memory_long" not in st.session_state:
+            st.session_state.floki_memory_long = load_memory()
 
-    if "floki_memory_long" not in st.session_state:
-        st.session_state.floki_memory_long = load_memory()
+        # ANALYSE ASYMAS
+        ASYMAS = {}
+        stats_pdg = []
+        for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
+            if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
+                ASYMAS[nom] = locals()[var]
+                stats_pdg.append(f"{nom}:{len(locals()[var])}")
+        contexte_asymas = " | ".join(stats_pdg)
 
-    # ANALYSE ASYMAS
-    ASYMAS = {}
-    stats_pdg = []
-    for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
-        if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
-            ASYMAS[nom] = locals()[var]
-            stats_pdg.append(f"{nom}:{len(locals()[var])}")
-    contexte_asymas = " | ".join(stats_pdg)
-
-    # FONCTION GOOGLE SEARCH
-    def google_search(query):
-        try:
-            if "SERPAPI_KEY" in st.secrets:
-                params = {
-                    "q": query,
-                    "api_key": st.secrets["SERPAPI_KEY"],
-                    "engine": "google",
-                    "num": 3,
-                    "hl": "fr",
-                    "gl": "cd"
-                }
-                r = requests.get("https://serpapi.com/search", params=params, timeout=8)
+        # FONCTION GOOGLE SEARCH
+        def google_search(query):
+            try:
+                if "SERPAPI_KEY" in st.secrets:
+                    params = {
+                        "q": query,
+                        "api_key": st.secrets["SERPAPI_KEY"],
+                        "engine": "google",
+                        "num": 3,
+                        "hl": "fr",
+                        "gl": "cd"
+                    }
+                    r = requests.get("https://serpapi.com/search", params=params, timeout=8)
+                    if r.status_code == 200:
+                        data = r.json()
+                        resultats = []
+                        if data.get("answer_box"):
+                            answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
+                            if answer: resultats.append(answer)
+                        if data.get("organic_results"):
+                            for res in data["organic_results"][:2]:
+                                snippet = res.get("snippet", "")
+                                if snippet: resultats.append(snippet)
+                        if resultats:
+                            return " | ".join(resultats)[:400]
+                # Fallback DuckDuckGo
+                url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+                r = requests.get(url, timeout=5)
                 if r.status_code == 200:
                     data = r.json()
-                    resultats = []
-                    if data.get("answer_box"):
-                        answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
-                        if answer: resultats.append(answer)
-                    if data.get("organic_results"):
-                        for res in data["organic_results"][:2]:
-                            snippet = res.get("snippet", "")
-                            if snippet: resultats.append(snippet)
-                    if resultats:
-                        return " | ".join(resultats)[:400]
-            # Fallback DuckDuckGo
-            url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
-            r = requests.get(url, timeout=5)
-            if r.status_code == 200:
-                data = r.json()
-                if data.get('Abstract'):
-                    return data['Abstract'][:300]
-                elif data.get('RelatedTopics'):
-                    for topic in data['RelatedTopics']:
-                        if isinstance(topic, dict) and topic.get('Text'):
-                            return topic['Text'][:300]
-            return None
-        except:
-            return None
+                    if data.get('Abstract'):
+                        return data['Abstract'][:300]
+                    elif data.get('RelatedTopics'):
+                        for topic in data['RelatedTopics']:
+                            if isinstance(topic, dict) and topic.get('Text'):
+                                return topic['Text'][:300]
+                return None
+            except:
+                return None
 
-    # FONCTION NETTOYAGE VOIX NUCLEAIRE
-    def clean_voice_nuclear(text):
-        text = unicodedata.normalize('NFKD', text)
-        text = text.encode('ASCII', 'ignore').decode('ASCII')
-        remplacements = {
-            '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
-            '€': ' euros ', '$': ' dollars ', '£': ' livres ',
-            '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
-            '+': ' plus ', '=': ' egal ', '#': ' hashtag ',
-            '*': ' ', '_': ' ', '`': ' ', '~': ' ',
-            '<': ' inferieur ', '>': ' superieur ', '|': ' ',
-            '[': ' ', ']': ' ', '{': ' ', '}': ' ',
-            '\\': ' ', '/': ' sur ', '^': ' '
-        }
-        for symbole, mot in remplacements.items():
-            text = text.replace(symbole, mot)
-        text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
-
-    # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v22", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v22", label_visibility="collapsed")
-
-    # MICRO
-    if audio:
-        try:
-            if len(audio.getvalue()) > 800:
-                files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-                headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                data = {"model": "whisper-large-v3", "language": "fr"}
-                with st.spinner("🎤"):
-                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                if r.status_code == 200:
-                    prompt = r.json().get("text", "").strip()
-        except: pass
-
-    # EXÉCUTION
-    if prompt:
-        btn_html = None
-        reponse = ""
-        prompt_clean = prompt.strip().lower()
-        today = date.today()
-
-        # 0. MÉMOIRE LONGUE PDG
-        if re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
-            info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
-            cle = f"note_{len(st.session_state.floki_memory_long)+1}"
-            st.session_state.floki_memory_long[cle] = {
-                "info": info,
-                "date": today.strftime('%d/%m/%Y %H:%M')
+        # FONCTION NETTOYAGE VOIX NUCLEAIRE
+        def clean_voice_nuclear(text):
+            text = unicodedata.normalize('NFKD', text)
+            text = text.encode('ASCII', 'ignore').decode('ASCII')
+            remplacements = {
+                '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
+                '€': ' euros ', '$': ' dollars ', '£': ' livres ',
+                '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
+                '+': ' plus ', '=': ' egal ', '#': ' hashtag ',
+                '*': ' ', '_': ' ', '`': ' ', '~': ' ',
+                '<': ' inferieur ', '>': ' superieur ', '|': ' ',
+                '[': ' ', ']': ' ', '{': ' ', '}': ' ',
+                '\\': ' ', '/': ' sur ', '^': ' '
             }
-            save_memory(st.session_state.floki_memory_long)
-            reponse = f"C'est noté chef. Je retiens: {info}"
+            for symbole, mot in remplacements.items():
+                text = text.replace(symbole, mot)
+            text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text
 
-        elif re.search(r'^(rappelle|qu.est.ce que je t.ai dit|mémoire|notes)', prompt_clean):
-            if st.session_state.floki_memory_long:
-                notes = []
-                for k, v in st.session_state.floki_memory_long.items():
-                    notes.append(f"{v['date']}: {v['info']}")
-                reponse = f"Voici ce que tu m'as dit chef: " + " | ".join(notes[-3:])
+        # INPUTS
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v22", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v22", label_visibility="collapsed")
+
+        # MICRO
+        if audio:
+            try:
+                if len(audio.getvalue()) > 800:
+                    files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+                    headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                    data = {"model": "whisper-large-v3", "language": "fr"}
+                    with st.spinner("🎤"):
+                        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                    if r.status_code == 200:
+                        prompt = r.json().get("text", "").strip()
+            except: pass
+
+        # EXÉCUTION
+        if prompt:
+            btn_html = None
+            reponse = ""
+            prompt_clean = prompt.strip().lower()
+            today = date.today()
+
+            # 0. MÉMOIRE LONGUE PDG
+            if re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
+                info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
+                cle = f"note_{len(st.session_state.floki_memory_long)+1}"
+                st.session_state.floki_memory_long[cle] = {
+                    "info": info,
+                    "date": today.strftime('%d/%m/%Y %H:%M')
+                }
+                save_memory(st.session_state.floki_memory_long)
+                reponse = f"C'est noté chef. Je retiens: {info}"
+
+            elif re.search(r'^(rappelle|qu.est.ce que je t.ai dit|mémoire|notes)', prompt_clean):
+                if st.session_state.floki_memory_long:
+                    notes = []
+                    for k, v in st.session_state.floki_memory_long.items():
+                        notes.append(f"{v['date']}: {v['info']}")
+                    reponse = f"Voici ce que tu m'as dit chef: " + " | ".join(notes[-3:])
+                else:
+                    reponse = "Mémoire vide chef. Dis-moi quoi retenir"
+
+            # 1. ORDRES BUSINESS
+            elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
+                    texte_match = re.search(r'(dit|que|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                    texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
+                    link = f"https://wa.me/{numero}?text={quote(texte)}"
+                    btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP +{numero}</button></a>'
+                    reponse = f"C'est fait chef. WhatsApp plus {numero} pret."
+
+            elif re.search(r'(mail|mel|email).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt_clean):
+                email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
+                corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                corps = corps_match.group(2).strip() if corps_match else "ASYMAS"
+                link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
+                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
+                reponse = f"Email pour {email} pret chef."
+
+            elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    texte_match = re.search(r'(dit|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                    texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
+                    link = f"sms:+{numero}?body={quote(texte)}"
+                    btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
+                    reponse = f"SMS plus {numero} pret chef."
+
+            elif re.search(r'(appel|call|tel).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    link = f"tel:+{numero}"
+                    btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
+                    reponse = f"J'appelle plus {numero} chef."
+
+            elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean):
+                match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean)
+                client = match.group(2).strip().title()
+                montant = match.group(3)
+                note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
+                b64_note = base64.b64encode(note.encode()).decode()
+                btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
+                reponse = f"Facture {montant} dollars pour {client} prete chef."
+
+            # 2. SALUT HUMAIN
+            elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
+                if st.session_state.floki_last_date!= today:
+                    reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
+                    st.session_state.floki_last_date = today
+                else:
+                    reponse = "Quel service je peux vous rendre aujourd'hui chef"
+
+            # 3. CERVEAU + GOOGLE + MÉMOIRE LONGUE
             else:
-                reponse = "Mémoire vide chef. Dis-moi quoi retenir"
+                besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto)', prompt_clean))
 
-        # 1. ORDRES BUSINESS
-        elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
-                texte_match = re.search(r'(dit|que|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-                texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
-                link = f"https://wa.me/{numero}?text={quote(texte)}"
-                btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP +{numero}</button></a>'
-                reponse = f"C'est fait chef. WhatsApp plus {numero} pret."
+                info_google = ""
+                if besoin_google:
+                    with st.spinner("🔍 Je cherche sur Google + X chef..."):
+                        info_google = google_search(prompt)
+                    if info_google:
+                        info_google = f"LIVE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
-        elif re.search(r'(mail|mel|email).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt_clean):
-            email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
-            corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-            corps = corps_match.group(2).strip() if corps_match else "ASYMAS"
-            link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
-            reponse = f"Email pour {email} pret chef."
+                memoire_longue = ""
+                if st.session_state.floki_memory_long:
+                    notes_recentes = []
+                    for k, v in list(st.session_state.floki_memory_long.items())[-3:]:
+                        notes_recentes.append(f"{v['date']}: {v['info']}")
+                    memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
 
-        elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                texte_match = re.search(r'(dit|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-                texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
-                link = f"sms:+{numero}?body={quote(texte)}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
-                reponse = f"SMS plus {numero} pret chef."
-
-        elif re.search(r'(appel|call|tel).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                link = f"tel:+{numero}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
-                reponse = f"J'appelle plus {numero} chef."
-
-        elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean):
-            match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean)
-            client = match.group(2).strip().title()
-            montant = match.group(3)
-            note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
-            b64_note = base64.b64encode(note.encode()).decode()
-            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
-            reponse = f"Facture {montant} dollars pour {client} prete chef."
-
-        # 2. SALUT HUMAIN
-        elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
-            if st.session_state.floki_last_date!= today:
-                reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
-                st.session_state.floki_last_date = today
-            else:
-                reponse = "Quel service je peux vous rendre aujourd'hui chef"
-
-        # 3. CERVEAU + GOOGLE + MÉMOIRE LONGUE
-        else:
-            besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto)', prompt_clean))
-
-            info_google = ""
-            if besoin_google:
-                with st.spinner("🔍 Je cherche sur Google + X chef..."):
-                    info_google = google_search(prompt)
-                if info_google:
-                    info_google = f"LIVE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
-
-            memoire_longue = ""
-            if st.session_state.floki_memory_long:
-                notes_recentes = []
-                for k, v in list(st.session_state.floki_memory_long.items())[-3:]:
-                    notes_recentes.append(f"{v['date']}: {v['info']}")
-                memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
-
-            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Accès PDG uniquement.
+                messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Accès PDG uniquement.
 
 REGLES:
 1. Parle naturel. 2 phrases max. Conseil direct.
@@ -828,56 +827,56 @@ REGLES:
 
 {info_google}{memoire_longue}DONNEES ASYMAS: {contexte_asymas}"""}]
 
-            for tour in st.session_state.floki_history[-6:]:
-                messages.append({"role": "user", "content": tour["user"]})
-                messages.append({"role": "assistant", "content": tour["floki"]})
+                for tour in st.session_state.floki_history[-6:]:
+                    messages.append({"role": "user", "content": tour["user"]})
+                    messages.append({"role": "assistant", "content": tour["floki"]})
 
-            messages.append({"role": "user", "content": prompt})
+                messages.append({"role": "user", "content": prompt})
 
-            try:
-                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 150,"temperature": 0.7}, timeout=10)
-                if r.status_code == 200:
-                    reponse = r.json()['choices'][0]['message']['content'].strip()
-                else:
-                    reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise"
-            except:
-                reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 150,"temperature": 0.7}, timeout=10)
+                    if r.status_code == 200:
+                        reponse = r.json()['choices'][0]['message']['content'].strip()
+                    else:
+                        reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise"
+                except:
+                    reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
 
-        # SAUVE MÉMOIRE COURTE
-        st.session_state.floki_history.append({"user": prompt, "floki": reponse})
-        if len(st.session_state.floki_history) > 6:
-            st.session_state.floki_history.pop(0)
+            # SAUVE MÉMOIRE COURTE
+            st.session_state.floki_history.append({"user": prompt, "floki": reponse})
+            if len(st.session_state.floki_history) > 6:
+                st.session_state.floki_history.pop(0)
 
-        st.session_state.floki_btn = btn_html
-        st.session_state.floki_reponse = reponse
-        st.session_state.floki_speak_id += 1
+            st.session_state.floki_btn = btn_html
+            st.session_state.floki_reponse = reponse
+            st.session_state.floki_speak_id += 1
 
-        # VOIX NUCLEAIRE
-        txt_voice = clean_voice_nuclear(reponse)
-        txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
-        b64 = base64.b64encode(txt_voice.encode()).decode()
-        components.html(f"""
-            <script>
-            window.speechSynthesis.cancel();
-            var u = new SpeechSynthesisUtterance(atob('{b64}'));
-            u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
-            window.speechSynthesis.speak(u);
-            </script>
-        """, height=0)
+            # VOIX NUCLEAIRE
+            txt_voice = clean_voice_nuclear(reponse)
+            txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
+            b64 = base64.b64encode(txt_voice.encode()).decode()
+            components.html(f"""
+                <script>
+                window.speechSynthesis.cancel();
+                var u = new SpeechSynthesisUtterance(atob('{b64}'));
+                u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
+                window.speechSynthesis.speak(u);
+                </script>
+            """, height=0)
 
-    # AFFICHE
-    if st.session_state.get("floki_btn"):
-        components.html(st.session_state.floki_btn, height=70)
-    if st.session_state.get("floki_reponse"):
-        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+        # AFFICHE
+        if st.session_state.get("floki_btn"):
+            components.html(st.session_state.floki_btn, height=70)
+        if st.session_state.get("floki_reponse"):
+            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
 
-    # AFFICHE MÉMOIRE PDG
-    if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
-        with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
-            for k, v in st.session_state.floki_memory_long.items():
-                st.caption(f"**{v['date']}** : {v['info']}")
+        # AFFICHE MÉMOIRE PDG
+        if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
+            with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
+                for k, v in st.session_state.floki_memory_long.items():
+                    st.caption(f"**{v['date']}** : {v['info']}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
