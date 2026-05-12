@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V22-FIX - ACCÈS PDG UNIQUEMENT SANS CASSER L'APP
+        # 👑 FLOKI V23 - ZÉRO INVENTION + VRAIES DONNÉES ASYMAS
     from urllib.parse import quote
     import re
     import base64
@@ -582,12 +582,11 @@ with st.sidebar:
     import json
     import os
 
-    # 🔒 VÉRIFIE RÔLE MAIS NE COUPE PAS L'APP
+    # 🔒 CONTRÔLE ACCÈS PDG
     role_user = st.session_state.get("user_role", "")
     nom_user = st.session_state.get("user_name", "")
     is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-    # SI PAS PDG, ON SAUTE JUSTE LE BLOC FLOKI
     if is_pdg:
         st.divider()
         st.caption("🔒 Mode PDG activé - FLOKI privé")
@@ -604,9 +603,8 @@ with st.sidebar:
         if "floki_last_date" not in st.session_state:
             st.session_state.floki_last_date = None
 
-        # FICHIER MÉMOIRE LONGUE PDG
+        # MÉMOIRE LONGUE PDG
         MEMORY_FILE = "floki_pdg_memory.json"
-
         def load_memory():
             if os.path.exists(MEMORY_FILE):
                 try:
@@ -615,18 +613,16 @@ with st.sidebar:
                 except:
                     return {}
             return {}
-
         def save_memory(mem):
             try:
                 with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
                     json.dump(mem, f, ensure_ascii=False, indent=2)
             except:
                 pass
-
         if "floki_memory_long" not in st.session_state:
             st.session_state.floki_memory_long = load_memory()
 
-        # ANALYSE ASYMAS
+        # ANALYSE ASYMAS - VRAIES DONNÉES
         ASYMAS = {}
         stats_pdg = []
         for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
@@ -635,7 +631,28 @@ with st.sidebar:
                 stats_pdg.append(f"{nom}:{len(locals()[var])}")
         contexte_asymas = " | ".join(stats_pdg)
 
-        # FONCTION GOOGLE SEARCH
+        # FONCTION CHERCHE VRAIE FACTURE
+        def get_derniere_facture(categorie=None):
+            try:
+                if "FACTURES" in ASYMAS:
+                    df = ASYMAS["FACTURES"].copy()
+                    if 'date' in df.columns:
+                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                        df = df.sort_values('date', ascending=False)
+                    if categorie and 'categorie' in df.columns:
+                        df = df[df['categorie'].str.lower().str.contains(categorie.lower(), na=False)]
+                    if not df.empty:
+                        last = df.iloc[0]
+                        date_str = last['date'].strftime('%d/%m/%Y') if 'date' in last and pd.notna(last['date']) else "Date inconnue"
+                        montant = f"{last.get('montant', 0):.0f} dollars" if 'montant' in last else "Montant inconnu"
+                        client = last.get('client', 'Client inconnu') if 'client' in last else "Client inconnu"
+                        statut = last.get('statut', '') if 'statut' in last else ""
+                        return f"Dernière facture: {date_str} - {montant} - {client} {statut}"
+                return "Aucune facture trouvée chef"
+            except:
+                return "Erreur lecture factures chef"
+
+        # FONCTION GOOGLE
         def google_search(query):
             try:
                 if "SERPAPI_KEY" in st.secrets:
@@ -660,7 +677,6 @@ with st.sidebar:
                                 if snippet: resultats.append(snippet)
                         if resultats:
                             return " | ".join(resultats)[:400]
-                # Fallback DuckDuckGo
                 url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
                 r = requests.get(url, timeout=5)
                 if r.status_code == 200:
@@ -675,7 +691,7 @@ with st.sidebar:
             except:
                 return None
 
-        # FONCTION NETTOYAGE VOIX NUCLEAIRE
+        # FONCTION NETTOYAGE VOIX
         def clean_voice_nuclear(text):
             text = unicodedata.normalize('NFKD', text)
             text = text.encode('ASCII', 'ignore').decode('ASCII')
@@ -696,8 +712,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v22", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v22", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v23", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v23", label_visibility="collapsed")
 
         # MICRO
         if audio:
@@ -719,8 +735,20 @@ with st.sidebar:
             prompt_clean = prompt.strip().lower()
             today = date.today()
 
-            # 0. MÉMOIRE LONGUE PDG
-            if re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
+            # 0. QUESTIONS ASYMAS RÉELLES - PRIORITÉ ABSOLUE
+            if re.search(r'(derniere|dernier).*facture', prompt_clean):
+                if 'immobilier' in prompt_clean or 'immobilie' in prompt_clean:
+                    reponse = get_derniere_facture("immobilier")
+                elif 'commerce' in prompt_clean:
+                    reponse = get_derniere_facture("commerce")
+                else:
+                    reponse = get_derniere_facture()
+
+            elif re.search(r'^(combien|nombre).*(article|facture|bien|voiture)', prompt_clean):
+                reponse = f"ASYMAS: {contexte_asymas}"
+
+            # 1. MÉMOIRE LONGUE PDG
+            elif re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
                 info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
                 cle = f"note_{len(st.session_state.floki_memory_long)+1}"
                 st.session_state.floki_memory_long[cle] = {
@@ -735,11 +763,11 @@ with st.sidebar:
                     notes = []
                     for k, v in st.session_state.floki_memory_long.items():
                         notes.append(f"{v['date']}: {v['info']}")
-                    reponse = f"Voici ce que tu m'as dit chef: " + " | ".join(notes[-3:])
+                    reponse = f"Mémoire PDG: " + " | ".join(notes[-3:])
                 else:
                     reponse = "Mémoire vide chef. Dis-moi quoi retenir"
 
-            # 1. ORDRES BUSINESS
+            # 2. ORDRES BUSINESS
             elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
                 nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
                 if nums:
@@ -789,7 +817,7 @@ with st.sidebar:
                 btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
                 reponse = f"Facture {montant} dollars pour {client} prete chef."
 
-            # 2. SALUT HUMAIN
+            # 3. SALUT HUMAIN
             elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
                 if st.session_state.floki_last_date!= today:
                     reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
@@ -797,7 +825,7 @@ with st.sidebar:
                 else:
                     reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-            # 3. CERVEAU + GOOGLE + MÉMOIRE LONGUE
+            # 4. CERVEAU + GOOGLE
             else:
                 besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto)', prompt_clean))
 
@@ -817,15 +845,15 @@ with st.sidebar:
 
                 messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Accès PDG uniquement.
 
-REGLES:
-1. Parle naturel. 2 phrases max. Conseil direct.
-2. Utilise LIVE si dispo. Utilise MÉMOIRE PDG si pertinent.
-3. Cite date du jour {today.strftime('%d/%m/%Y')}.
-4. JAMAIS "je sais pas". JAMAIS "2025".
-5. Ecris sans symboles: "dollars" pas "$".
+RÈGLES STRICTES:
+1. 1 phrase max. 15 mots max. Sec.
+2. Si question ASYMAS: Réponds avec VRAIES DONNÉES. JAMAIS inventer.
+3. Dates en chiffres: 09/05/2026. Pas "neuf mai".
+4. Chiffres en chiffres: 70000. Pas "soixante dix mille".
+5. Si pas info: Dis "Pas trouvé chef".
 6. "chef" 1 fois max.
 
-{info_google}{memoire_longue}DONNEES ASYMAS: {contexte_asymas}"""}]
+{info_google}{memoire_longue}DONNEES ASYMAS RÉELLES: {contexte_asymas}"""}]
 
                 for tour in st.session_state.floki_history[-6:]:
                     messages.append({"role": "user", "content": tour["user"]})
@@ -836,13 +864,13 @@ REGLES:
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 150,"temperature": 0.7}, timeout=10)
+                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 80,"temperature": 0.1}, timeout=10)
                     if r.status_code == 200:
                         reponse = r.json()['choices'][0]['message']['content'].strip()
                     else:
-                        reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise"
+                        reponse = f"Erreur chef. {today.strftime('%d/%m/%Y')}"
                 except:
-                    reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
+                    reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}"
 
             # SAUVE MÉMOIRE COURTE
             st.session_state.floki_history.append({"user": prompt, "floki": reponse})
