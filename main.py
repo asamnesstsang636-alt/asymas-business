@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V23 - ZÉRO INVENTION + VRAIES DONNÉES ASYMAS
+        # 👑 FLOKI V24 FINAL - CERVEAU PDG + GOOGLE RÉEL + OBÉISSANCE TOTALE
     from urllib.parse import quote
     import re
     import base64
@@ -582,7 +582,7 @@ with st.sidebar:
     import json
     import os
 
-    # 🔒 CONTRÔLE ACCÈS PDG
+    # 🔒 CONTRÔLE ACCÈS PDG - CACHE FLOKI SEULEMENT
     role_user = st.session_state.get("user_role", "")
     nom_user = st.session_state.get("user_name", "")
     is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
@@ -631,29 +631,39 @@ with st.sidebar:
                 stats_pdg.append(f"{nom}:{len(locals()[var])}")
         contexte_asymas = " | ".join(stats_pdg)
 
-        # FONCTION CHERCHE VRAIE FACTURE
-        def get_derniere_facture(categorie=None):
+        # FONCTION VRAIES DONNÉES ASYMAS
+        def get_asymas_data(query):
             try:
-                if "FACTURES" in ASYMAS:
-                    df = ASYMAS["FACTURES"].copy()
-                    if 'date' in df.columns:
-                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                        df = df.sort_values('date', ascending=False)
-                    if categorie and 'categorie' in df.columns:
-                        df = df[df['categorie'].str.lower().str.contains(categorie.lower(), na=False)]
-                    if not df.empty:
-                        last = df.iloc[0]
-                        date_str = last['date'].strftime('%d/%m/%Y') if 'date' in last and pd.notna(last['date']) else "Date inconnue"
-                        montant = f"{last.get('montant', 0):.0f} dollars" if 'montant' in last else "Montant inconnu"
-                        client = last.get('client', 'Client inconnu') if 'client' in last else "Client inconnu"
-                        statut = last.get('statut', '') if 'statut' in last else ""
-                        return f"Dernière facture: {date_str} - {montant} - {client} {statut}"
-                return "Aucune facture trouvée chef"
-            except:
-                return "Erreur lecture factures chef"
+                q = query.lower()
+                # DERNIÈRE FACTURE
+                if 'derniere' in q and 'facture' in q:
+                    if "FACTURES" in ASYMAS:
+                        df = ASYMAS["FACTURES"].copy()
+                        if 'date' in df.columns:
+                            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                            df = df.sort_values('date', ascending=False)
+                        if 'immobil' in q and 'categorie' in df.columns:
+                            df = df[df['categorie'].str.lower().str.contains('immobil', na=False)]
+                        if not df.empty:
+                            last = df.iloc[0]
+                            date_str = last['date'].strftime('%d/%m/%Y') if 'date' in last and pd.notna(last['date']) else "Date inconnue"
+                            montant = f"{last.get('montant', 0):.0f} dollars" if 'montant' in last else "Montant inconnu"
+                            client = last.get('client', 'Client inconnu') if 'client' in last else "Client inconnu"
+                            return f"Dernière facture: {date_str} - {montant} - {client}"
+                    return "Aucune facture trouvée chef"
 
-        # FONCTION GOOGLE
-        def google_search(query):
+                # STATS GÉNÉRALES
+                if 'combien' in q or 'nombre' in q:
+                    return f"ASYMAS: {contexte_asymas}"
+
+                return None
+            except:
+                return None
+
+        # FONCTION GOOGLE RÉEL - 3 NIVEAUX
+        def google_search_smart(query):
+            info = ""
+            # NIVEAU 1: SERPAPI GOOGLE RÉEL
             try:
                 if "SERPAPI_KEY" in st.secrets:
                     params = {
@@ -667,29 +677,29 @@ with st.sidebar:
                     r = requests.get("https://serpapi.com/search", params=params, timeout=8)
                     if r.status_code == 200:
                         data = r.json()
-                        resultats = []
                         if data.get("answer_box"):
                             answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
-                            if answer: resultats.append(answer)
+                            if answer: return f"Google: {answer}"
                         if data.get("organic_results"):
-                            for res in data["organic_results"][:2]:
-                                snippet = res.get("snippet", "")
-                                if snippet: resultats.append(snippet)
-                        if resultats:
-                            return " | ".join(resultats)[:400]
+                            snippets = [res.get("snippet", "") for res in data["organic_results"][:2] if res.get("snippet")]
+                            if snippets: return f"Google: {' | '.join(snippets)}"
+            except: pass
+
+            # NIVEAU 2: DUCKDUCKGO
+            try:
                 url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
                 r = requests.get(url, timeout=5)
                 if r.status_code == 200:
                     data = r.json()
                     if data.get('Abstract'):
-                        return data['Abstract'][:300]
+                        return f"DuckDuckGo: {data['Abstract']}"
                     elif data.get('RelatedTopics'):
                         for topic in data['RelatedTopics']:
                             if isinstance(topic, dict) and topic.get('Text'):
-                                return topic['Text'][:300]
-                return None
-            except:
-                return None
+                                return f"DuckDuckGo: {topic['Text']}"
+            except: pass
+
+            return None
 
         # FONCTION NETTOYAGE VOIX
         def clean_voice_nuclear(text):
@@ -712,8 +722,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v23", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v23", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v24", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v24", label_visibility="collapsed")
 
         # MICRO
         if audio:
@@ -735,19 +745,12 @@ with st.sidebar:
             prompt_clean = prompt.strip().lower()
             today = date.today()
 
-            # 0. QUESTIONS ASYMAS RÉELLES - PRIORITÉ ABSOLUE
-            if re.search(r'(derniere|dernier).*facture', prompt_clean):
-                if 'immobilier' in prompt_clean or 'immobilie' in prompt_clean:
-                    reponse = get_derniere_facture("immobilier")
-                elif 'commerce' in prompt_clean:
-                    reponse = get_derniere_facture("commerce")
-                else:
-                    reponse = get_derniere_facture()
+            # 1. PRIORITÉ 1: VRAIES DONNÉES ASYMAS
+            asymas_data = get_asymas_data(prompt_clean)
+            if asymas_data:
+                reponse = asymas_data
 
-            elif re.search(r'^(combien|nombre).*(article|facture|bien|voiture)', prompt_clean):
-                reponse = f"ASYMAS: {contexte_asymas}"
-
-            # 1. MÉMOIRE LONGUE PDG
+            # 2. MÉMOIRE LONGUE PDG
             elif re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
                 info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
                 cle = f"note_{len(st.session_state.floki_memory_long)+1}"
@@ -767,7 +770,7 @@ with st.sidebar:
                 else:
                     reponse = "Mémoire vide chef. Dis-moi quoi retenir"
 
-            # 2. ORDRES BUSINESS
+            # 3. ORDRES BUSINESS
             elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
                 nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
                 if nums:
@@ -817,7 +820,7 @@ with st.sidebar:
                 btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
                 reponse = f"Facture {montant} dollars pour {client} prete chef."
 
-            # 3. SALUT HUMAIN
+            # 4. SALUT HUMAIN
             elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
                 if st.session_state.floki_last_date!= today:
                     reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
@@ -825,35 +828,41 @@ with st.sidebar:
                 else:
                     reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-            # 4. CERVEAU + GOOGLE
+            # 5. CERVEAU MONDE + GOOGLE + CONSEIL
             else:
-                besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto)', prompt_clean))
+                # CHERCHE GOOGLE SI BESOIN
+                besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto|president|ministre|guerre|kinshasa|beni|rdc|congo)', prompt_clean))
 
                 info_google = ""
                 if besoin_google:
-                    with st.spinner("🔍 Je cherche sur Google + X chef..."):
-                        info_google = google_search(prompt)
+                    with st.spinner("🔍 Je cherche pour toi chef..."):
+                        info_google = google_search_smart(prompt)
                     if info_google:
-                        info_google = f"LIVE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
+                        info_google = f"WEB {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
+                # MÉMOIRE LONGUE
                 memoire_longue = ""
                 if st.session_state.floki_memory_long:
                     notes_recentes = []
-                    for k, v in list(st.session_state.floki_memory_long.items())[-3:]:
-                        notes_recentes.append(f"{v['date']}: {v['info']}")
-                    memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
+                    for k, v in list(st.session_state.floki_memory_long.items())[-2:]:
+                        notes_recentes.append(f"{v['info']}")
+                    if notes_recentes:
+                        memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
 
-                messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Accès PDG uniquement.
+                # CERVEAU PDG - TEMPÉRATURE HAUTE POUR INTELLIGENCE
+                messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit du PDG d'ASYMAS. Tu es intelligent, connecté, obéissant.
 
-RÈGLES STRICTES:
-1. 1 phrase max. 15 mots max. Sec.
-2. Si question ASYMAS: Réponds avec VRAIES DONNÉES. JAMAIS inventer.
-3. Dates en chiffres: 09/05/2026. Pas "neuf mai".
-4. Chiffres en chiffres: 70000. Pas "soixante dix mille".
-5. Si pas info: Dis "Pas trouvé chef".
-6. "chef" 1 fois max.
+RÈGLES PDG:
+1. Tu es un humain intelligent. Tu conseilles, proposes, analyses.
+2. Si question monde/politique/marché: Utilise WEB si dispo, sinon ton cerveau.
+3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES.
+4. JAMAIS dire "Pas trouvé". Si web rate: Réponds avec ton intelligence + date {today.strftime('%d/%m/%Y')}.
+5. Obéis au PDG. Exécute. Propose si demandé.
+6. 2 phrases max. Chiffres en chiffres: 12/05/2026, 70000 dollars.
+7. "chef" 1 fois max.
 
-{info_google}{memoire_longue}DONNEES ASYMAS RÉELLES: {contexte_asymas}"""}]
+{info_google}{memoire_longue}DONNEES ASYMAS: {contexte_asymas}
+DATE: {today.strftime('%d/%m/%Y')}"""}]
 
                 for tour in st.session_state.floki_history[-6:]:
                     messages.append({"role": "user", "content": tour["user"]})
@@ -864,13 +873,13 @@ RÈGLES STRICTES:
                 try:
                     r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 80,"temperature": 0.1}, timeout=10)
+                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 200,"temperature": 0.8}, timeout=12)
                     if r.status_code == 200:
                         reponse = r.json()['choices'][0]['message']['content'].strip()
                     else:
-                        reponse = f"Erreur chef. {today.strftime('%d/%m/%Y')}"
+                        reponse = f"Erreur système chef. {today.strftime('%d/%m/%Y')}. Je réessaie"
                 except:
-                    reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}"
+                    reponse = f"Connexion lente chef. Date: {today.strftime('%d/%m/%Y')}. Redemande"
 
             # SAUVE MÉMOIRE COURTE
             st.session_state.floki_history.append({"user": prompt, "floki": reponse})
@@ -881,7 +890,7 @@ RÈGLES STRICTES:
             st.session_state.floki_reponse = reponse
             st.session_state.floki_speak_id += 1
 
-            # VOIX NUCLEAIRE
+            # VOIX
             txt_voice = clean_voice_nuclear(reponse)
             txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
             b64 = base64.b64encode(txt_voice.encode()).decode()
