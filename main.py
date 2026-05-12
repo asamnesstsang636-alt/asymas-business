@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-            # 👑 FLOKI V31 - INTÉGRÉ ASYMAS + CACHE 1SEC + ACCÈS TOTAL
+            # 👑 FLOKI V32 - LIT VENTES + COMPTA EN DIRECT + CACHE OFF
     from urllib.parse import quote
     import re
     import base64
@@ -622,7 +622,24 @@ with st.sidebar:
         if "floki_memory_long" not in st.session_state:
             st.session_state.floki_memory_long = load_memory()
 
-        # UTILISE TES DF DÉJÀ CHARGÉS - PAS DE RECHARGEMENT
+        # CHARGE LIVE - CACHE 0 = AUCUN CACHE POUR FLOKI
+        def load_table_live_no_cache(table_name):
+            try:
+                data = supabase.table(table_name).select("*").execute()
+                return pd.DataFrame(data.data)
+            except:
+                return pd.DataFrame()
+
+        # CHARGE TOUTES LES TABLES ASYMAS EN DIRECT - PAS DE CACHE
+        df_biens = load_table_live_no_cache("biens")
+        df_articles = load_table_live_no_cache("articles")
+        df_voitures = load_table_live_no_cache("voitures")
+        df_compta = load_table_live_no_cache("compta")
+        df_factures = load_table_live_no_cache("factures_proforma")
+        df_devis = load_table_live_no_cache("devis")
+        df_utilisateurs = load_table_live_no_cache("utilisateurs")
+        df_ventes = load_table_live_no_cache("ventes") # NOUVEAU
+
         ASYMAS = {
             "BIENS": df_biens,
             "ARTICLES": df_articles,
@@ -630,7 +647,8 @@ with st.sidebar:
             "COMPTA": df_compta,
             "FACTURES": df_factures,
             "DEVIS": df_devis,
-            "UTILISATEURS": df_utilisateurs
+            "UTILISATEURS": df_utilisateurs,
+            "VENTES": df_ventes # NOUVEAU
         }
         stats_pdg = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
         contexte_asymas = " | ".join(stats_pdg)
@@ -641,6 +659,7 @@ with st.sidebar:
             col_nom = None
             col_prix = None
             col_stock = None
+            col_qte = None
 
             for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description', 'titre']:
                 for i, col in enumerate(cols_lower):
@@ -649,7 +668,7 @@ with st.sidebar:
                         break
                 if col_nom: break
 
-            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif']:
+            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif', 'prix_unitaire']:
                 for i, col in enumerate(cols_lower):
                     if pattern == col or pattern in col:
                         col_prix = df.columns[i]
@@ -663,7 +682,59 @@ with st.sidebar:
                         break
                 if col_stock: break
 
-            return col_nom, col_prix, col_stock
+            for pattern in ['quantite', 'qte', 'quantity']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_qte = df.columns[i]
+                        break
+                if col_qte: break
+
+            return col_nom, col_prix, col_stock, col_qte
+
+        # FONCTION DERNIÈRE VENTE - LIT TABLE VENTES
+        def get_derniere_vente():
+            try:
+                # PRIORITÉ 1: TABLE VENTES
+                if not df_ventes.empty:
+                    df_v = df_ventes.copy()
+                    if 'created_at' in df_v.columns:
+                        df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
+                        df_v = df_v.sort_values('created_at', ascending=False)
+                    elif 'id' in df_v.columns:
+                        df_v = df_v.sort_values('id', ascending=False)
+
+                    if not df_v.empty:
+                        last = df_v.iloc[0]
+                        article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
+                        qte = last.get('quantite', 0)
+                        prix = last.get('prix_unitaire', last.get('total', 0))
+                        vendeur = last.get('vendeur', last.get('utilisateur', st.session_state.user_name))
+                        client = last.get('client_nom', 'Client inconnu')
+                        date_v = last.get('created_at', datetime.now())
+                        if isinstance(date_v, str):
+                            date_v = pd.to_datetime(date_v)
+                        date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
+                        return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Client: {client} - Vendeur: {vendeur} - {date_str}"
+
+                # PRIORITÉ 2: TABLE COMPTA TYPE REVENU
+                if not df_compta.empty:
+                    df_c = df_compta.copy()
+                    df_c['date'] = pd.to_datetime(df_c['date'], errors='coerce')
+                    df_c = df_c.sort_values('date', ascending=False)
+                    df_c = df_c[df_c['type'].str.lower().str.contains('revenu', na=False)]
+
+                    if not df_c.empty:
+                        last = df_c.iloc[0]
+                        desc = last.get('description', 'Vente')
+                        montant = last.get('montant', 0)
+                        vendeur = last.get('utilisateur', 'Inconnu')
+                        date_v = last.get('date', datetime.now())
+                        date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
+                        return f"Dernière vente: {desc} - {montant:.0f}fc - Vendeur: {vendeur} - {date_str}"
+
+                return "Aucune vente trouvée chef"
+            except Exception as e:
+                return f"Erreur lecture ventes: {str(e)[:50]}"
 
         # CHERCHE ARTICLE - TOUT PRODUIT
         def chercher_article_live(nom_recherche):
@@ -674,7 +745,7 @@ with st.sidebar:
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
 
-                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    col_nom, col_prix, col_stock, col_qte = get_colonnes_auto(df)
                     if not col_nom or not col_prix: continue
 
                     df_temp = df.copy()
@@ -757,7 +828,7 @@ with st.sidebar:
                 moins_cher_global = {"nom": "", "prix": float('inf'), "table": "", "stock": 0}
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
-                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    col_nom, col_prix, col_stock, col_qte = get_colonnes_auto(df)
                     if not col_nom or not col_prix: continue
 
                     df_temp = df.copy()
@@ -784,6 +855,10 @@ with st.sidebar:
             try:
                 q = query.lower()
 
+                # DERNIÈRE VENTE / ARTICLE VENDU
+                if any(x in q for x in ['dernier', 'vendu', 'vente', 'vient d', 'vient de']):
+                    return get_derniere_vente()
+
                 # COMBIEN DE [PRODUIT]
                 combien_match = re.search(r'combi[en]+\s+(?:de\s+)?(\w+)', q)
                 if combien_match:
@@ -791,12 +866,12 @@ with st.sidebar:
                     return chercher_article_live(produit)
 
                 # QUI A TRAVAILLÉ
-                if 'qui a travaillé' in q or 'qui travaille' in q:
+                if 'qui a travaillé' in q or 'qui travaille' in q or 'qui a vendu' in q:
                     periode = "hier" if "hier" in q else "aujourd'hui"
                     return qui_a_travaille(periode)
 
                 # REVENU UTILISATEUR
-                revenu_match = re.search(r'(?:revenu|gagné|fait|entrée)\s+(?:de\s+)?(\w+)', q)
+                revenu_match = re.search(r'(?:revenu|gagné|fait|entrée|vendu)\s+(?:de\s+|par\s+)?(\w+)', q)
                 if revenu_match:
                     nom = revenu_match.group(1)
                     periode = "hier" if "hier" in q else "aujourd'hui"
@@ -864,7 +939,7 @@ with st.sidebar:
             except: pass
 
             try:
-                url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+                url = f"https://api.duckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
                 r = requests.get(url, timeout=5)
                 if r.status_code == 200:
                     data = r.json()
@@ -898,8 +973,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v31", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v31", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v32", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v32", label_visibility="collapsed")
 
         # MICRO
         if audio:
