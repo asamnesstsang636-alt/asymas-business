@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V18 - PURGE SYMBOLES 100% + HUMAIN
+        # 👑 FLOKI V19 - GOOGLE + ACTUALITÉ LIVE + HUMAIN
     from urllib.parse import quote
     import re
     import base64
@@ -603,9 +603,48 @@ with st.sidebar:
             stats_pdg.append(f"{nom}:{len(locals()[var])}")
     contexte_asymas = " | ".join(stats_pdg)
 
+    # FONCTION GOOGLE SEARCH GRATUIT
+    def google_search(query):
+        try:
+            # DuckDuckGo Instant Answer API - Gratuit
+            url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+            r = requests.get(url, timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                # Prend Abstract ou RelatedTopics
+                if data.get('Abstract'):
+                    return data['Abstract'][:300]
+                elif data.get('RelatedTopics'):
+                    for topic in data['RelatedTopics']:
+                        if isinstance(topic, dict) and topic.get('Text'):
+                            return topic['Text'][:300]
+            return None
+        except:
+            return None
+
+    # FONCTION NETTOYAGE VOIX NUCLEAIRE
+    def clean_voice_nuclear(text):
+        text = unicodedata.normalize('NFKD', text)
+        text = text.encode('ASCII', 'ignore').decode('ASCII')
+        remplacements = {
+            '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
+            '€': ' euros ', '$': ' dollars ', '£': ' livres ',
+            '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
+            '+': ' plus ', '=': ' egal ', '#': ' diese ',
+            '*': ' ', '_': ' ', '`': ' ', '~': ' ',
+            '<': ' inferieur ', '>': ' superieur ', '|': ' ',
+            '[': ' ', ']': ' ', '{': ' ', '}': ' ',
+            '\\': ' ', '/': ' sur ', '^': ' '
+        }
+        for symbole, mot in remplacements.items():
+            text = text.replace(symbole, mot)
+        text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
     # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v18", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v18", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v19", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v19", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -619,33 +658,6 @@ with st.sidebar:
                 if r.status_code == 200:
                     prompt = r.json().get("text", "").strip()
         except: pass
-
-    # FONCTION NETTOYAGE VOIX NUCLEAIRE
-    def clean_voice_nuclear(text):
-        # 1. Normalise unicode: vire accents bizarres
-        text = unicodedata.normalize('NFKD', text)
-        text = text.encode('ASCII', 'ignore').decode('ASCII')
-
-        # 2. Remplace symboles courants par mots
-        remplacements = {
-            '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
-            '€': ' euros ', '$': ' dollars ', '£': ' livres ',
-            '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
-            '+': ' plus ', '=': ' egal ', '#': ' diese ',
-            '*': ' ', '_': ' ', '`': ' ', '~': ' ',
-            '<': ' inferieur ', '>': ' superieur ', '|': ' ',
-            '[': ' ', ']': ' ', '{': ' ', '}': ' ',
-            '\\': ' ', '/': ' sur ', '^': ' '
-        }
-        for symbole, mot in remplacements.items():
-            text = text.replace(symbole, mot)
-
-        # 3. Garde QUE lettres chiffres espace.,?! :
-        text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
-
-        # 4. Enlève espaces multiples
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
 
     # EXÉCUTION
     if prompt:
@@ -712,22 +724,30 @@ with st.sidebar:
             else:
                 reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-        # 3. CERVEAU HUMAIN
+        # 3. CERVEAU HUMAIN + GOOGLE SI BESOIN
         else:
+            # DÉTECTE SI QUESTION ACTUALITÉ
+            besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo)', prompt_clean))
+
+            info_google = ""
+            if besoin_google:
+                with st.spinner("🔍 Je cherche sur Google chef..."):
+                    info_google = google_search(prompt)
+                if info_google:
+                    info_google = f"INFO GOOGLE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
+
             messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS.
 
 REGLES:
 1. Parle naturel. 2 phrases max. Conseil direct.
-2. Ecris sans symboles: pas de dollar, pas de pourcent, pas de copyright. Ecris "dollars" "pourcent".
-3. Si ASYMAS: Donne chiffres + conseil.
-4. Si monde: Donne reponse 2025 + conseil.
-5. JAMAIS "je sais pas". Tu trouves.
+2. Utilise INFO GOOGLE si dispo. Cite la date.
+3. Si pas INFO GOOGLE: Réponds avec intelligence + date du jour.
+4. JAMAIS "je sais pas" ou "2025". On est en 2026.
+5. Ecris sans symboles: "dollars" pas "$", "pourcent" pas "%".
 6. "chef" 1 fois max.
 
-DONNEES ASYMAS: {contexte_asymas}
-DATE: {today.strftime('%d/%m/%Y')}
-
-PRIX 2025: Petrole Dubai 0.82 dollar litre. Brent 84 dollar baril. USD CNY 7.0."""}]
+{info_google}DONNEES ASYMAS: {contexte_asymas}
+DATE AUJOURD'HUI: {today.strftime('%d/%m/%Y')}"""}]
 
             for tour in st.session_state.floki_history[-6:]:
                 messages.append({"role": "user", "content": tour["user"]})
@@ -738,13 +758,13 @@ PRIX 2025: Petrole Dubai 0.82 dollar litre. Brent 84 dollar baril. USD CNY 7.0."
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 150,"temperature": 0.8}, timeout=10)
+                    json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 150,"temperature": 0.7}, timeout=10)
                 if r.status_code == 200:
                     reponse = r.json()['choices'][0]['message']['content'].strip()
                 else:
-                    reponse = "Je t'ecoute chef. Precise ta demande"
+                    reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise ta demande"
             except:
-                reponse = "Dis-moi chef, c'est pour quoi?"
+                reponse = f"Connexion lente chef. On est le {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
 
         # SAUVE MÉMOIRE
         st.session_state.floki_history.append({"user": prompt, "floki": reponse})
@@ -755,7 +775,7 @@ PRIX 2025: Petrole Dubai 0.82 dollar litre. Brent 84 dollar baril. USD CNY 7.0."
         st.session_state.floki_reponse = reponse
         st.session_state.floki_speak_id += 1
 
-        # VOIX NUCLEAIRE - 0 SYMBOLE
+        # VOIX NUCLEAIRE
         txt_voice = clean_voice_nuclear(reponse)
         txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
         b64 = base64.b64encode(txt_voice.encode()).decode()
