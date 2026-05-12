@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V25 - ANALYSE PRIX RÉELS + ZÉRO SUPPOSITION
+        # 👑 FLOKI V26 - RECHERCHE PRIX FC/USD + ANALYSE RÉELLE
     from urllib.parse import quote
     import re
     import base64
@@ -631,7 +631,47 @@ with st.sidebar:
                 stats_pdg.append(f"{nom}:{len(locals()[var])}")
         contexte_asymas = " | ".join(stats_pdg)
 
-        # FONCTION TROUVE LE MOINS CHER ASYMAS
+        # FONCTION CHERCHE ARTICLE PAR PRIX
+        def chercher_article_prix(prix_cible, marge=200):
+            try:
+                resultats = []
+                prix_cible = float(prix_cible)
+                prix_min = prix_cible - marge
+                prix_max = prix_cible + marge
+
+                for nom_table, df in ASYMAS.items():
+                    if df.empty: continue
+
+                    # Cherche colonne prix
+                    col_prix = None
+                    for col in ['prix', 'price', 'montant', 'cout', 'valeur', 'PU', 'PV', 'prix_vente']:
+                        if col in df.columns:
+                            col_prix = col
+                            break
+
+                    if col_prix:
+                        df_temp = df.copy()
+                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                        df_temp = df_temp.dropna(subset=[col_prix])
+
+                        # Filtre par prix
+                        df_filtre = df_temp[(df_temp[col_prix] >= prix_min) & (df_temp[col_prix] <= prix_max)]
+
+                        if not df_filtre.empty:
+                            nom_col = 'nom' if 'nom' in df_filtre.columns else 'designation' if 'designation' in df_filtre.columns else 'libelle' if 'libelle' in df_filtre.columns else 'article'
+                            for idx, row in df_filtre.iterrows():
+                                nom_article = str(row[nom_col]) if nom_col in df_filtre.columns else f"Item {nom_table}"
+                                prix_article = row[col_prix]
+                                resultats.append(f"{nom_article} - {prix_article:.0f}fc - {nom_table}")
+
+                if resultats:
+                    return f"Trouvé: " + " | ".join(resultats[:3])
+                else:
+                    return f"Aucun article entre {prix_min:.0f}fc et {prix_max:.0f}fc chef"
+            except Exception as e:
+                return f"Erreur recherche prix chef"
+
+        # FONCTION MOINS CHER
         def get_moins_cher_asymas():
             try:
                 moins_cher_global = {"nom": "", "prix": float('inf'), "table": ""}
@@ -639,9 +679,8 @@ with st.sidebar:
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
 
-                    # Cherche colonne prix
                     col_prix = None
-                    for col in ['prix', 'price', 'montant', 'cout', 'valeur']:
+                    for col in ['prix', 'price', 'montant', 'cout', 'valeur', 'PU', 'PV', 'prix_vente']:
                         if col in df.columns:
                             col_prix = col
                             break
@@ -666,16 +705,24 @@ with st.sidebar:
                                 }
 
                 if moins_cher_global["prix"]!= float('inf'):
-                    return f"Moins cher ASYMAS: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f} dollars - Table {moins_cher_global['table']}"
+                    return f"Moins cher: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f}fc - {moins_cher_global['table']}"
                 else:
                     return "Aucun prix trouvé dans ASYMAS chef"
-            except Exception as e:
+            except:
                 return f"Erreur analyse prix chef"
 
         # FONCTION VRAIES DONNÉES ASYMAS
         def get_asymas_data(query):
             try:
                 q = query.lower()
+
+                # RECHERCHE PAR PRIX EXACT
+                prix_match = re.search(r'(\d+)\s*fc', q)
+                if prix_match:
+                    prix = prix_match.group(1)
+                    marge = 300 if 'presque' in q or 'environ' in q else 100
+                    return chercher_article_prix(prix, marge)
+
                 # MOINS CHER
                 if 'moins cher' in q or 'prix bas' in q or 'pas cher' in q:
                     return get_moins_cher_asymas()
@@ -763,8 +810,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v25", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v25", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v26", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v26", label_visibility="collapsed")
 
         # MICRO
         if audio:
@@ -894,7 +941,7 @@ RÈGLES PDG:
 1. Tu es un humain intelligent. Tu conseilles, proposes, analyses.
 2. Si question monde/politique/marché: Utilise WEB si dispo, sinon ton cerveau.
 3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES. JAMAIS inventer.
-4. INTERDIT: "probablement", "peut-être", "sans prix spécifique". Sois précis ou dis "Pas de prix chef".
+4. INTERDIT: "probablement", "peut-être", "sans prix spécifique". Sois précis ou dis "Pas trouvé chef".
 5. Obéis au PDG. Exécute. Propose si demandé.
 6. 2 phrases max. Chiffres en chiffres: 12/05/2026, 70000 dollars.
 7. "chef" 1 fois max.
