@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V16 - HUMAIN + MÉMOIRE JOURNALIÈRE + ZÉRO TRALALA
+        # 👑 FLOKI V17 - VOIX CLEAN + HUMAIN + MÉMOIRE JOURNALIÈRE
     from urllib.parse import quote
     import re
     import base64
@@ -593,7 +593,7 @@ with st.sidebar:
     if "floki_last_date" not in st.session_state:
         st.session_state.floki_last_date = None
 
-    # ANALYSE ASYMAS - JUSTE POUR RÉPONDRE SI DEMANDÉ
+    # ANALYSE ASYMAS
     ASYMAS = {}
     stats_pdg = []
     for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
@@ -603,8 +603,8 @@ with st.sidebar:
     contexte_asymas = " | ".join(stats_pdg)
 
     # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v16", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v16", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v17", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v17", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -618,6 +618,25 @@ with st.sidebar:
                 if r.status_code == 200:
                     prompt = r.json().get("text", "").strip()
         except: pass
+
+    # FONCTION NETTOYAGE VOIX - ANTI SYMBOLE
+    def clean_voice(text):
+        # Enlève markdown + symboles
+        text = re.sub(r'[*#_`~]', '', text)
+        # Remplace symboles qui parlent
+        remplacements = {
+            '©': ' copyright ', '®': ' marque déposée ', '™': ' marque ',
+            '€': ' euros ', '$': ' dollars ', '%': ' pourcent ',
+            '&': ' et ', '@': ' arobase ', '+': ' plus ',
+            '=': ' égal ', '<': ' inférieur ', '>': ' supérieur '
+        }
+        for symbole, mot in remplacements.items():
+            text = text.replace(symbole, mot)
+        # Enlève emojis et caractères bizarres
+        text = re.sub(r'[^\w\s.,?!:\-]', ' ', text)
+        # Enlève espaces multiples
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
 
     # EXÉCUTION
     if prompt:
@@ -674,9 +693,9 @@ with st.sidebar:
             note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
             b64_note = base64.b64encode(note.encode()).decode()
             btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
-            reponse = f"Facture {montant}$ pour {client} prête chef."
+            reponse = f"Facture {montant} dollars pour {client} prête chef."
 
-        # 2. SALUT HUMAIN - 1ÈRE FOIS DU JOUR
+        # 2. SALUT HUMAIN
         elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
             if st.session_state.floki_last_date!= today:
                 reponse = "Bjr chef, ça va? Quel service je peux vous rendre aujourd'hui!"
@@ -684,28 +703,22 @@ with st.sidebar:
             else:
                 reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-        # 3. CERVEAU HUMAIN + MÉMOIRE
+        # 3. CERVEAU HUMAIN
         else:
-            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Tu parles comme un vrai assistant congolais intelligent.
+            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS.
 
 RÈGLES HUMAINES:
-1. Tu réponds comme un humain: naturel, conseil, orientation. Pas robot.
-2. Tu attends que le chef lance le sujet. Tu poses des questions si besoin.
-3. Si ASYMAS demandé: Donne vrais chiffres + conseil business.
-4. Si monde demandé: Donne réponse 2025 + conseil pratique.
-5. JAMAIS "je sais pas". Tu réfléchis et tu trouves.
-6. Max 2 phrases. Direct et utile.
-7. "chef" 1 fois max.
+1. Parle naturel. 2 phrases max. Conseil + orientation.
+2. Attends le sujet du chef. Pose question si besoin.
+3. Si ASYMAS: Donne chiffres + conseil.
+4. Si monde: Donne réponse 2025 + conseil pratique.
+5. JAMAIS "je sais pas". Tu trouves toujours.
+6. "chef" 1 fois max.
 
-DONNÉES ASYMAS SI BESOIN: {contexte_asymas}
+DONNÉES ASYMAS: {contexte_asymas}
 DATE: {today.strftime('%d/%m/%Y')}
 
-EXEMPLE:
-Chef: prix petrole dubai
-Toi: Pétrole Dubaï 0.82$ litre chef. Brent 84$. Tu veux importer ou comparer avec Beni?
-
-Chef: combien article
-Toi: On a 48 articles en stock chef. 3 sont bas. Je te liste?"""}]
+PRIX 2025: Pétrole Dubaï 0.82 dollar litre. Brent 84 dollar baril. USD CNY 7.0. Ouganda Variateur 80 à 150 dollar."""}]
 
             for tour in st.session_state.floki_history[-6:]:
                 messages.append({"role": "user", "content": tour["user"]})
@@ -733,9 +746,10 @@ Toi: On a 48 articles en stock chef. 3 sont bas. Je te liste?"""}]
         st.session_state.floki_reponse = reponse
         st.session_state.floki_speak_id += 1
 
-        # VOIX
-        txt_clean = re.sub(r'[*#_`]', '', reponse).replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
-        b64 = base64.b64encode(txt_clean.encode()).decode()
+        # VOIX CLEAN - ANTI SYMBOLE
+        txt_voice = clean_voice(reponse)
+        txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
+        b64 = base64.b64encode(txt_voice.encode()).decode()
         components.html(f"""
             <script>
             window.speechSynthesis.cancel();
