@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V24 FINAL - CERVEAU PDG + GOOGLE RÉEL + OBÉISSANCE TOTALE
+        # 👑 FLOKI V25 - ANALYSE PRIX RÉELS + ZÉRO SUPPOSITION
     from urllib.parse import quote
     import re
     import base64
@@ -582,7 +582,7 @@ with st.sidebar:
     import json
     import os
 
-    # 🔒 CONTRÔLE ACCÈS PDG - CACHE FLOKI SEULEMENT
+    # 🔒 CONTRÔLE ACCÈS PDG
     role_user = st.session_state.get("user_role", "")
     nom_user = st.session_state.get("user_name", "")
     is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
@@ -631,10 +631,55 @@ with st.sidebar:
                 stats_pdg.append(f"{nom}:{len(locals()[var])}")
         contexte_asymas = " | ".join(stats_pdg)
 
+        # FONCTION TROUVE LE MOINS CHER ASYMAS
+        def get_moins_cher_asymas():
+            try:
+                moins_cher_global = {"nom": "", "prix": float('inf'), "table": ""}
+
+                for nom_table, df in ASYMAS.items():
+                    if df.empty: continue
+
+                    # Cherche colonne prix
+                    col_prix = None
+                    for col in ['prix', 'price', 'montant', 'cout', 'valeur']:
+                        if col in df.columns:
+                            col_prix = col
+                            break
+
+                    if col_prix:
+                        df_temp = df.copy()
+                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                        df_temp = df_temp.dropna(subset=[col_prix])
+
+                        if not df_temp.empty:
+                            idx_min = df_temp[col_prix].idxmin()
+                            prix_min = df_temp.loc[idx_min, col_prix]
+
+                            if prix_min < moins_cher_global["prix"]:
+                                nom_col = 'nom' if 'nom' in df_temp.columns else 'designation' if 'designation' in df_temp.columns else 'libelle'
+                                nom_article = df_temp.loc[idx_min, nom_col] if nom_col in df_temp.columns else f"Item {nom_table}"
+
+                                moins_cher_global = {
+                                    "nom": str(nom_article),
+                                    "prix": prix_min,
+                                    "table": nom_table
+                                }
+
+                if moins_cher_global["prix"]!= float('inf'):
+                    return f"Moins cher ASYMAS: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f} dollars - Table {moins_cher_global['table']}"
+                else:
+                    return "Aucun prix trouvé dans ASYMAS chef"
+            except Exception as e:
+                return f"Erreur analyse prix chef"
+
         # FONCTION VRAIES DONNÉES ASYMAS
         def get_asymas_data(query):
             try:
                 q = query.lower()
+                # MOINS CHER
+                if 'moins cher' in q or 'prix bas' in q or 'pas cher' in q:
+                    return get_moins_cher_asymas()
+
                 # DERNIÈRE FACTURE
                 if 'derniere' in q and 'facture' in q:
                     if "FACTURES" in ASYMAS:
@@ -660,10 +705,8 @@ with st.sidebar:
             except:
                 return None
 
-        # FONCTION GOOGLE RÉEL - 3 NIVEAUX
+        # FONCTION GOOGLE RÉEL
         def google_search_smart(query):
-            info = ""
-            # NIVEAU 1: SERPAPI GOOGLE RÉEL
             try:
                 if "SERPAPI_KEY" in st.secrets:
                     params = {
@@ -685,7 +728,6 @@ with st.sidebar:
                             if snippets: return f"Google: {' | '.join(snippets)}"
             except: pass
 
-            # NIVEAU 2: DUCKDUCKGO
             try:
                 url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
                 r = requests.get(url, timeout=5)
@@ -698,7 +740,6 @@ with st.sidebar:
                             if isinstance(topic, dict) and topic.get('Text'):
                                 return f"DuckDuckGo: {topic['Text']}"
             except: pass
-
             return None
 
         # FONCTION NETTOYAGE VOIX
@@ -722,8 +763,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v24", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v24", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v25", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v25", label_visibility="collapsed")
 
         # MICRO
         if audio:
@@ -828,9 +869,8 @@ with st.sidebar:
                 else:
                     reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-            # 5. CERVEAU MONDE + GOOGLE + CONSEIL
+            # 5. CERVEAU MONDE + GOOGLE
             else:
-                # CHERCHE GOOGLE SI BESOIN
                 besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto|president|ministre|guerre|kinshasa|beni|rdc|congo)', prompt_clean))
 
                 info_google = ""
@@ -840,7 +880,6 @@ with st.sidebar:
                     if info_google:
                         info_google = f"WEB {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
-                # MÉMOIRE LONGUE
                 memoire_longue = ""
                 if st.session_state.floki_memory_long:
                     notes_recentes = []
@@ -849,14 +888,13 @@ with st.sidebar:
                     if notes_recentes:
                         memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
 
-                # CERVEAU PDG - TEMPÉRATURE HAUTE POUR INTELLIGENCE
                 messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit du PDG d'ASYMAS. Tu es intelligent, connecté, obéissant.
 
 RÈGLES PDG:
 1. Tu es un humain intelligent. Tu conseilles, proposes, analyses.
 2. Si question monde/politique/marché: Utilise WEB si dispo, sinon ton cerveau.
-3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES.
-4. JAMAIS dire "Pas trouvé". Si web rate: Réponds avec ton intelligence + date {today.strftime('%d/%m/%Y')}.
+3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES. JAMAIS inventer.
+4. INTERDIT: "probablement", "peut-être", "sans prix spécifique". Sois précis ou dis "Pas de prix chef".
 5. Obéis au PDG. Exécute. Propose si demandé.
 6. 2 phrases max. Chiffres en chiffres: 12/05/2026, 70000 dollars.
 7. "chef" 1 fois max.
