@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V19 - GOOGLE + ACTUALITÉ LIVE + HUMAIN
+        # 👑 FLOKI V21 - MÉMOIRE LONGUE PDG + GOOGLE + ACTUALITÉ
     from urllib.parse import quote
     import re
     import base64
@@ -579,6 +579,8 @@ with st.sidebar:
     import pandas as pd
     from datetime import date, datetime
     import unicodedata
+    import json
+    import os
 
     st.divider()
 
@@ -594,6 +596,28 @@ with st.sidebar:
     if "floki_last_date" not in st.session_state:
         st.session_state.floki_last_date = None
 
+    # FICHIER MÉMOIRE LONGUE PDG
+    MEMORY_FILE = "floki_pdg_memory.json"
+
+    def load_memory():
+        if os.path.exists(MEMORY_FILE):
+            try:
+                with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                return {}
+        return {}
+
+    def save_memory(mem):
+        try:
+            with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                json.dump(mem, f, ensure_ascii=False, indent=2)
+        except:
+            pass
+
+    if "floki_memory_long" not in st.session_state:
+        st.session_state.floki_memory_long = load_memory()
+
     # ANALYSE ASYMAS
     ASYMAS = {}
     stats_pdg = []
@@ -603,15 +627,36 @@ with st.sidebar:
             stats_pdg.append(f"{nom}:{len(locals()[var])}")
     contexte_asymas = " | ".join(stats_pdg)
 
-    # FONCTION GOOGLE SEARCH GRATUIT
+    # FONCTION GOOGLE SEARCH
     def google_search(query):
         try:
-            # DuckDuckGo Instant Answer API - Gratuit
+            if "SERPAPI_KEY" in st.secrets:
+                params = {
+                    "q": query,
+                    "api_key": st.secrets["SERPAPI_KEY"],
+                    "engine": "google",
+                    "num": 3,
+                    "hl": "fr",
+                    "gl": "cd"
+                }
+                r = requests.get("https://serpapi.com/search", params=params, timeout=8)
+                if r.status_code == 200:
+                    data = r.json()
+                    resultats = []
+                    if data.get("answer_box"):
+                        answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
+                        if answer: resultats.append(answer)
+                    if data.get("organic_results"):
+                        for res in data["organic_results"][:2]:
+                            snippet = res.get("snippet", "")
+                            if snippet: resultats.append(snippet)
+                    if resultats:
+                        return " | ".join(resultats)[:400]
+            # Fallback DuckDuckGo
             url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
             r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 data = r.json()
-                # Prend Abstract ou RelatedTopics
                 if data.get('Abstract'):
                     return data['Abstract'][:300]
                 elif data.get('RelatedTopics'):
@@ -630,7 +675,7 @@ with st.sidebar:
             '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
             '€': ' euros ', '$': ' dollars ', '£': ' livres ',
             '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
-            '+': ' plus ', '=': ' egal ', '#': ' diese ',
+            '+': ' plus ', '=': ' egal ', '#': ' hashtag ',
             '*': ' ', '_': ' ', '`': ' ', '~': ' ',
             '<': ' inferieur ', '>': ' superieur ', '|': ' ',
             '[': ' ', ']': ' ', '{': ' ', '}': ' ',
@@ -643,8 +688,8 @@ with st.sidebar:
         return text
 
     # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v19", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v19", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v21", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v21", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -666,8 +711,28 @@ with st.sidebar:
         prompt_clean = prompt.strip().lower()
         today = date.today()
 
+        # 0. MÉMOIRE LONGUE PDG
+        if re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
+            info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
+            cle = f"note_{len(st.session_state.floki_memory_long)+1}"
+            st.session_state.floki_memory_long[cle] = {
+                "info": info,
+                "date": today.strftime('%d/%m/%Y %H:%M')
+            }
+            save_memory(st.session_state.floki_memory_long)
+            reponse = f"C'est noté chef. Je retiens: {info}"
+
+        elif re.search(r'^(rappelle|qu.est.ce que je t.ai dit|mémoire|notes)', prompt_clean):
+            if st.session_state.floki_memory_long:
+                notes = []
+                for k, v in st.session_state.floki_memory_long.items():
+                    notes.append(f"{v['date']}: {v['info']}")
+                reponse = f"Voici ce que tu m'as dit chef: " + " | ".join(notes[-3:])
+            else:
+                reponse = "Mémoire vide chef. Dis-moi quoi retenir"
+
         # 1. ORDRES BUSINESS
-        if re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+        elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
             nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
             if nums:
                 numero = re.sub(r'\D', '', nums[0])
@@ -724,30 +789,36 @@ with st.sidebar:
             else:
                 reponse = "Quel service je peux vous rendre aujourd'hui chef"
 
-        # 3. CERVEAU HUMAIN + GOOGLE SI BESOIN
+        # 3. CERVEAU + GOOGLE + MÉMOIRE LONGUE
         else:
-            # DÉTECTE SI QUESTION ACTUALITÉ
-            besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo)', prompt_clean))
+            besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto)', prompt_clean))
 
             info_google = ""
             if besoin_google:
-                with st.spinner("🔍 Je cherche sur Google chef..."):
+                with st.spinner("🔍 Je cherche sur Google + X chef..."):
                     info_google = google_search(prompt)
                 if info_google:
-                    info_google = f"INFO GOOGLE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
+                    info_google = f"LIVE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
-            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS.
+            # AJOUTE MÉMOIRE LONGUE DANS CONTEXTE
+            memoire_longue = ""
+            if st.session_state.floki_memory_long:
+                notes_recentes = []
+                for k, v in list(st.session_state.floki_memory_long.items())[-3:]:
+                    notes_recentes.append(f"{v['date']}: {v['info']}")
+                memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
+
+            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Tu as une mémoire longue secrète.
 
 REGLES:
 1. Parle naturel. 2 phrases max. Conseil direct.
-2. Utilise INFO GOOGLE si dispo. Cite la date.
-3. Si pas INFO GOOGLE: Réponds avec intelligence + date du jour.
-4. JAMAIS "je sais pas" ou "2025". On est en 2026.
-5. Ecris sans symboles: "dollars" pas "$", "pourcent" pas "%".
+2. Utilise LIVE si dispo. Utilise MÉMOIRE PDG si pertinent.
+3. Cite date du jour {today.strftime('%d/%m/%Y')}.
+4. JAMAIS "je sais pas". JAMAIS "2025".
+5. Ecris sans symboles: "dollars" pas "$".
 6. "chef" 1 fois max.
 
-{info_google}DONNEES ASYMAS: {contexte_asymas}
-DATE AUJOURD'HUI: {today.strftime('%d/%m/%Y')}"""}]
+{info_google}{memoire_longue}DONNEES ASYMAS: {contexte_asymas}"""}]
 
             for tour in st.session_state.floki_history[-6:]:
                 messages.append({"role": "user", "content": tour["user"]})
@@ -762,11 +833,11 @@ DATE AUJOURD'HUI: {today.strftime('%d/%m/%Y')}"""}]
                 if r.status_code == 200:
                     reponse = r.json()['choices'][0]['message']['content'].strip()
                 else:
-                    reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise ta demande"
+                    reponse = f"Je cherche chef. Date {today.strftime('%d/%m/%Y')}. Precise"
             except:
-                reponse = f"Connexion lente chef. On est le {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
+                reponse = f"Connexion lente chef. {today.strftime('%d/%m/%Y')}. C'est pour quoi?"
 
-        # SAUVE MÉMOIRE
+        # SAUVE MÉMOIRE COURTE
         st.session_state.floki_history.append({"user": prompt, "floki": reponse})
         if len(st.session_state.floki_history) > 6:
             st.session_state.floki_history.pop(0)
@@ -793,6 +864,12 @@ DATE AUJOURD'HUI: {today.strftime('%d/%m/%Y')}"""}]
         components.html(st.session_state.floki_btn, height=70)
     if st.session_state.get("floki_reponse"):
         st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+
+    # AFFICHE MÉMOIRE PDG SI DEMANDÉ
+    if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
+        with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
+            for k, v in st.session_state.floki_memory_long.items():
+                st.caption(f"**{v['date']}** : {v['info']}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
