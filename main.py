@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V30 FINAL - ACCÈS TOTAL LIVE ASYMAS + CACHE OFF
+            # 👑 FLOKI V31 - INTÉGRÉ ASYMAS + CACHE 1SEC + ACCÈS TOTAL
     from urllib.parse import quote
     import re
     import base64
@@ -622,24 +622,7 @@ with st.sidebar:
         if "floki_memory_long" not in st.session_state:
             st.session_state.floki_memory_long = load_memory()
 
-        # CHARGE LIVE - CACHE 1 SEC SEULEMENT
-        @st.cache_data(ttl=1) # 1 SECONDE = LIVE
-        def load_table_live(table_name):
-            try:
-                data = supabase.table(table_name).select("*").execute()
-                return pd.DataFrame(data.data)
-            except:
-                return pd.DataFrame()
-
-        # CHARGE TOUTES LES TABLES ASYMAS EN DIRECT
-        df_biens = load_table_live("biens")
-        df_articles = load_table_live("articles")
-        df_voitures = load_table_live("voitures")
-        df_compta = load_table_live("compta")
-        df_factures = load_table_live("factures_proforma")
-        df_devis = load_table_live("devis")
-        df_utilisateurs = load_table_live("utilisateurs")
-
+        # UTILISE TES DF DÉJÀ CHARGÉS - PAS DE RECHARGEMENT
         ASYMAS = {
             "BIENS": df_biens,
             "ARTICLES": df_articles,
@@ -652,15 +635,13 @@ with st.sidebar:
         stats_pdg = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
         contexte_asymas = " | ".join(stats_pdg)
 
-        # FONCTION AUTO-DÉTECTION COLONNES ULTRA
+        # AUTO-DÉTECTION COLONNES ULTRA
         def get_colonnes_auto(df):
             cols_lower = [c.lower().strip() for c in df.columns]
             col_nom = None
             col_prix = None
             col_stock = None
-            col_qte = None
 
-            # Cherche nom
             for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description', 'titre']:
                 for i, col in enumerate(cols_lower):
                     if pattern in col:
@@ -668,7 +649,6 @@ with st.sidebar:
                         break
                 if col_nom: break
 
-            # Cherche prix
             for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif']:
                 for i, col in enumerate(cols_lower):
                     if pattern == col or pattern in col:
@@ -676,7 +656,6 @@ with st.sidebar:
                         break
                 if col_prix: break
 
-            # Cherche stock
             for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
                 for i, col in enumerate(cols_lower):
                     if pattern in col:
@@ -686,7 +665,7 @@ with st.sidebar:
 
             return col_nom, col_prix, col_stock
 
-        # FONCTION CHERCHE ARTICLE - TOUT PRODUIT
+        # CHERCHE ARTICLE - TOUT PRODUIT
         def chercher_article_live(nom_recherche):
             try:
                 resultats = []
@@ -702,7 +681,6 @@ with st.sidebar:
                     df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
                     df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
 
-                    # Recherche floue : contient le mot
                     mask = df_temp[col_nom].str.contains(nom_recherche, na=False, case=False)
                     df_filtre = df_temp[mask].dropna(subset=[col_prix])
 
@@ -719,7 +697,7 @@ with st.sidebar:
             except Exception as e:
                 return f"Erreur: {str(e)[:100]}"
 
-        # FONCTION REVENU PAR UTILISATEUR
+        # REVENU PAR UTILISATEUR
         def get_revenu_user(nom_user, periode="aujourd'hui"):
             try:
                 if df_compta.empty: return "Aucune donnée compta chef"
@@ -730,10 +708,8 @@ with st.sidebar:
                 df_temp['montant'] = pd.to_numeric(df_temp['montant'], errors='coerce')
                 df_temp['type'] = df_temp['type'].astype(str).str.lower()
 
-                # Filtre utilisateur
                 df_user = df_temp[df_temp['utilisateur'].str.contains(nom_user.lower(), na=False)]
 
-                # Filtre date
                 today = date.today()
                 if periode == "aujourd'hui":
                     df_user = df_user[df_user['date'].dt.date == today]
@@ -742,16 +718,14 @@ with st.sidebar:
                 elif periode == "semaine":
                     df_user = df_user[df_user['date'].dt.date >= (today - timedelta(days=7))]
 
-                # Filtre revenus
                 df_revenus = df_user[df_user['type'].str.contains('revenu', na=False)]
                 total = df_revenus['montant'].sum()
-
                 nb_ops = len(df_revenus)
                 return f"{nom_user}: {total:,.0f}fc de revenus - {nb_ops} opérations {periode}"
-            except Exception as e:
+            except:
                 return f"Erreur calcul revenu chef"
 
-        # FONCTION QUI A TRAVAILLÉ
+        # QUI A TRAVAILLÉ
         def qui_a_travaille(periode="aujourd'hui"):
             try:
                 if df_compta.empty: return "Aucune donnée compta chef"
@@ -777,7 +751,7 @@ with st.sidebar:
             except:
                 return "Erreur analyse travailleurs chef"
 
-        # FONCTION MOINS CHER
+        # MOINS CHER
         def get_moins_cher_asymas():
             try:
                 moins_cher_global = {"nom": "", "prix": float('inf'), "table": "", "stock": 0}
@@ -805,7 +779,7 @@ with st.sidebar:
             except:
                 return f"Erreur analyse prix chef"
 
-        # FONCTION VRAIES DONNÉES ASYMAS
+        # VRAIES DONNÉES ASYMAS
         def get_asymas_data(query):
             try:
                 q = query.lower()
@@ -822,7 +796,7 @@ with st.sidebar:
                     return qui_a_travaille(periode)
 
                 # REVENU UTILISATEUR
-                revenu_match = re.search(r'(?:revenu|gagné|fait)\s+(?:de\s+)?(\w+)', q)
+                revenu_match = re.search(r'(?:revenu|gagné|fait|entrée)\s+(?:de\s+)?(\w+)', q)
                 if revenu_match:
                     nom = revenu_match.group(1)
                     periode = "hier" if "hier" in q else "aujourd'hui"
@@ -831,12 +805,10 @@ with st.sidebar:
                 # RECHERCHE PAR PRIX
                 prix_match = re.search(r'(\d+)\s*fc', q)
                 if prix_match:
-                    prix = prix_match.group(1)
-                    marge = 300 if 'presque' in q or 'environ' in q else 100
-                    return chercher_article_prix(prix, marge)
+                    return chercher_article_live(q)
 
                 # RECHERCHE PAR NOM DIRECT
-                if len(q.split()) <= 3 and not any(x in q for x in ['combien', 'qui', 'quoi', 'comment']):
+                if len(q.split()) <= 3 and not any(x in q for x in ['combien', 'qui', 'quoi', 'comment', 'pourquoi']):
                     return chercher_article_live(q)
 
                 # MOINS CHER
@@ -868,7 +840,7 @@ with st.sidebar:
             except Exception as e:
                 return f"Erreur: {str(e)[:100]}"
 
-        # FONCTION GOOGLE
+        # GOOGLE
         def google_search_smart(query):
             try:
                 if "SERPAPI_KEY" in st.secrets:
@@ -905,7 +877,7 @@ with st.sidebar:
             except: pass
             return None
 
-        # FONCTION NETTOYAGE VOIX
+        # NETTOYAGE VOIX
         def clean_voice_nuclear(text):
             text = unicodedata.normalize('NFKD', text)
             text = text.encode('ASCII', 'ignore').decode('ASCII')
@@ -926,8 +898,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v30", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v30", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v31", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v31", label_visibility="collapsed")
 
         # MICRO
         if audio:
