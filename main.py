@@ -1,5 +1,5 @@
         # 👑 FLOKI V31 - INTÉGRÉ ASYMAS + CACHE 1SEC + ACCÈS TOTAL
-    from urllib.parse import quote
+    
     import re
     import base64
     import requests
