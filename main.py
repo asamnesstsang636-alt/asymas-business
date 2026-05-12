@@ -570,188 +570,9 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V33 - SOUS LE BOUTON ACTUALISER
-    from urllib.parse import quote
-    import re
-    import base64
-    import requests
-    import streamlit.components.v1 as components
-    import unicodedata
 
-    role_user = st.session_state.get("user_role", "")
-    nom_user = st.session_state.get("user_name", "")
-    is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
-
-    if is_pdg:
-        st.divider()
-        st.caption("🔒 FLOKI LIVE")
-
-        if "floki_reponse" not in st.session_state:
-            st.session_state.floki_reponse = ""
-
-        # CHARGE VENTES LIVE
-        def load_ventes_live():
-            try:
-                data = supabase.table("ventes").select("*").execute()
-                return pd.DataFrame(data.data)
-            except:
-                return pd.DataFrame()
-
-        df_ventes = load_ventes_live()
-
-        ASYMAS = {
-            "ARTICLES": df_articles,
-            "COMPTA": df_compta,
-            "VENTES": df_ventes
-        }
-
-        # AUTO-DÉTECTION COLONNES
-        def get_colonnes_auto(df):
-            cols_lower = [c.lower().strip() for c in df.columns]
-            col_nom = col_prix = col_stock = None
-            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name']:
-                for i, col in enumerate(cols_lower):
-                    if pattern in col:
-                        col_nom = df.columns[i]
-                        break
-                if col_nom: break
-            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix', 'price', 'montant', 'prix_unitaire']:
-                for i, col in enumerate(cols_lower):
-                    if pattern == col or pattern in col:
-                        col_prix = df.columns[i]
-                        break
-                if col_prix: break
-            for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
-                for i, col in enumerate(cols_lower):
-                    if pattern in col:
-                        col_stock = df.columns[i]
-                        break
-                if col_stock: break
-            return col_nom, col_prix, col_stock
-
-        # DERNIÈRE VENTE
-        def get_derniere_vente():
-            try:
-                if not df_ventes.empty:
-                    df_v = df_ventes.copy()
-                    if 'created_at' in df_v.columns:
-                        df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
-                        df_v = df_v.sort_values('created_at', ascending=False)
-                    elif 'id' in df_v.columns:
-                        df_v = df_v.sort_values('id', ascending=False)
-                    if not df_v.empty:
-                        last = df_v.iloc[0]
-                        article = last.get('article_nom', last.get('nom_article', last.get('designation', 'Article inconnu')))
-                        qte = last.get('quantite', last.get('qte', 0))
-                        prix = last.get('prix_unitaire', last.get('total', 0))
-                        vendeur = last.get('vendeur', last.get('utilisateur', st.session_state.user_name))
-                        client = last.get('client_nom', last.get('client', 'Client inconnu'))
-                        date_v = last.get('created_at', datetime.now())
-                        if isinstance(date_v, str):
-                            date_v = pd.to_datetime(date_v)
-                        date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
-                        return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Client: {client} - Vendeur: {vendeur} - {date_str}"
-                if not df_compta.empty:
-                    df_c = df_compta.copy()
-                    df_c['date'] = pd.to_datetime(df_c['date'], errors='coerce')
-                    df_c = df_c.sort_values('date', ascending=False)
-                    df_c = df_c[df_c['type'].str.lower().str.contains('revenu', na=False)]
-                    if not df_c.empty:
-                        last = df_c.iloc[0]
-                        desc = last.get('description', 'Vente')
-                        montant = last.get('montant', 0)
-                        vendeur = last.get('utilisateur', 'Inconnu')
-                        date_v = last.get('date', datetime.now())
-                        date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
-                        return f"Dernière vente: {desc} - {montant:.0f}fc - Vendeur: {vendeur} - {date_str}"
-                return "Aucune vente trouvée chef"
-            except:
-                return "Erreur lecture ventes chef"
-
-        # CHERCHE ARTICLE
-        def chercher_article_live(nom_recherche):
-            try:
-                resultats = []
-                nom_recherche = nom_recherche.lower().strip()
-                for nom_table, df in ASYMAS.items():
-                    if df.empty: continue
-                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                    if not col_nom or not col_prix: continue
-                    df_temp = df.copy()
-                    df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
-                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                    df_filtre = df_temp.dropna(subset=[col_prix])
-                    for idx, row in df_filtre.iterrows():
-                        nom_article = str(row[col_nom]).title()
-                        prix_article = row[col_prix]
-                        stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
-                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
-                if resultats:
-                    return f"Trouvé: " + " | ".join(resultats[:3])
-                else:
-                    return f"Aucun {nom_recherche} trouvé chef"
-            except:
-                return "Erreur recherche chef"
-
-        # VRAIES DONNÉES ASYMAS
-        def get_asymas_data(query):
-            q = query.lower()
-            if any(x in q for x in ['dernier', 'vendu', 'vente', 'vient d', 'vient de', 'vient être']):
-                return get_derniere_vente()
-            combien_match = re.search(r'combi[en]+\s+(?:de\s+)?(\w+)', q)
-            if combien_match:
-                produit = combien_match.group(1)
-                return chercher_article_live(produit)
-            if len(q.split()) <= 3:
-                return chercher_article_live(q)
-            return None
-
-        # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v33", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v33", label_visibility="collapsed")
-
-        # MICRO
-        if audio:
-            try:
-                if len(audio.getvalue()) > 800:
-                    files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-                    headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                    data = {"model": "whisper-large-v3", "language": "fr"}
-                    with st.spinner("🎤"):
-                        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                    if r.status_code == 200:
-                        prompt = r.json().get("text", "").strip()
-            except: pass
-
-        # EXÉCUTION
-        if prompt:
-            reponse = ""
-            prompt_clean = prompt.strip().lower()
-            asymas_data = get_asymas_data(prompt_clean)
-            if asymas_data:
-                reponse = asymas_data
-            else:
-                reponse = f"Pas trouvé chef. {date.today().strftime('%d/%m/%Y')}"
-
-            st.session_state.floki_reponse = reponse
-
-            # VOIX
-            txt_voice = unicodedata.normalize('NFKD', reponse).encode('ASCII', 'ignore').decode('ASCII')
-            txt_voice = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', txt_voice)
-            txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
-            b64 = base64.b64encode(txt_voice.encode()).decode()
-            components.html(f"""
-                <script>
-                window.speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(atob('{b64}'));
-                u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
-                window.speechSynthesis.speak(u);
-                </script>
-            """, height=0)
-
-        # AFFICHE
-        if st.session_state.get("floki_reponse"):
-            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+    # PLACEHOLDER FLOKI - AFFICHAGE ICI
+    floki_placeholder = st.empty()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
@@ -2685,3 +2506,159 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
+                        # 👑 FLOKI V33 - CODE À LA FIN MAIS AFFICHAGE À GAUCHE
+from urllib.parse import quote
+import re
+import base64
+import requests
+import streamlit.components.v1 as components
+import unicodedata
+
+role_user = st.session_state.get("user_role", "")
+nom_user = st.session_state.get("user_name", "")
+is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
+
+if is_pdg and 'floki_placeholder' in locals():
+    with floki_placeholder.container():
+        st.divider()
+        st.caption("🔒 FLOKI LIVE")
+
+        if "floki_reponse" not in st.session_state:
+            st.session_state.floki_reponse = ""
+
+        # FLOKI VOIT TOUT - 3000 LIGNES
+        ASYMAS = {
+            "BIENS": df_biens if 'df_biens' in locals() else pd.DataFrame(),
+            "ARTICLES": df_articles if 'df_articles' in locals() else pd.DataFrame(),
+            "VOITURES": df_voitures if 'df_voitures' in locals() else pd.DataFrame(),
+            "COMPTA": df_compta if 'df_compta' in locals() else pd.DataFrame(),
+            "FACTURES": df_factures if 'df_factures' in locals() else pd.DataFrame(),
+            "DEVIS": df_devis if 'df_devis' in locals() else pd.DataFrame(),
+            "UTILISATEURS": df_utilisateurs if 'df_utilisateurs' in locals() else pd.DataFrame(),
+            "VENTES": supabase.table("ventes").select("*").execute().data if 'supabase' in locals() else []
+        }
+        ASYMAS["VENTES"] = pd.DataFrame(ASYMAS["VENTES"])
+
+        # AUTO-DÉTECTION COLONNES
+        def get_colonnes_auto(df):
+            cols_lower = [c.lower().strip() for c in df.columns]
+            col_nom = col_prix = col_stock = None
+            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_nom = df.columns[i]
+                        break
+                if col_nom: break
+            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix', 'price', 'montant', 'prix_unitaire']:
+                for i, col in enumerate(cols_lower):
+                    if pattern == col or pattern in col:
+                        col_prix = df.columns[i]
+                        break
+                if col_prix: break
+            for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_stock = df.columns[i]
+                        break
+                if col_stock: break
+            return col_nom, col_prix, col_stock
+
+        # CHERCHE DANS TOUT ASYMAS
+        def chercher_asymas_live(nom_recherche):
+            try:
+                resultats = []
+                nom_recherche = nom_recherche.lower().strip()
+                for nom_table, df in ASYMAS.items():
+                    if df.empty: continue
+                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    if not col_nom or not col_prix: continue
+                    df_temp = df.copy()
+                    df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
+                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                    mask = df_temp[col_nom].str.contains(nom_recherche, na=False, case=False)
+                    df_filtre = df_temp.dropna(subset=[col_prix])
+                    for idx, row in df_filtre.iterrows():
+                        nom_article = str(row[col_nom]).title()
+                        prix_article = row[col_prix]
+                        stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
+                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
+                if resultats:
+                    return f"Trouvé: " + " | ".join(resultats[:3])
+                else:
+                    return f"Aucun {nom_recherche} trouvé chef"
+            except:
+                return "Erreur recherche chef"
+
+        # DERNIÈRE VENTE
+        def get_derniere_vente():
+            try:
+                df_v = ASYMAS["VENTES"]
+                if not df_v.empty:
+                    if 'created_at' in df_v.columns:
+                        df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
+                        df_v = df_v.sort_values('created_at', ascending=False)
+                    elif 'id' in df_v.columns:
+                        df_v = df_v.sort_values('id', ascending=False)
+                    if not df_v.empty:
+                        last = df_v.iloc[0]
+                        article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
+                        qte = last.get('quantite', last.get('qte', 0))
+                        prix = last.get('prix_unitaire', last.get('total', 0))
+                        vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
+                        return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
+                return "Aucune vente trouvée chef"
+            except:
+                return "Erreur lecture ventes chef"
+
+        # ROUTEUR
+        def get_asymas_data(query):
+            q = query.lower()
+            if any(x in q for x in ['dernier', 'vendu', 'vente']):
+                return get_derniere_vente()
+            if 'combien' in q:
+                stats = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
+                return f"ASYMAS: " + " | ".join(stats)
+            return chercher_asymas_live(q)
+
+        # INPUTS
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_final", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_final", label_visibility="collapsed")
+
+        # MICRO
+        if audio:
+            try:
+                if len(audio.getvalue()) > 800:
+                    files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+                    headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                    data = {"model": "whisper-large-v3", "language": "fr"}
+                    with st.spinner("🎤"):
+                        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                    if r.status_code == 200:
+                        prompt = r.json().get("text", "").strip()
+            except: pass
+
+        # EXÉCUTION
+        if prompt:
+            reponse = get_asymas_data(prompt.strip().lower())
+            if not reponse:
+                reponse = f"Pas trouvé chef. {date.today().strftime('%d/%m/%Y')}"
+
+            st.session_state.floki_reponse = reponse
+
+            # VOIX
+            txt_voice = unicodedata.normalize('NFKD', reponse).encode('ASCII', 'ignore').decode('ASCII')
+            txt_voice = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', txt_voice)
+            txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
+            b64 = base64.b64encode(txt_voice.encode()).decode()
+            components.html(f"""
+                <script>
+                window.speechSynthesis.cancel();
+                var u = new SpeechSynthesisUtterance(atob('{b64}'));
+                u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
+                window.speechSynthesis.speak(u);
+                </script>
+            """, height=0)
+
+        # AFFICHE
+        if st.session_state.get("floki_reponse"):
+            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
