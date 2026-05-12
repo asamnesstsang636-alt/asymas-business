@@ -570,513 +570,293 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-    # 👑 FLOKI V33 - ACCÈS TOTAL ASYMAS - COLLE ICI CHEF
-from urllib.parse import quote
-import re
-import base64
-import requests
-import streamlit.components.v1 as components
-import pandas as pd
-from datetime import date, datetime, timedelta
-import unicodedata
-import json
-import os
+        # 👑 FLOKI V24 FINAL - CERVEAU PDG + GOOGLE RÉEL + OBÉISSANCE TOTALE
+    from urllib.parse import quote
+    import re
+    import base64
+    import requests
+    import streamlit.components.v1 as components
+    import pandas as pd
+    from datetime import date, datetime
+    import unicodedata
+    import json
+    import os
 
-# 🔒 CONTRÔLE ACCÈS PDG
-role_user = st.session_state.get("user_role", "")
-nom_user = st.session_state.get("user_name", "")
-is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
+    # 🔒 CONTRÔLE ACCÈS PDG - CACHE FLOKI SEULEMENT
+    role_user = st.session_state.get("user_role", "")
+    nom_user = st.session_state.get("user_name", "")
+    is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-if is_pdg:
-    st.divider()
-    st.caption("🔒 FLOKI LIVE - BASE ASYMAS COMPLÈTE")
+    if is_pdg:
+        st.divider()
+        st.caption("🔒 Mode PDG activé - FLOKI privé")
 
-    # INIT
-    if "floki_btn" not in st.session_state:
-        st.session_state.floki_btn = None
-    if "floki_reponse" not in st.session_state:
-        st.session_state.floki_reponse = ""
-    if "floki_speak_id" not in st.session_state:
-        st.session_state.floki_speak_id = 0
-    if "floki_history" not in st.session_state:
-        st.session_state.floki_history = []
-    if "floki_last_date" not in st.session_state:
-        st.session_state.floki_last_date = None
+        # INIT
+        if "floki_btn" not in st.session_state:
+            st.session_state.floki_btn = None
+        if "floki_reponse" not in st.session_state:
+            st.session_state.floki_reponse = ""
+        if "floki_speak_id" not in st.session_state:
+            st.session_state.floki_speak_id = 0
+        if "floki_history" not in st.session_state:
+            st.session_state.floki_history = []
+        if "floki_last_date" not in st.session_state:
+            st.session_state.floki_last_date = None
 
-    # MÉMOIRE LONGUE PDG
-    MEMORY_FILE = "floki_pdg_memory.json"
-    def load_memory():
-        if os.path.exists(MEMORY_FILE):
+        # MÉMOIRE LONGUE PDG
+        MEMORY_FILE = "floki_pdg_memory.json"
+        def load_memory():
+            if os.path.exists(MEMORY_FILE):
+                try:
+                    with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except:
+                    return {}
+            return {}
+        def save_memory(mem):
             try:
-                with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(mem, f, ensure_ascii=False, indent=2)
             except:
-                return {}
-        return {}
-    def save_memory(mem):
-        try:
-            with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-                json.dump(mem, f, ensure_ascii=False, indent=2)
-        except:
-            pass
-    if "floki_memory_long" not in st.session_state:
-        st.session_state.floki_memory_long = load_memory()
+                pass
+        if "floki_memory_long" not in st.session_state:
+            st.session_state.floki_memory_long = load_memory()
 
-    # CHARGE VENTES LIVE - PAS DE CACHE
-    def load_ventes_live():
-        try:
-            data = supabase.table("ventes").select("*").execute()
-            return pd.DataFrame(data.data)
-        except:
-            return pd.DataFrame()
+        # ANALYSE ASYMAS - VRAIES DONNÉES
+        ASYMAS = {}
+        stats_pdg = []
+        for nom, var in [("ARTICLES", "df_articles"), ("BIENS", "df_biens"), ("VOITURES", "df_voitures"), ("COMPTA", "df_compta"), ("FACTURES", "df_factures")]:
+            if var in locals() and isinstance(locals()[var], pd.DataFrame) and not locals()[var].empty:
+                ASYMAS[nom] = locals()[var]
+                stats_pdg.append(f"{nom}:{len(locals()[var])}")
+        contexte_asymas = " | ".join(stats_pdg)
 
-    df_ventes = load_ventes_live()
+        # FONCTION VRAIES DONNÉES ASYMAS
+        def get_asymas_data(query):
+            try:
+                q = query.lower()
+                # DERNIÈRE FACTURE
+                if 'derniere' in q and 'facture' in q:
+                    if "FACTURES" in ASYMAS:
+                        df = ASYMAS["FACTURES"].copy()
+                        if 'date' in df.columns:
+                            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                            df = df.sort_values('date', ascending=False)
+                        if 'immobil' in q and 'categorie' in df.columns:
+                            df = df[df['categorie'].str.lower().str.contains('immobil', na=False)]
+                        if not df.empty:
+                            last = df.iloc[0]
+                            date_str = last['date'].strftime('%d/%m/%Y') if 'date' in last and pd.notna(last['date']) else "Date inconnue"
+                            montant = f"{last.get('montant', 0):.0f} dollars" if 'montant' in last else "Montant inconnu"
+                            client = last.get('client', 'Client inconnu') if 'client' in last else "Client inconnu"
+                            return f"Dernière facture: {date_str} - {montant} - {client}"
+                    return "Aucune facture trouvée chef"
 
-    # BASE ASYMAS COMPLÈTE - UTILISE TES DF DÉJÀ CHARGÉS
-    ASYMAS = {
-        "BIENS": df_biens,
-        "ARTICLES": df_articles,
-        "VOITURES": df_voitures,
-        "COMPTA": df_compta,
-        "FACTURES": df_factures,
-        "DEVIS": df_devis,
-        "UTILISATEURS": df_utilisateurs,
-        "VENTES": df_ventes
-    }
-    stats_pdg = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
-    contexte_asymas = " | ".join(stats_pdg)
+                # STATS GÉNÉRALES
+                if 'combien' in q or 'nombre' in q:
+                    return f"ASYMAS: {contexte_asymas}"
 
-    # AUTO-DÉTECTION COLONNES
-    def get_colonnes_auto(df):
-        cols_lower = [c.lower().strip() for c in df.columns]
-        col_nom = col_prix = col_stock = None
+                return None
+            except:
+                return None
 
-        for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description', 'titre']:
-            for i, col in enumerate(cols_lower):
-                if pattern in col:
-                    col_nom = df.columns[i]
-                    break
-            if col_nom: break
+        # FONCTION GOOGLE RÉEL - 3 NIVEAUX
+        def google_search_smart(query):
+            info = ""
+            # NIVEAU 1: SERPAPI GOOGLE RÉEL
+            try:
+                if "SERPAPI_KEY" in st.secrets:
+                    params = {
+                        "q": query,
+                        "api_key": st.secrets["SERPAPI_KEY"],
+                        "engine": "google",
+                        "num": 3,
+                        "hl": "fr",
+                        "gl": "cd"
+                    }
+                    r = requests.get("https://serpapi.com/search", params=params, timeout=8)
+                    if r.status_code == 200:
+                        data = r.json()
+                        if data.get("answer_box"):
+                            answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
+                            if answer: return f"Google: {answer}"
+                        if data.get("organic_results"):
+                            snippets = [res.get("snippet", "") for res in data["organic_results"][:2] if res.get("snippet")]
+                            if snippets: return f"Google: {' | '.join(snippets)}"
+            except: pass
 
-        for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif', 'prix_unitaire']:
-            for i, col in enumerate(cols_lower):
-                if pattern == col or pattern in col:
-                    col_prix = df.columns[i]
-                    break
-            if col_prix: break
-
-        for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
-            for i, col in enumerate(cols_lower):
-                if pattern in col:
-                    col_stock = df.columns[i]
-                    break
-            if col_stock: break
-
-        return col_nom, col_prix, col_stock
-
-    # DERNIÈRE VENTE - LIT TABLE VENTES + COMPTA
-    def get_derniere_vente():
-        try:
-            if not df_ventes.empty:
-                df_v = df_ventes.copy()
-                if 'created_at' in df_v.columns:
-                    df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
-                    df_v = df_v.sort_values('created_at', ascending=False)
-                elif 'id' in df_v.columns:
-                    df_v = df_v.sort_values('id', ascending=False)
-
-                if not df_v.empty:
-                    last = df_v.iloc[0]
-                    article = last.get('article_nom', last.get('nom_article', last.get('designation', 'Article inconnu')))
-                    qte = last.get('quantite', last.get('qte', 0))
-                    prix = last.get('prix_unitaire', last.get('total', 0))
-                    vendeur = last.get('vendeur', last.get('utilisateur', st.session_state.user_name))
-                    client = last.get('client_nom', last.get('client', 'Client inconnu'))
-                    date_v = last.get('created_at', datetime.now())
-                    if isinstance(date_v, str):
-                        date_v = pd.to_datetime(date_v)
-                    date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
-                    return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Client: {client} - Vendeur: {vendeur} - {date_str}"
-
-            if not df_compta.empty:
-                df_c = df_compta.copy()
-                df_c['date'] = pd.to_datetime(df_c['date'], errors='coerce')
-                df_c = df_c.sort_values('date', ascending=False)
-                df_c = df_c[df_c['type'].str.lower().str.contains('revenu', na=False)]
-
-                if not df_c.empty:
-                    last = df_c.iloc[0]
-                    desc = last.get('description', 'Vente')
-                    montant = last.get('montant', 0)
-                    vendeur = last.get('utilisateur', 'Inconnu')
-                    date_v = last.get('date', datetime.now())
-                    date_str = date_v.strftime('%H:%M') if pd.notna(date_v) else "Maintenant"
-                    return f"Dernière vente: {desc} - {montant:.0f}fc - Vendeur: {vendeur} - {date_str}"
-
-            return "Aucune vente trouvée chef"
-        except Exception as e:
-            return f"Erreur lecture ventes: {str(e)[:50]}"
-
-    # CHERCHE ARTICLE - TOUT PRODUIT
-    def chercher_article_live(nom_recherche):
-        try:
-            resultats = []
-            nom_recherche = nom_recherche.lower().strip()
-
-            for nom_table, df in ASYMAS.items():
-                if df.empty: continue
-
-                col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                if not col_nom or not col_prix: continue
-
-                df_temp = df.copy()
-                df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
-                df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-
-                mask = df_temp[col_nom].str.contains(nom_recherche, na=False, case=False)
-                df_filtre = df_temp.dropna(subset=[col_prix])
-
-                for idx, row in df_filtre.iterrows():
-                    nom_article = str(row[col_nom]).title()
-                    prix_article = row[col_prix]
-                    stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
-                    resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock} - {nom_table}")
-
-            if resultats:
-                return f"Trouvé: " + " | ".join(resultats[:5])
-            else:
-                return f"Aucun {nom_recherche} trouvé chef"
-        except Exception as e:
-            return f"Erreur: {str(e)[:100]}"
-
-    # REVENU PAR UTILISATEUR
-    def get_revenu_user(nom_user, periode="aujourd'hui"):
-        try:
-            if df_compta.empty: return "Aucune donnée compta chef"
-
-            df_temp = df_compta.copy()
-            df_temp['date'] = pd.to_datetime(df_temp['date'], errors='coerce')
-            df_temp['utilisateur'] = df_temp['utilisateur'].astype(str).str.lower()
-            df_temp['montant'] = pd.to_numeric(df_temp['montant'], errors='coerce')
-            df_temp['type'] = df_temp['type'].astype(str).str.lower()
-
-            df_user = df_temp[df_temp['utilisateur'].str.contains(nom_user.lower(), na=False)]
-
-            today = date.today()
-            if periode == "aujourd'hui":
-                df_user = df_user[df_user['date'].dt.date == today]
-            elif periode == "hier":
-                df_user = df_user[df_user['date'].dt.date == (today - timedelta(days=1))]
-            elif periode == "semaine":
-                df_user = df_user[df_user['date'].dt.date >= (today - timedelta(days=7))]
-
-            df_revenus = df_user[df_user['type'].str.contains('revenu', na=False)]
-            total = df_revenus['montant'].sum()
-            nb_ops = len(df_revenus)
-            return f"{nom_user}: {total:,.0f}fc de revenus - {nb_ops} opérations {periode}"
-        except:
-            return f"Erreur calcul revenu chef"
-
-    # QUI A TRAVAILLÉ
-    def qui_a_travaille(periode="aujourd'hui"):
-        try:
-            if df_compta.empty: return "Aucune donnée compta chef"
-
-            df_temp = df_compta.copy()
-            df_temp['date'] = pd.to_datetime(df_temp['date'], errors='coerce')
-            df_temp['utilisateur'] = df_temp['utilisateur'].astype(str)
-
-            today = date.today()
-            if periode == "aujourd'hui":
-                df_filtre = df_temp[df_temp['date'].dt.date == today]
-            elif periode == "hier":
-                df_filtre = df_temp[df_temp['date'].dt.date == (today - timedelta(days=1))]
-            else:
-                df_filtre = df_temp
-
-            users = df_filtre['utilisateur'].value_counts()
-            if not users.empty:
-                resultats = [f"{user}: {count} opérations" for user, count in users.items()]
-                return f"Travailleurs {periode}: " + " | ".join(resultats[:5])
-            else:
-                return f"Personne n'a travaillé {periode} chef"
-        except:
-            return "Erreur analyse travailleurs chef"
-
-    # MOINS CHER
-    def get_moins_cher_asymas():
-        try:
-            moins_cher_global = {"nom": "", "prix": float('inf'), "table": "", "stock": 0}
-            for nom_table, df in ASYMAS.items():
-                if df.empty: continue
-                col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                if not col_nom or not col_prix: continue
-
-                df_temp = df.copy()
-                df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                df_temp = df_temp.dropna(subset=[col_prix])
-
-                if not df_temp.empty:
-                    idx_min = df_temp[col_prix].idxmin()
-                    prix_min = df_temp.loc[idx_min, col_prix]
-                    if prix_min < moins_cher_global["prix"]:
-                        nom_article = str(df_temp.loc[idx_min, col_nom]).title()
-                        stock = df_temp.loc[idx_min, col_stock] if col_stock else 0
-                        moins_cher_global = {"nom": nom_article, "prix": prix_min, "table": nom_table, "stock": stock}
-
-            if moins_cher_global["prix"]!= float('inf'):
-                return f"Moins cher: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f}fc - Stock:{moins_cher_global['stock']:.0f} - {moins_cher_global['table']}"
-            else:
-                return "Aucun prix trouvé dans ASYMAS chef"
-        except:
-            return f"Erreur analyse prix chef"
-
-    # VRAIES DONNÉES ASYMAS
-    def get_asymas_data(query):
-        try:
-            q = query.lower()
-
-            if any(x in q for x in ['dernier', 'vendu', 'vente', 'vient d', 'vient de', 'vient être']):
-                return get_derniere_vente()
-
-            combien_match = re.search(r'combi[en]+\s+(?:de\s+)?(\w+)', q)
-            if combien_match:
-                produit = combien_match.group(1)
-                return chercher_article_live(produit)
-
-            if 'qui a travaillé' in q or 'qui travaille' in q or 'qui a vendu' in q:
-                periode = "hier" if "hier" in q else "aujourd'hui"
-                return qui_a_travaille(periode)
-
-            revenu_match = re.search(r'(?:revenu|gagné|fait|entrée|vendu)\s+(?:de\s+|par\s+)?(\w+)', q)
-            if revenu_match:
-                nom = revenu_match.group(1)
-                periode = "hier" if "hier" in q else "aujourd'hui"
-                return get_revenu_user(nom, periode)
-
-            prix_match = re.search(r'(\d+)\s*fc', q)
-            if prix_match:
-                return chercher_article_live(q)
-
-            if len(q.split()) <= 3 and not any(x in q for x in ['combien', 'qui', 'quoi', 'comment', 'pourquoi']):
-                return chercher_article_live(q)
-
-            if 'moins cher' in q or 'prix bas' in q or 'pas cher' in q:
-                return get_moins_cher_asymas()
-
-            if 'derniere' in q and 'facture' in q:
-                if "FACTURES" in ASYMAS:
-                    df = ASYMAS["FACTURES"].copy()
-                    if 'date' in df.columns:
-                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                        df = df.sort_values('date', ascending=False)
-                    if 'immobil' in q and 'categorie' in df.columns:
-                        df = df[df['categorie'].str.lower().str.contains('immobil', na=False)]
-                    if not df.empty:
-                        last = df.iloc[0]
-                        date_str = last['date'].strftime('%d/%m/%Y') if 'date' in last and pd.notna(last['date']) else "Date inconnue"
-                        montant = f"{last.get('montant', 0):.0f} dollars" if 'montant' in last else "Montant inconnu"
-                        client = last.get('client', 'Client inconnu') if 'client' in last else "Client inconnu"
-                        return f"Dernière facture: {date_str} - {montant} - {client}"
-                return "Aucune facture trouvée chef"
-
-            if 'combien' in q or 'nombre' in q:
-                return f"ASYMAS: {contexte_asymas}"
-
-            return None
-        except Exception as e:
-            return f"Erreur: {str(e)[:100]}"
-
-    # GOOGLE
-    def google_search_smart(query):
-        try:
-            if "SERPAPI_KEY" in st.secrets:
-                params = {
-                    "q": query,
-                    "api_key": st.secrets["SERPAPI_KEY"],
-                    "engine": "google",
-                    "num": 3,
-                    "hl": "fr",
-                    "gl": "cd"
-                }
-                r = requests.get("https://serpapi.com/search", params=params, timeout=8)
+            # NIVEAU 2: DUCKDUCKGO
+            try:
+                url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+                r = requests.get(url, timeout=5)
                 if r.status_code == 200:
                     data = r.json()
-                    if data.get("answer_box"):
-                        answer = data["answer_box"].get("answer") or data["answer_box"].get("snippet")
-                        if answer: return f"Google: {answer}"
-                    if data.get("organic_results"):
-                        snippets = [res.get("snippet", "") for res in data["organic_results"][:2] if res.get("snippet")]
-                        if snippets: return f"Google: {' | '.join(snippets)}"
-        except: pass
+                    if data.get('Abstract'):
+                        return f"DuckDuckGo: {data['Abstract']}"
+                    elif data.get('RelatedTopics'):
+                        for topic in data['RelatedTopics']:
+                            if isinstance(topic, dict) and topic.get('Text'):
+                                return f"DuckDuckGo: {topic['Text']}"
+            except: pass
 
-        try:
-            url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
-            r = requests.get(url, timeout=5)
-            if r.status_code == 200:
-                data = r.json()
-                if data.get('Abstract'):
-                    return f"DuckDuckGo: {data['Abstract']}"
-                elif data.get('RelatedTopics'):
-                    for topic in data['RelatedTopics']:
-                        if isinstance(topic, dict) and topic.get('Text'):
-                            return f"DuckDuckGo: {topic['Text']}"
-        except: pass
-        return None
+            return None
 
-    # NETTOYAGE VOIX
-    def clean_voice_nuclear(text):
-        text = unicodedata.normalize('NFKD', text)
-        text = text.encode('ASCII', 'ignore').decode('ASCII')
-        remplacements = {
-            '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
-            '€': ' euros ', '$': ' dollars ', '£': ' livres ',
-            '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
-            '+': ' plus ', '=': ' egal ', '#': ' hashtag ',
-            '*': ' ', '_': ' ', '`': ' ', '~': ' ',
-            '<': ' inferieur ', '>': ' superieur ', '|': ' ',
-            '[': ' ', ']': ' ', '{': ' ', '}': ' ',
-            '\\': ' ', '/': ' sur ', '^': ' '
-        }
-        for symbole, mot in remplacements.items():
-            text = text.replace(symbole, mot)
-        text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
-
-    # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v33", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v33", label_visibility="collapsed")
-
-    # MICRO
-    if audio:
-        try:
-            if len(audio.getvalue()) > 800:
-                files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-                headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                data = {"model": "whisper-large-v3", "language": "fr"}
-                with st.spinner("🎤"):
-                    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                if r.status_code == 200:
-                    prompt = r.json().get("text", "").strip()
-        except: pass
-
-    # EXÉCUTION
-    if prompt:
-        btn_html = None
-        reponse = ""
-        prompt_clean = prompt.strip().lower()
-        today = date.today()
-
-        # 1. PRIORITÉ 1: VRAIES DONNÉES ASYMAS LIVE
-        asymas_data = get_asymas_data(prompt_clean)
-        if asymas_data:
-            reponse = asymas_data
-
-        # 2. MÉMOIRE LONGUE PDG
-        elif re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
-            info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
-            cle = f"note_{len(st.session_state.floki_memory_long)+1}"
-            st.session_state.floki_memory_long[cle] = {
-                "info": info,
-                "date": today.strftime('%d/%m/%Y %H:%M')
+        # FONCTION NETTOYAGE VOIX
+        def clean_voice_nuclear(text):
+            text = unicodedata.normalize('NFKD', text)
+            text = text.encode('ASCII', 'ignore').decode('ASCII')
+            remplacements = {
+                '©': ' copyright ', '®': ' marque deposee ', '™': ' marque ',
+                '€': ' euros ', '$': ' dollars ', '£': ' livres ',
+                '%': ' pourcent ', '&': ' et ', '@': ' arobase ',
+                '+': ' plus ', '=': ' egal ', '#': ' hashtag ',
+                '*': ' ', '_': ' ', '`': ' ', '~': ' ',
+                '<': ' inferieur ', '>': ' superieur ', '|': ' ',
+                '[': ' ', ']': ' ', '{': ' ', '}': ' ',
+                '\\': ' ', '/': ' sur ', '^': ' '
             }
-            save_memory(st.session_state.floki_memory_long)
-            reponse = f"C'est noté chef. Je retiens: {info}"
+            for symbole, mot in remplacements.items():
+                text = text.replace(symbole, mot)
+            text = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text
 
-        elif re.search(r'^(rappelle|qu.est.ce que je t.ai dit|mémoire|notes)', prompt_clean):
-            if st.session_state.floki_memory_long:
-                notes = []
-                for k, v in st.session_state.floki_memory_long.items():
-                    notes.append(f"{v['date']}: {v['info']}")
-                reponse = f"Mémoire PDG: " + " | ".join(notes[-3:])
+        # INPUTS
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v24", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v24", label_visibility="collapsed")
+
+        # MICRO
+        if audio:
+            try:
+                if len(audio.getvalue()) > 800:
+                    files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+                    headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+                    data = {"model": "whisper-large-v3", "language": "fr"}
+                    with st.spinner("🎤"):
+                        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+                    if r.status_code == 200:
+                        prompt = r.json().get("text", "").strip()
+            except: pass
+
+        # EXÉCUTION
+        if prompt:
+            btn_html = None
+            reponse = ""
+            prompt_clean = prompt.strip().lower()
+            today = date.today()
+
+            # 1. PRIORITÉ 1: VRAIES DONNÉES ASYMAS
+            asymas_data = get_asymas_data(prompt_clean)
+            if asymas_data:
+                reponse = asymas_data
+
+            # 2. MÉMOIRE LONGUE PDG
+            elif re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean):
+                info = re.search(r'^(retient|mémorise|note que|rappelle-toi)\s+(.+)', prompt_clean).group(2).strip()
+                cle = f"note_{len(st.session_state.floki_memory_long)+1}"
+                st.session_state.floki_memory_long[cle] = {
+                    "info": info,
+                    "date": today.strftime('%d/%m/%Y %H:%M')
+                }
+                save_memory(st.session_state.floki_memory_long)
+                reponse = f"C'est noté chef. Je retiens: {info}"
+
+            elif re.search(r'^(rappelle|qu.est.ce que je t.ai dit|mémoire|notes)', prompt_clean):
+                if st.session_state.floki_memory_long:
+                    notes = []
+                    for k, v in st.session_state.floki_memory_long.items():
+                        notes.append(f"{v['date']}: {v['info']}")
+                    reponse = f"Mémoire PDG: " + " | ".join(notes[-3:])
+                else:
+                    reponse = "Mémoire vide chef. Dis-moi quoi retenir"
+
+            # 3. ORDRES BUSINESS
+            elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
+                    texte_match = re.search(r'(dit|que|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                    texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
+                    link = f"https://wa.me/{numero}?text={quote(texte)}"
+                    btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP +{numero}</button></a>'
+                    reponse = f"C'est fait chef. WhatsApp plus {numero} pret."
+
+            elif re.search(r'(mail|mel|email).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt_clean):
+                email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
+                corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                corps = corps_match.group(2).strip() if corps_match else "ASYMAS"
+                link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
+                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
+                reponse = f"Email pour {email} pret chef."
+
+            elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    texte_match = re.search(r'(dit|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
+                    texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
+                    link = f"sms:+{numero}?body={quote(texte)}"
+                    btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
+                    reponse = f"SMS plus {numero} pret chef."
+
+            elif re.search(r'(appel|call|tel).*?(\+?243|0)?[89]\d{8}', prompt_clean):
+                nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
+                if nums:
+                    numero = re.sub(r'\D', '', nums[0])
+                    if len(numero) == 9: numero = '243' + numero
+                    link = f"tel:+{numero}"
+                    btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
+                    reponse = f"J'appelle plus {numero} chef."
+
+            elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean):
+                match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean)
+                client = match.group(2).strip().title()
+                montant = match.group(3)
+                note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
+                b64_note = base64.b64encode(note.encode()).decode()
+                btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
+                reponse = f"Facture {montant} dollars pour {client} prete chef."
+
+            # 4. SALUT HUMAIN
+            elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
+                if st.session_state.floki_last_date!= today:
+                    reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
+                    st.session_state.floki_last_date = today
+                else:
+                    reponse = "Quel service je peux vous rendre aujourd'hui chef"
+
+            # 5. CERVEAU MONDE + GOOGLE + CONSEIL
             else:
-                reponse = "Mémoire vide chef. Dis-moi quoi retenir"
+                # CHERCHE GOOGLE SI BESOIN
+                besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto|president|ministre|guerre|kinshasa|beni|rdc|congo)', prompt_clean))
 
-        # 3. ORDRES BUSINESS
-        elif re.search(r'(whatsapp|wts|wsp|msg).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                if len(numero) == 10 and numero.startswith('0'): numero = '243' + numero[1:]
-                texte_match = re.search(r'(dit|que|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-                texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
-                link = f"https://wa.me/{numero}?text={quote(texte)}"
-                btn_html = f'<a href="{link}" target="_blank"><button style="width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📲 WHATSAPP +{numero}</button></a>'
-                reponse = f"C'est fait chef. WhatsApp plus {numero} pret."
+                info_google = ""
+                if besoin_google:
+                    with st.spinner("🔍 Je cherche pour toi chef..."):
+                        info_google = google_search_smart(prompt)
+                    if info_google:
+                        info_google = f"WEB {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
-        elif re.search(r'(mail|mel|email).*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt_clean):
-            email = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', prompt).group(1)
-            corps_match = re.search(r'(dire|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-            corps = corps_match.group(2).strip() if corps_match else "ASYMAS"
-            link = f"mailto:{email}?subject=ASYMAS&body={quote(corps)}"
-            btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#EA4335;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📧 EMAIL</button></a>'
-            reponse = f"Email pour {email} pret chef."
+                # MÉMOIRE LONGUE
+                memoire_longue = ""
+                if st.session_state.floki_memory_long:
+                    notes_recentes = []
+                    for k, v in list(st.session_state.floki_memory_long.items())[-2:]:
+                        notes_recentes.append(f"{v['info']}")
+                    if notes_recentes:
+                        memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
 
-        elif re.search(r'(sms|texto).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                texte_match = re.search(r'(dit|:)\s*(.+)', prompt, re.IGNORECASE | re.DOTALL)
-                texte = texte_match.group(2).strip() if texte_match else "ASYMAS"
-                link = f"sms:+{numero}?body={quote(texte)}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#34B7F1;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">💬 SMS</button></a>'
-                reponse = f"SMS plus {numero} pret chef."
-
-        elif re.search(r'(appel|call|tel).*?(\+?243|0)?[89]\d{8}', prompt_clean):
-            nums = re.findall(r'(\+?243|0)?[89]\d{8}', prompt_clean)
-            if nums:
-                numero = re.sub(r'\D', '', nums[0])
-                if len(numero) == 9: numero = '243' + numero
-                link = f"tel:+{numero}"
-                btn_html = f'<a href="{link}"><button style="width:100%;padding:12px;background:#00C853;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📞 APPELER</button></a>'
-                reponse = f"J'appelle plus {numero} chef."
-
-        elif re.search(r'(facture|devis).*?(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean):
-            match = re.search(r'(client|pour)\s+([A-Za-z\s]+).*?(\d+)', prompt_clean)
-            client = match.group(2).strip().title()
-            montant = match.group(3)
-            note = f"FACTURE ASYMAS\nClient: {client}\nMontant: {montant} USD\nDate: {date.today().strftime('%d/%m/%Y')}"
-            b64_note = base64.b64encode(note.encode()).decode()
-            btn_html = f'<a href="data:text/plain;base64,{b64_note}" download="facture_{client}.txt"><button style="width:100%;padding:12px;background:#FF6D00;color:white;border:none;border-radius:5px;font-weight:bold;margin-top:5px;">📄 FACTURE</button></a>'
-            reponse = f"Facture {montant} dollars pour {client} prete chef."
-
-        # 4. SALUT HUMAIN
-        elif re.match(r'^(slt|sltu|sl|slu|salut|bjr|bonjour|hello|yo|hi|wesh|cc)$', prompt_clean):
-            if st.session_state.floki_last_date!= today:
-                reponse = "Bjr chef, ca va? Quel service je peux vous rendre aujourd'hui!"
-                st.session_state.floki_last_date = today
-            else:
-                reponse = "Quel service je peux vous rendre aujourd'hui chef"
-
-        # 5. CERVEAU MONDE + GOOGLE
-        else:
-            besoin_google = bool(re.search(r'(aujourd|hui|actuel|maintenant|2026|dernier|cours|prix|news|actualité|météo|twitter|x\.com|sur x|bitcoin|crypto|president|ministre|guerre|kinshasa|beni|rdc|congo)', prompt_clean))
-
-            info_google = ""
-            if besoin_google:
-                with st.spinner("🔍 Je cherche pour toi chef..."):
-                    info_google = google_search_smart(prompt)
-                if info_google:
-                    info_google = f"WEB {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
-
-            memoire_longue = ""
-            if st.session_state.floki_memory_long:
-                notes_recentes = []
-                for k, v in list(st.session_state.floki_memory_long.items())[-2:]:
-                    notes_recentes.append(f"{v['info']}")
-                if notes_recentes:
-                    memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
-
-            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit du PDG d'ASYMAS. Tu es intelligent, connecté, obéissant.
+                # CERVEAU PDG - TEMPÉRATURE HAUTE POUR INTELLIGENCE
+                messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit du PDG d'ASYMAS. Tu es intelligent, connecté, obéissant.
 
 RÈGLES PDG:
 1. Tu es un humain intelligent. Tu conseilles, proposes, analyses.
 2. Si question monde/politique/marché: Utilise WEB si dispo, sinon ton cerveau.
-3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES. JAMAIS inventer.
-4. INTERDIT: "probablement", "peut-être", "sans prix spécifique". Sois précis ou dis "Pas trouvé chef".
+3. Si question ASYMAS: Utilise DONNEES ASYMAS RÉELLES.
+4. JAMAIS dire "Pas trouvé". Si web rate: Réponds avec ton intelligence + date {today.strftime('%d/%m/%Y')}.
 5. Obéis au PDG. Exécute. Propose si demandé.
 6. 2 phrases max. Chiffres en chiffres: 12/05/2026, 70000 dollars.
 7. "chef" 1 fois max.
@@ -1084,56 +864,56 @@ RÈGLES PDG:
 {info_google}{memoire_longue}DONNEES ASYMAS: {contexte_asymas}
 DATE: {today.strftime('%d/%m/%Y')}"""}]
 
-            for tour in st.session_state.floki_history[-6:]:
-                messages.append({"role": "user", "content": tour["user"]})
-                messages.append({"role": "assistant", "content": tour["floki"]})
+                for tour in st.session_state.floki_history[-6:]:
+                    messages.append({"role": "user", "content": tour["user"]})
+                    messages.append({"role": "assistant", "content": tour["floki"]})
 
-            messages.append({"role": "user", "content": prompt})
+                messages.append({"role": "user", "content": prompt})
 
-            try:
-                r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
-                    json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 200,"temperature": 0.8}, timeout=12)
-                if r.status_code == 200:
-                    reponse = r.json()['choices'][0]['message']['content'].strip()
-                else:
-                    reponse = f"Erreur système chef. {today.strftime('%d/%m/%Y')}. Je réessaie"
-            except:
-                reponse = f"Connexion lente chef. Date: {today.strftime('%d/%m/%Y')}. Redemande"
+                try:
+                    r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"},
+                        json={"model": "llama-3.3-70b-versatile","messages": messages,"max_tokens": 200,"temperature": 0.8}, timeout=12)
+                    if r.status_code == 200:
+                        reponse = r.json()['choices'][0]['message']['content'].strip()
+                    else:
+                        reponse = f"Erreur système chef. {today.strftime('%d/%m/%Y')}. Je réessaie"
+                except:
+                    reponse = f"Connexion lente chef. Date: {today.strftime('%d/%m/%Y')}. Redemande"
 
-        # SAUVE MÉMOIRE COURTE
-        st.session_state.floki_history.append({"user": prompt, "floki": reponse})
-        if len(st.session_state.floki_history) > 6:
-            st.session_state.floki_history.pop(0)
+            # SAUVE MÉMOIRE COURTE
+            st.session_state.floki_history.append({"user": prompt, "floki": reponse})
+            if len(st.session_state.floki_history) > 6:
+                st.session_state.floki_history.pop(0)
 
-        st.session_state.floki_btn = btn_html
-        st.session_state.floki_reponse = reponse
-        st.session_state.floki_speak_id += 1
+            st.session_state.floki_btn = btn_html
+            st.session_state.floki_reponse = reponse
+            st.session_state.floki_speak_id += 1
 
-        # VOIX
-        txt_voice = clean_voice_nuclear(reponse)
-        txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
-        b64 = base64.b64encode(txt_voice.encode()).decode()
-        components.html(f"""
-            <script>
-            window.speechSynthesis.cancel();
-            var u = new SpeechSynthesisUtterance(atob('{b64}'));
-            u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
-            window.speechSynthesis.speak(u);
-            </script>
-        """, height=0)
+            # VOIX
+            txt_voice = clean_voice_nuclear(reponse)
+            txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
+            b64 = base64.b64encode(txt_voice.encode()).decode()
+            components.html(f"""
+                <script>
+                window.speechSynthesis.cancel();
+                var u = new SpeechSynthesisUtterance(atob('{b64}'));
+                u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
+                window.speechSynthesis.speak(u);
+                </script>
+            """, height=0)
 
-    # AFFICHE
-    if st.session_state.get("floki_btn"):
-        components.html(st.session_state.floki_btn, height=70)
-    if st.session_state.get("floki_reponse"):
-        st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+        # AFFICHE
+        if st.session_state.get("floki_btn"):
+            components.html(st.session_state.floki_btn, height=70)
+        if st.session_state.get("floki_reponse"):
+            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
 
-    # AFFICHE MÉMOIRE PDG
-    if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
-        with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
-            for k, v in st.session_state.floki_memory_long.items():
-                st.caption(f"**{v['date']}** : {v['info']}")
+        # AFFICHE MÉMOIRE PDG
+        if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
+            with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
+                for k, v in st.session_state.floki_memory_long.items():
+                    st.caption(f"**{v['date']}** : {v['info']}")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
