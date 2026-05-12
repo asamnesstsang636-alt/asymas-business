@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V26 - RECHERCHE PRIX FC/USD + ANALYSE RÉELLE
+        # 👑 FLOKI V28 - AUTO-DÉTECTION COLONNES ASYMAS
     from urllib.parse import quote
     import re
     import base64
@@ -631,7 +631,73 @@ with st.sidebar:
                 stats_pdg.append(f"{nom}:{len(locals()[var])}")
         contexte_asymas = " | ".join(stats_pdg)
 
-        # FONCTION CHERCHE ARTICLE PAR PRIX
+        # FONCTION AUTO-DÉTECTION COLONNES ULTRA
+        def get_colonnes_auto(df):
+            cols_lower = [c.lower() for c in df.columns]
+            col_nom = None
+            col_prix = None
+            col_stock = None
+
+            # Cherche nom - TOUS LES CAS POSSIBLES
+            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name', 'description']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_nom = df.columns[i]
+                        break
+                if col_nom: break
+
+            # Cherche prix - TOUS LES CAS POSSIBLES ASYMAS
+            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix fc', 'prix_fc', 'prix', 'price', 'montant', 'cout', 'valeur', 'pv', 'tarif']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_prix = df.columns[i]
+                        break
+                if col_prix: break
+
+            # Cherche stock
+            for pattern in ['stock', 'qte', 'quantite', 'quantity']:
+                for i, col in enumerate(cols_lower):
+                    if pattern in col:
+                        col_stock = df.columns[i]
+                        break
+                if col_stock: break
+
+            return col_nom, col_prix, col_stock
+
+        # FONCTION CHERCHE ARTICLE PAR NOM - ULTRA ROBUSTE
+        def chercher_article_nom(nom_recherche):
+            try:
+                resultats = []
+                nom_recherche = nom_recherche.lower().strip()
+
+                for nom_table, df in ASYMAS.items():
+                    if df.empty: continue
+
+                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    if not col_nom or not col_prix: continue
+
+                    df_temp = df.copy()
+                    df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
+                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+
+                    # Recherche floue : contient le mot
+                    mask = df_temp[col_nom].str.contains(nom_recherche, na=False, case=False)
+                    df_filtre = df_temp[mask].dropna(subset=[col_prix])
+
+                    for idx, row in df_filtre.iterrows():
+                        nom_article = str(row[col_nom]).title()
+                        prix_article = row[col_prix]
+                        stock = row[col_stock] if col_stock and col_stock in df.columns else 0
+                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock:.0f} - {nom_table}")
+
+                if resultats:
+                    return f"Trouvé: " + " | ".join(resultats[:5])
+                else:
+                    return f"Aucun {nom_recherche} trouvé dans ASYMAS chef. Colonnes détectées: {list(df.columns) if 'df' in locals() else 'Aucune'}"
+            except Exception as e:
+                return f"Erreur recherche: {str(e)[:100]}"
+
+        # FONCTION CHERCHE PAR PRIX
         def chercher_article_prix(prix_cible, marge=200):
             try:
                 resultats = []
@@ -641,68 +707,45 @@ with st.sidebar:
 
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
+                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    if not col_nom or not col_prix: continue
 
-                    # Cherche colonne prix
-                    col_prix = None
-                    for col in ['prix', 'price', 'montant', 'cout', 'valeur', 'PU', 'PV', 'prix_vente']:
-                        if col in df.columns:
-                            col_prix = col
-                            break
+                    df_temp = df.copy()
+                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                    df_temp = df_temp.dropna(subset=[col_prix])
+                    df_filtre = df_temp[(df_temp[col_prix] >= prix_min) & (df_temp[col_prix] <= prix_max)]
 
-                    if col_prix:
-                        df_temp = df.copy()
-                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                        df_temp = df_temp.dropna(subset=[col_prix])
-
-                        # Filtre par prix
-                        df_filtre = df_temp[(df_temp[col_prix] >= prix_min) & (df_temp[col_prix] <= prix_max)]
-
-                        if not df_filtre.empty:
-                            nom_col = 'nom' if 'nom' in df_filtre.columns else 'designation' if 'designation' in df_filtre.columns else 'libelle' if 'libelle' in df_filtre.columns else 'article'
-                            for idx, row in df_filtre.iterrows():
-                                nom_article = str(row[nom_col]) if nom_col in df_filtre.columns else f"Item {nom_table}"
-                                prix_article = row[col_prix]
-                                resultats.append(f"{nom_article} - {prix_article:.0f}fc - {nom_table}")
+                    for idx, row in df_filtre.iterrows():
+                        nom_article = str(row[col_nom]).title()
+                        prix_article = row[col_prix]
+                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - {nom_table}")
 
                 if resultats:
                     return f"Trouvé: " + " | ".join(resultats[:3])
                 else:
                     return f"Aucun article entre {prix_min:.0f}fc et {prix_max:.0f}fc chef"
-            except Exception as e:
+            except:
                 return f"Erreur recherche prix chef"
 
         # FONCTION MOINS CHER
         def get_moins_cher_asymas():
             try:
                 moins_cher_global = {"nom": "", "prix": float('inf'), "table": ""}
-
                 for nom_table, df in ASYMAS.items():
                     if df.empty: continue
+                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                    if not col_nom or not col_prix: continue
 
-                    col_prix = None
-                    for col in ['prix', 'price', 'montant', 'cout', 'valeur', 'PU', 'PV', 'prix_vente']:
-                        if col in df.columns:
-                            col_prix = col
-                            break
+                    df_temp = df.copy()
+                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                    df_temp = df_temp.dropna(subset=[col_prix])
 
-                    if col_prix:
-                        df_temp = df.copy()
-                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                        df_temp = df_temp.dropna(subset=[col_prix])
-
-                        if not df_temp.empty:
-                            idx_min = df_temp[col_prix].idxmin()
-                            prix_min = df_temp.loc[idx_min, col_prix]
-
-                            if prix_min < moins_cher_global["prix"]:
-                                nom_col = 'nom' if 'nom' in df_temp.columns else 'designation' if 'designation' in df_temp.columns else 'libelle'
-                                nom_article = df_temp.loc[idx_min, nom_col] if nom_col in df_temp.columns else f"Item {nom_table}"
-
-                                moins_cher_global = {
-                                    "nom": str(nom_article),
-                                    "prix": prix_min,
-                                    "table": nom_table
-                                }
+                    if not df_temp.empty:
+                        idx_min = df_temp[col_prix].idxmin()
+                        prix_min = df_temp.loc[idx_min, col_prix]
+                        if prix_min < moins_cher_global["prix"]:
+                            nom_article = str(df_temp.loc[idx_min, col_nom]).title()
+                            moins_cher_global = {"nom": nom_article, "prix": prix_min, "table": nom_table}
 
                 if moins_cher_global["prix"]!= float('inf'):
                     return f"Moins cher: {moins_cher_global['nom']} - {moins_cher_global['prix']:.0f}fc - {moins_cher_global['table']}"
@@ -716,12 +759,18 @@ with st.sidebar:
             try:
                 q = query.lower()
 
-                # RECHERCHE PAR PRIX EXACT
+                # RECHERCHE PAR PRIX
                 prix_match = re.search(r'(\d+)\s*fc', q)
                 if prix_match:
                     prix = prix_match.group(1)
                     marge = 300 if 'presque' in q or 'environ' in q else 100
                     return chercher_article_prix(prix, marge)
+
+                # RECHERCHE PAR NOM - TOUS PRODUITS COURANTS
+                produits = ['sucre', 'riz', 'huile', 'savon', 'farine', 'sel', 'ciment', 'tôle', 'fer', 'eau', 'pain', 'lait']
+                for produit in produits:
+                    if produit in q:
+                        return chercher_article_nom(produit)
 
                 # MOINS CHER
                 if 'moins cher' in q or 'prix bas' in q or 'pas cher' in q:
@@ -744,7 +793,7 @@ with st.sidebar:
                             return f"Dernière facture: {date_str} - {montant} - {client}"
                     return "Aucune facture trouvée chef"
 
-                # STATS GÉNÉRALES
+                # STATS
                 if 'combien' in q or 'nombre' in q:
                     return f"ASYMAS: {contexte_asymas}"
 
@@ -752,7 +801,7 @@ with st.sidebar:
             except:
                 return None
 
-        # FONCTION GOOGLE RÉEL
+        # FONCTION GOOGLE
         def google_search_smart(query):
             try:
                 if "SERPAPI_KEY" in st.secrets:
@@ -810,8 +859,8 @@ with st.sidebar:
             return text
 
         # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v26", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v26", label_visibility="collapsed")
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v28", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v28", label_visibility="collapsed")
 
         # MICRO
         if audio:
