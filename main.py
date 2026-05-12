@@ -570,7 +570,7 @@ with st.sidebar:
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
         st.rerun()
-        # 👑 FLOKI V21 - MÉMOIRE LONGUE PDG + GOOGLE + ACTUALITÉ
+        # 👑 FLOKI V22 - ACCÈS PDG UNIQUEMENT + MÉMOIRE LONGUE + GOOGLE
     from urllib.parse import quote
     import re
     import base64
@@ -582,7 +582,16 @@ with st.sidebar:
     import json
     import os
 
+    # 🔒 CONTRÔLE ACCÈS PDG - SI PAS PDG, FLOKI DISPARAÎT
+    role_user = st.session_state.get("user_role", "") # Ton app doit définir st.session_state.user_role
+    nom_user = st.session_state.get("user_name", "") # Ou st.session_state.user_name
+
+    # REMPLACE "PDG" PAR TON VRAI RÔLE OU NOM
+    if role_user.upper()!= "PDG" and nom_user.upper()!= "PDG":
+        st.stop() # STOP. FLOKI N'EXISTE PAS POUR LES AUTRES
+
     st.divider()
+    st.caption("🔒 Mode PDG activé - FLOKI privé")
 
     # INIT
     if "floki_btn" not in st.session_state:
@@ -688,8 +697,8 @@ with st.sidebar:
         return text
 
     # INPUTS
-    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v21", label_visibility="collapsed")
-    audio = st.audio_input("", key="floki_audio_v21", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v22", label_visibility="collapsed")
+    audio = st.audio_input("", key="floki_audio_v22", label_visibility="collapsed")
 
     # MICRO
     if audio:
@@ -800,7 +809,6 @@ with st.sidebar:
                 if info_google:
                     info_google = f"LIVE {today.strftime('%d/%m/%Y')}: {info_google}\n\n"
 
-            # AJOUTE MÉMOIRE LONGUE DANS CONTEXTE
             memoire_longue = ""
             if st.session_state.floki_memory_long:
                 notes_recentes = []
@@ -808,7 +816,7 @@ with st.sidebar:
                     notes_recentes.append(f"{v['date']}: {v['info']}")
                 memoire_longue = f"MÉMOIRE PDG: {' | '.join(notes_recentes)}\n\n"
 
-            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Tu as une mémoire longue secrète.
+            messages = [{"role": "system", "content": f"""Tu es FLOKI, bras droit humain du PDG d'ASYMAS. Accès PDG uniquement.
 
 REGLES:
 1. Parle naturel. 2 phrases max. Conseil direct.
@@ -865,7 +873,7 @@ REGLES:
     if st.session_state.get("floki_reponse"):
         st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
 
-    # AFFICHE MÉMOIRE PDG SI DEMANDÉ
+    # AFFICHE MÉMOIRE PDG
     if st.session_state.floki_memory_long and len(st.session_state.floki_memory_long) > 0:
         with st.expander("🔒 MÉMOIRE SECRÈTE PDG"):
             for k, v in st.session_state.floki_memory_long.items():
