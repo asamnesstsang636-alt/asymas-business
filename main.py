@@ -571,8 +571,12 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-# PLACEHOLDER FLOKI V4
-floki_placeholder = st.empty()
+# PLACEHOLDER FLOKI - NE PAS SUPPRIMER
+    floki_placeholder = st.empty()
+    st.divider()
+
+    # Le reste de ta sidebar si tu en as
+    # st.write("Autres menus...")
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
@@ -2506,9 +2510,8 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                        # ================================================
                     # ================================================
-# 👑 FLOKI V4 - CORRIGÉ FINAL
+# 👑 FLOKI V4 - COMPLET CORRIGÉ FINAL
 # ================================================
 
 from urllib.parse import quote
@@ -2523,9 +2526,9 @@ role_user = st.session_state.get("user_role", "")
 nom_user = st.session_state.get("user_name", "")
 is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-if is_pdg and 'floki_placeholder' in locals():
+# Vérifie que le placeholder existe et que c'est le PDG
+if is_pdg and 'floki_placeholder' in locals() and floki_placeholder is not None:
     with floki_placeholder.container():
-        st.divider()
         st.caption("🔒 FLOKI V4 - COCKPIT")
 
         if "floki_reponse" not in st.session_state:
@@ -2567,13 +2570,19 @@ if is_pdg and 'floki_placeholder' in locals():
                 if col_stock: break
             return col_nom, col_prix, col_stock
 
-        # ===== AGENT PRIX - CORRIGÉ =====
+        # ===== EXTRACTION MOT CLÉ ARTICLE =====
+        def extraire_article(query):
+            q = query.lower().strip()
+            stop_words = ['trouve', 'le', 'prix', 'de', 'la', 'du', 'des', 'pour', 'moi', 'stock', 'combien', 'quel', 'quelle', 'est', 'sont', 'donne', 'montre', 'cherche']
+            mots = [m for m in re.findall(r'\w+', q) if m not in stop_words and len(m) > 2]
+            return " ".join(mots) if mots else q
+
+        # ===== AGENT PRIX =====
         class AgentPrix:
             def run(self, query):
                 try:
-                    query = query.lower().strip()
-                    # On cherche uniquement si c'est un article
-                    if len(query) < 3 or any(x in query for x in ['ou es', 'qui es', 'comment', 'pourquoi', 'slt', 'bjr', 'bonjour']):
+                    article = extraire_article(query)
+                    if len(article) < 3:
                         return None
 
                     resultats = []
@@ -2586,8 +2595,8 @@ if is_pdg and 'floki_placeholder' in locals():
                         df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
                         df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
 
-                        # Match mot exact pour éviter Novida/Tomate
-                        mask = df_temp[col_nom].str.contains(r'\b' + re.escape(query) + r'\b', na=False, case=False, regex=True)
+                        # Match mot exact
+                        mask = df_temp[col_nom].str.contains(r'\b' + re.escape(article) + r'\b', na=False, case=False, regex=True)
                         df_filtre = df_temp[mask].dropna(subset=[col_prix])
 
                         for idx, row in df_filtre.iterrows():
@@ -2598,8 +2607,8 @@ if is_pdg and 'floki_placeholder' in locals():
                                 resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
 
                     if resultats:
-                        return f"Stock {query.title()}: " + " | ".join(resultats[:3])
-                    return f"Aucun {query} trouvé chef"
+                        return f"Stock {article.title()}: " + " | ".join(resultats[:3])
+                    return f"Aucun {article} trouvé chef"
                 except Exception as e:
                     return f"Erreur AgentPrix: {e}"
 
