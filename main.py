@@ -2720,33 +2720,52 @@ if st.session_state.get('user_role') == "PDG":
         q = st.text_input("Ordre pour FLOKI", key="floki_input",
                           placeholder="Ex: prix toyota, maison à louer, redige une relance")
 
-        # Micro compatible Chrome/Edge/Firefox
         st.components.v1.html("""
-            <script>
-            function startListening() {
-                let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    alert("Micro non supporté. Utilise Chrome, Edge ou Firefox.");
-                    return;
-                }
-                let recognition = new SpeechRecognition();
-                recognition.lang = 'fr-FR';
-                recognition.onresult = function(event) {
-                    let transcript = event.results[0][0].transcript;
-                    let input = window.parent.document.querySelector('input[aria-label=\"Ordre pour FLOKI\"]');
-                    if(input){
-                        input.value = transcript;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                };
-                recognition.onerror = function(e){ alert("Erreur micro: " + e.error); };
-                recognition.start();
+    <script>
+    function startListening() {
+        let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Micro non supporté. Utilise Chrome, Edge ou Firefox à jour.");
+            return;
+        }
+
+        let recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = function() {
+            console.log("Micro actif. Parle maintenant.");
+        };
+
+        recognition.onresult = function(event) {
+            let transcript = event.results[0][0].transcript;
+            let input = window.parent.document.querySelector('input[aria-label=\"Ordre pour FLOKI\"]');
+            if(input){
+                input.value = transcript;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            </script>
-            <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
-                🎤 Parler à FLOKI
-            </button>
-        """, height=50)
+        };
+
+        recognition.onerror = function(e){
+            if(e.error === 'not-allowed'){
+                alert("Autorise le micro dans le navigateur. Clique sur le cadenas à gauche de l'URL > Micro > Autoriser.");
+            } else if(e.error === 'no-speech'){
+                alert("Je ne t'ai pas entendu chef. Parle plus fort.");
+            } else if(e.error === 'aborted'){
+                alert("Micro coupé. Clique sur le bouton et parle immédiatement.");
+            } else {
+                alert("Erreur micro: " + e.error);
+            }
+        };
+
+        recognition.start();
+    }
+    </script>
+    <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
+        🎤 Parler à FLOKI
+    </button>
+""", height=50)
 
         col1, col2 = st.columns(2)
         with col1:
