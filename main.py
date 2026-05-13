@@ -2503,7 +2503,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-# === FLOKI AGENT COMPLET ===
+# === FLOKI AGENT AUTO ===
 import requests
 from datetime import datetime
 
@@ -2511,53 +2511,63 @@ class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
-    
+
     def ask(self, question):
         q = question.lower().strip()
-        
-        # 1. Cherche d'abord dans ASYMAS
-        rep = self._search_asymas(q)
-        
-        # 2. Si rien, cherche sur le web
-        if rep.startswith("Je n'ai rien trouvé"):
-            rep = self._search_web(q) + "\n\nSource: Web"
-        else:
-            rep = rep + "\n\nSource: ASYMAS"
-        
-        return rep
-    
-    def _search_asymas(self, q):
-        df = self.df
-        
-        # Stock bas
-        if any(k in q for k in ["stock", "rupture", "bas"]):
-            if not df['articles'].empty:
-                low = df['articles'][df['articles']['stock'] < 5]
-                if not low.empty:
-                    txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-                    return f"Attention, stock bas :\n{txt}"
-                return f"Stock OK. {len(df['articles'])} articles en base."
-        
-        # Recherche produit spécifique : ciment, riz, etc
-        if not df['articles'].empty:
-            for _, r in df['articles'].iterrows():
-                nom = str(r['nom_article']).lower()
-                if nom in q or q in nom:
-                    return f"{r['nom_article']} : Stock {r['stock']} unités, Prix {r['prix_vente']:,.0f} FC"
-        
-        # CA
-        if any(k in q for k in ["revenu", "ca", "chiffre"]):
-            if not df['compta'].empty:
-                rev = df['compta'][df['compta']['type'] == 'Revenu']['montant'].sum()
-                dep = df['compta'][df['compta']['type'] == 'Dépense']['montant'].sum()
-                return f"Revenus {rev:,.0f} FC, Dépenses {dep:,.0f} FC, Solde {rev-dep:,.0f} FC."
-        
-        return "Je n'ai rien trouvé dans ASYMAS pour ça."
-    
+
+        # 1. Si c'est un salut, répond direct
+        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
+            return "Salut! Je suis FLOKI. Demande-moi le stock, le CA, ou un produit comme 'combien de ciment'."
+
+        # 2. Cherche produit dans articles
+        rep = self._search_product(q)
+        if rep:
+            return rep + "\n\nSource: ASYMAS"
+
+        # 3. Cherche stock bas
+        if any(k in q for k in ["stock bas", "rupture", "presque fini"]):
+            return self._stock_bas() + "\n\nSource: ASYMAS"
+
+        # 4. Cherche CA
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent"]):
+            return self._chiffre_affaires() + "\n\nSource: ASYMAS"
+
+        # 5. Si rien trouvé, web
+        rep = self._search_web(q)
+        return rep + "\n\nSource: Web"
+
+    def _search_product(self, q):
+        if self.df['articles'].empty:
+            return None
+        for _, r in self.df['articles'].iterrows():
+            nom = str(r['nom_article']).lower()
+            # Match exact ou partiel
+            if nom in q or q in nom or nom.split()[0] in q:
+                stock = int(r['stock'])
+                prix = float(r['prix_vente'])
+                return f"{r['nom_article']} : Stock {stock} unités, Prix {prix:,.0f} FC"
+        return None
+
+    def _stock_bas(self):
+        if self.df['articles'].empty:
+            return "Pas d'articles dans la base."
+        low = self.df['articles'][self.df['articles']['stock'] < 5]
+        if low.empty:
+            return "Aucun stock bas. Tout est OK."
+        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
+        return f"Stock bas détecté :\n{txt}"
+
+    def _chiffre_affaires(self):
+        if self.df['compta'].empty:
+            return "Pas de données compta."
+        rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
+        dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
+        return f"Revenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+
     def _search_web(self, q):
         try:
             url = f"https://api.duckgo.com/?q={q}&format=json&no_html=1"
-            r = requests.get(url, timeout=5)
+            r = requests.get(url, timeout=4)
             data = r.json()
             if data.get('AbstractText'):
                 return f"Sur le web : {data['AbstractText']}"
@@ -2565,7 +2575,7 @@ class FLOKI:
         except:
             return "Le web ne répond pas."
 
-# === UI FLOKI ===
+# === UI FLOKI SIMPLE ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2578,38 +2588,26 @@ if 'floki' not in st.session_state:
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
-    
-    mode = st.selectbox("Mode", ["Question", "Notification"], key="floki_mode")
-    
-    if mode == "Question":
-        q = st.text_input("Question", placeholder="Ex: combien de ciment ? Stock bas ?")
-        if st.button("Lancer FLOKI"):
-            if q:
-                with st.spinner("FLOKI analyse..."):
-                    rep = st.session_state.floki.ask(q)
-                    st.session_state.floki_rep = rep
-                    
-                    # Voix avec TTS du navigateur - marche sur Streamlit
-                    st.components.v1.html(f"""
-                        <script>
-                        var msg = new SpeechSynthesisUtterance("{rep.replace('"', "'")}");
+
+    q = st.text_input("Pose ta question à FLOKI", placeholder="Ex: salut, combien de ciment, stock bas, CA?")
+    if st.button("Lancer FLOKI", type="primary"):
+        if q:
+            with st.spinner("FLOKI réfléchit..."):
+                rep = st.session_state.floki.ask(q)
+                st.session_state.floki_rep = rep
+
+                # Voix avec TTS navigateur
+                st.components.v1.html(f"""
+                    <script>
+                    if ('speechSynthesis' in window) {{
+                        window.speechSynthesis.cancel();
+                        var msg = new SpeechSynthesisUtterance("{rep.replace('"', "'").replace('\n', ')}");
                         msg.lang = 'fr-FR';
                         msg.rate = 1;
                         window.speechSynthesis.speak(msg);
-                        </script>
-                    """, height=0)
-    
-    elif mode == "Notification":
-        msg = st.text_area("Message interne")
-        if st.button("Envoyer notif"):
-            try:
-                supabase.table("notifications").insert({
-                    "message": f"[{st.session_state.get('user_name')}]: {msg}",
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-                st.success("Notification envoyée")
-            except Exception as e:
-                st.error(f"Erreur: {e}")
-    
+                    }}
+                    </script>
+                """, height=0)
+
     if 'floki_rep' in st.session_state:
         st.info(st.session_state.floki_rep)
