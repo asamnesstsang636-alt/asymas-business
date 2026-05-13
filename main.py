@@ -2503,7 +2503,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                             # === FLOKI SOLDAT COMPLET V3 ===
+                            # === FLOKI SOLDAT COMPLET V4 ===
 import difflib
 import re
 import urllib.parse
@@ -2522,7 +2522,6 @@ class FLOKI:
         q = question.lower().strip()
         log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS", "user": st.session_state.get('user_name')}
 
-        # Actions directes
         if "envoie" in q and "message" in q and "numero" in q:
             result = self._action_send_whatsapp(question)
             log_entry.update({"action": "whatsapp_send", "reponse": result})
@@ -2540,17 +2539,14 @@ class FLOKI:
 
         q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
 
-        # Conversation normale
         if any(g in q_clean for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Je vois tout ASYMAS: commerce, immobilier, auto, devis, factures. Donne l’ordre."
+            return "Présent chef. FLOKI opérationnel. Je vois tout ASYMAS. Donne l’ordre."
 
-        # Recherche dans TOUT ASYMAS
         rep = self._search_asymas(q_clean)
         if rep:
             log_entry["reponse"] = rep; self._log_action(log_entry)
             return rep + "\n\nSource: ASYMAS"
 
-        # Web si rien trouvé
         web_rep = self._search_web(question)
         log_entry.update({"source": "WEB", "reponse": web_rep})
         self._log_action(log_entry)
@@ -2560,29 +2556,22 @@ class FLOKI:
         if any(k in q for k in ["article", "produit", "stock", "prix"]):
             rep = self._search_product(q)
             if rep: return rep
-
         if any(k in q for k in ["bien", "maison", "appartement", "terrain", "loyer", "immobilier"]):
             rep = self._search_biens(q)
             if rep: return rep
-
         if any(k in q for k in ["voiture", "auto", "toyota", "moto", "vehicule", "plaque"]):
             rep = self._search_voitures(q)
             if rep: return rep
-
         if any(k in q for k in ["devis"]):
             rep = self._search_devis(q)
             if rep: return rep
-
         if any(k in q for k in ["facture", "proforma"]):
             rep = self._search_factures(q)
             if rep: return rep
-
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
-
         if any(k in q for k in ["stock bas", "rupture", "manque"]):
             return self._stock_bas()
-
         return None
 
     def _search_product(self, q):
@@ -2598,7 +2587,7 @@ class FLOKI:
     def _search_voitures(self, q):
         if self.df['voitures'].empty: return None
         return self._fuzzy_search(self.df['voitures'], 'marque', q,
-                                  lambda r: f"{r['marque']} {r.get('modele','')} {r.get('annee','')}: Prix {float(r['prix']):,.0f} $ | Stock: {int(r.get('quantite',0))}")
+                                  lambda r: f"{r['marque']} {r.get('modele','')} {r.get('annee','')}: Prix {float(r['prix']):,.0f} $")
 
     def _search_devis(self, q):
         if self.df['devis'].empty: return None
@@ -2654,21 +2643,9 @@ class FLOKI:
 
     def _action_rediger(self, question):
         if "relance" in question.lower():
-            return """Objet: Relance de paiement
-
-Monsieur/Madame,
-
-Nous constatons que la facture reste impayée à ce jour.
-Merci de régulariser sous 48h.
-
-ASYMAS BUSINESS"""
+            return """Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée à ce jour.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"""
         if "convocation" in question.lower():
-            return """Objet: Convocation
-
-Vous êtes convoqué(e) à nos bureaux le [DATE] à [HEURE]
-pour discussion concernant [OBJET].
-
-ASYMAS BUSINESS"""
+            return """Objet: Convocation\nVous êtes convoqué(e) à nos bureaux le [DATE] à [HEURE]\npour discussion concernant [OBJET].\n\nASYMAS BUSINESS"""
         return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
 
     def _action_send_whatsapp(self, question):
@@ -2697,7 +2674,8 @@ ASYMAS BUSINESS"""
         try:
             self.supabase.table("notifications").insert({
                 "message": f"[{st.session_state.get('user_name')}]: {message}",
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now().isoformat(),
+                "lu": False
             }).execute()
             return "Notification envoyée chef."
         except Exception as e:
@@ -2720,52 +2698,52 @@ if st.session_state.get('user_role') == "PDG":
         q = st.text_input("Ordre pour FLOKI", key="floki_input",
                           placeholder="Ex: prix toyota, maison à louer, redige une relance")
 
+        # Micro corrigé
         st.components.v1.html("""
-    <script>
-    function startListening() {
-        let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Micro non supporté. Utilise Chrome, Edge ou Firefox à jour.");
-            return;
-        }
+            <script>
+            function startListening() {
+                let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    alert("Micro non supporté. Utilise Chrome ou Edge.");
+                    return;
+                }
+                let recognition = new SpeechRecognition();
+                recognition.lang = 'fr-FR';
+                recognition.continuous = false;
+                recognition.interimResults = false;
 
-        let recognition = new SpeechRecognition();
-        recognition.lang = 'fr-FR';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+                recognition.onstart = function(){ console.log("Parle maintenant"); };
 
-        recognition.onstart = function() {
-            console.log("Micro actif. Parle maintenant.");
-        };
+                recognition.onresult = function(event) {
+                    let transcript = event.results[0][0].transcript;
+                    let input = window.parent.document.querySelector('input[aria-label=\"Ordre pour FLOKI\"]');
+                    if(input){
+                        input.value = transcript;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        // Auto-clic sur Exécuter
+                        setTimeout(() => {
+                            let btn = window.parent.document.querySelector('button[kind=\"primary\"]');
+                            if(btn) btn.click();
+                        }, 300);
+                    }
+                };
 
-        recognition.onresult = function(event) {
-            let transcript = event.results[0][0].transcript;
-            let input = window.parent.document.querySelector('input[aria-label=\"Ordre pour FLOKI\"]');
-            if(input){
-                input.value = transcript;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+                recognition.onerror = function(e){
+                    if(e.error === 'not-allowed'){
+                        alert("Autorise le micro: clique sur le cadenas dans l'URL > Micro > Autoriser");
+                    } else if(e.error === 'aborted'){
+                        alert("Micro coupé. Clique et parle immédiatement.");
+                    } else {
+                        alert("Erreur micro: " + e.error);
+                    }
+                };
+                recognition.start();
             }
-        };
-
-        recognition.onerror = function(e){
-            if(e.error === 'not-allowed'){
-                alert("Autorise le micro dans le navigateur. Clique sur le cadenas à gauche de l'URL > Micro > Autoriser.");
-            } else if(e.error === 'no-speech'){
-                alert("Je ne t'ai pas entendu chef. Parle plus fort.");
-            } else if(e.error === 'aborted'){
-                alert("Micro coupé. Clique sur le bouton et parle immédiatement.");
-            } else {
-                alert("Erreur micro: " + e.error);
-            }
-        };
-
-        recognition.start();
-    }
-    </script>
-    <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
-        🎤 Parler à FLOKI
-    </button>
-""", height=50)
+            </script>
+            <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
+                🎤 Parler à FLOKI
+            </button>
+        """, height=50)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -2780,6 +2758,7 @@ if st.session_state.get('user_role') == "PDG":
                 if q:
                     msg = st.session_state.floki.notify_internal(q)
                     st.toast(msg)
+                    st.rerun() # Force le refresh pour voir la notif
 
         if 'floki_rep' in st.session_state:
             rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
