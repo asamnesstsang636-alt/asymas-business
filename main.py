@@ -2503,7 +2503,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI SOLDAT COMPLET V2 ===
+                             # === FLOKI SOLDAT COMPLET V3 ===
 import difflib
 import re
 import urllib.parse
@@ -2517,45 +2517,32 @@ class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
-        self.system_knowledge = self._scan_main_py()
-
-    def _scan_main_py(self):
-        """Lit main.py pour connaître toutes les tables ASYMAS"""
-        try:
-            source = inspect.getsource(sys.modules[__name__])
-            tables = re.findall(r'df_(\w+)\s*=\s*load_table\("(\w+)"\)', source)
-            return {name: table for name, table in tables}
-        except:
-            return {"articles": "articles", "compta": "compta", "biens": "biens", "voitures": "voitures"}
 
     def ask(self, question):
         q = question.lower().strip()
-        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
+        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS", "user": st.session_state.get('user_name')}
 
         # Actions directes
         if "envoie" in q and "message" in q and "numero" in q:
             result = self._action_send_whatsapp(question)
-            log_entry["action"] = "whatsapp_send"; log_entry["reponse"] = result
+            log_entry.update({"action": "whatsapp_send", "reponse": result})
             self._log_action(log_entry); return result
 
         if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
             result = self._action_rediger(question)
-            log_entry["action"] = "redaction"; log_entry["reponse"] = result
+            log_entry.update({"action": "redaction", "reponse": result})
             self._log_action(log_entry); return result
 
         if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
             result = self._action_conseil(q)
-            log_entry["action"] = "conseil"; log_entry["reponse"] = result
+            log_entry.update({"action": "conseil", "reponse": result})
             self._log_action(log_entry); return result
 
         q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
 
         # Conversation normale
-        if any(g in q_clean for g in ["slt", "salut", "bonjour", "hello", "yo", "wesh"]):
-            return "Présent chef. FLOKI opérationnel. Je lis tout ASYMAS: commerce, immobilier, auto, devis, factures. Donne l’ordre."
-
-        if "qui es tu" in q_clean:
-            return "FLOKI, ton soldat IA. Je vois tout ASYMAS et j’exécute sans poser de questions."
+        if any(g in q_clean for g in ["slt", "salut", "bonjour", "hello", "yo"]):
+            return "Présent chef. FLOKI opérationnel. Je vois tout ASYMAS: commerce, immobilier, auto, devis, factures. Donne l’ordre."
 
         # Recherche dans TOUT ASYMAS
         rep = self._search_asymas(q_clean)
@@ -2563,45 +2550,36 @@ class FLOKI:
             log_entry["reponse"] = rep; self._log_action(log_entry)
             return rep + "\n\nSource: ASYMAS"
 
-        # Si rien, cherche sur le web
+        # Web si rien trouvé
         web_rep = self._search_web(question)
-        log_entry["source"] = "WEB"; log_entry["reponse"] = web_rep
+        log_entry.update({"source": "WEB", "reponse": web_rep})
         self._log_action(log_entry)
         return web_rep + "\n\nSource: WEB"
 
     def _search_asymas(self, q):
-        """Cherche dans toutes les tables ASYMAS"""
-
-        # 1. Commerce - Articles
         if any(k in q for k in ["article", "produit", "stock", "prix"]):
             rep = self._search_product(q)
             if rep: return rep
 
-        # 2. Immobilier - Biens
         if any(k in q for k in ["bien", "maison", "appartement", "terrain", "loyer", "immobilier"]):
             rep = self._search_biens(q)
             if rep: return rep
 
-        # 3. Automobile - Voitures
         if any(k in q for k in ["voiture", "auto", "toyota", "moto", "vehicule", "plaque"]):
             rep = self._search_voitures(q)
             if rep: return rep
 
-        # 4. Devis
         if any(k in q for k in ["devis"]):
             rep = self._search_devis(q)
             if rep: return rep
 
-        # 5. Factures
         if any(k in q for k in ["facture", "proforma"]):
             rep = self._search_factures(q)
             if rep: return rep
 
-        # 6. Compta
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
 
-        # 7. Stock bas
         if any(k in q for k in ["stock bas", "rupture", "manque"]):
             return self._stock_bas()
 
@@ -2620,7 +2598,7 @@ class FLOKI:
     def _search_voitures(self, q):
         if self.df['voitures'].empty: return None
         return self._fuzzy_search(self.df['voitures'], 'marque', q,
-                                  lambda r: f"{r['marque']} {r.get('modele','')} {r.get('annee','')}: Prix {float(r['prix']):,.0f} $ | Stock: {int(r.get('quantite',0))} | Statut: {r.get('statut','')}")
+                                  lambda r: f"{r['marque']} {r.get('modele','')} {r.get('annee','')}: Prix {float(r['prix']):,.0f} $ | Stock: {int(r.get('quantite',0))}")
 
     def _search_devis(self, q):
         if self.df['devis'].empty: return None
@@ -2633,22 +2611,16 @@ class FLOKI:
                                   lambda r: f"Facture {r.get('numero','')}: Client {r['client']} | Montant {float(r.get('montant',0)):,.0f} $")
 
     def _fuzzy_search(self, df, col_name, q, formatter):
-        """Recherche floue générique pour n'importe quelle table"""
         df = df.copy()
         df['clean'] = df[col_name].astype(str).str.lower()
         df['clean'] = df['clean'].str.replace(r'[^a-z0-9\s]', '', regex=True)
         df['clean'] = df['clean'].str.replace(r'\s+', ' ', regex=True).str.strip()
-
         q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
         mots_q = [w for w in q_clean.split() if len(w) > 2]
-
-        # Match exact par mots clés
         if mots_q:
             for _, r in df.iterrows():
                 if all(word in r['clean'] for word in mots_q):
                     return formatter(r)
-
-        # Match flou
         noms = df['clean'].tolist()
         closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.4)
         if closest:
@@ -2706,14 +2678,14 @@ ASYMAS BUSINESS"""
         message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip()
         if not message: message = "Message de ASYMAS BUSINESS"
         url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-        return f"Ordre exécuté chef. Lien WhatsApp: {url}"
+        return f"Ordre exécuté chef. Lien WhatsApp prêt: {url}"
 
     def _action_conseil(self, q):
         if not self.df['articles'].empty and not self.df['compta'].empty:
             stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
             rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
             return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne vite.\nRISQUE: Rupture = perte de vente."
-        return "Chef, donne plus de contexte. Je croise tes données pour conseiller."
+        return "Chef, donne plus de contexte."
 
     def _log_action(self, log_entry):
         try:
@@ -2731,71 +2703,74 @@ ASYMAS BUSINESS"""
         except Exception as e:
             return f"Échec notification: {e}"
 
-# === UI FLOKI ===
-if 'floki' not in st.session_state:
-    dataframes = {
-        "articles": df_articles,
-        "compta": df_compta,
-        "biens": df_biens,
-        "voitures": df_voitures,
-        "devis": df_devis,
-        "factures": df_factures
-    }
-    st.session_state.floki = FLOKI(supabase, dataframes)
-
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Opérateur connecté - Voit tout ASYMAS")
-
-    q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: prix toyota, maison à louer, devis client X")
-
-    st.components.v1.html("""
-        <script>
-        function startListening() {
-            if (!('webkitSpeechRecognition' in window)) {
-                alert("Utilise Chrome pour le micro");
-                return;
-            }
-            var recognition = new webkitSpeechRecognition();
-            recognition.lang = 'fr-FR';
-            recognition.onresult = function(event) {
-                var transcript = event.results[0][0].transcript;
-                let input = window.parent.document.querySelector('input[data-testid=\"stTextInput\"][aria-label=\"Ordre pour FLOKI\"]');
-                if(input){ input.value = transcript; input.dispatchEvent(new Event('input', { bubbles: true })); }
-            };
-            recognition.start();
+# === UI FLOKI - PDG SEULEMENT ===
+if st.session_state.get('user_role') == "PDG":
+    if 'floki' not in st.session_state:
+        dataframes = {
+            "articles": df_articles, "compta": df_compta, "biens": df_biens,
+            "voitures": df_voitures, "devis": df_devis, "factures": df_factures
         }
-        </script>
-        <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
-            🎤 Parler à FLOKI
-        </button>
-    """, height=50)
+        st.session_state.floki = FLOKI(supabase, dataframes)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Exécuter", type="primary", use_container_width=True):
-            if q:
-                with st.spinner("FLOKI exécute..."):
-                    rep = st.session_state.floki.ask(q)
-                    st.session_state.floki_rep = rep
+    with st.sidebar:
+        st.divider()
+        st.markdown("### 🤖 FLOKI")
+        st.caption("Accès PDG uniquement")
 
-    with col2:
-        if st.button("Notifier équipe", use_container_width=True):
-            if q:
-                msg = st.session_state.floki.notify_internal(q)
-                st.toast(msg)
+        q = st.text_input("Ordre pour FLOKI", key="floki_input",
+                          placeholder="Ex: prix toyota, maison à louer, redige une relance")
 
-    if 'floki_rep' in st.session_state:
-        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-        st.components.v1.html(f"""
+        # Micro compatible Chrome/Edge/Firefox
+        st.components.v1.html("""
             <script>
-            if ('speechSynthesis' in window) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                msg.lang = 'fr-FR'; msg.rate = 1; window.speechSynthesis.speak(msg);
-            }}
+            function startListening() {
+                let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    alert("Micro non supporté. Utilise Chrome, Edge ou Firefox.");
+                    return;
+                }
+                let recognition = new SpeechRecognition();
+                recognition.lang = 'fr-FR';
+                recognition.onresult = function(event) {
+                    let transcript = event.results[0][0].transcript;
+                    let input = window.parent.document.querySelector('input[aria-label=\"Ordre pour FLOKI\"]');
+                    if(input){
+                        input.value = transcript;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                };
+                recognition.onerror = function(e){ alert("Erreur micro: " + e.error); };
+                recognition.start();
+            }
             </script>
-        """, height=0)
-        st.success(st.session_state.floki_rep)
+            <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
+                🎤 Parler à FLOKI
+            </button>
+        """, height=50)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Exécuter", type="primary", use_container_width=True):
+                if q:
+                    with st.spinner("FLOKI exécute..."):
+                        rep = st.session_state.floki.ask(q)
+                        st.session_state.floki_rep = rep
+
+        with col2:
+            if st.button("Notifier équipe", use_container_width=True):
+                if q:
+                    msg = st.session_state.floki.notify_internal(q)
+                    st.toast(msg)
+
+        if 'floki_rep' in st.session_state:
+            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+            st.components.v1.html(f"""
+                <script>
+                if ('speechSynthesis' in window) {{
+                    window.speechSynthesis.cancel();
+                    let msg = new SpeechSynthesisUtterance("{rep_clean}");
+                    msg.lang = 'fr-FR'; msg.rate = 1; window.speechSynthesis.speak(msg);
+                }}
+                </script>
+            """, height=0)
+            st.success(st.session_state.floki_rep)
