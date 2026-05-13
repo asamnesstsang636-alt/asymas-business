@@ -2503,95 +2503,219 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-# === FLOKI AGENT COMPLET ===
+                         # === FLOKI SOLDAT COMPLET ===
 import difflib
 import re
+import urllib.parse
+import inspect
+import json
+import requests
+from datetime import datetime
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
+        self.system_knowledge = self._scan_main_py()
+
+    def _scan_main_py(self):
+        """1. Connaissance du système: lit main.py pour connaître les tables"""
+        try:
+            source = inspect.getsource(sys.modules[__name__])
+            tables = re.findall(r'df_(\w+)\s*=\s*load_table\("(\w+)"\)', source)
+            return {name: table for name, table in tables}
+        except:
+            return {"articles": "articles", "compta": "compta", "biens": "biens", "voitures": "voitures"}
 
     def ask(self, question):
         q = question.lower().strip()
-        # Nettoie la question
-        q = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
+        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
 
-        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo", "wesh"]):
-            return "Salut! Je suis FLOKI. Pose-moi une question sur tes articles, stock, ou compta. Ex: 'prix de tomate', 'stock bas', 'CA'"
+        # 4. Action: envoie WhatsApp
+        if "envoie" in q and "message" in q and "numero" in q:
+            result = self._action_send_whatsapp(question)
+            log_entry["action"] = "whatsapp_send"
+            log_entry["reponse"] = result
+            self._log_action(log_entry)
+            return result
 
-        # 1. Recherche produit
-        rep = self._search_product(q)
+        # 4. Action: rédaction administrative
+        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation", "courrier"]):
+            result = self._action_rediger(question)
+            log_entry["action"] = "redaction"
+            log_entry["reponse"] = result
+            self._log_action(log_entry)
+            return result
+
+        # 6. Conseil business
+        if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
+            result = self._action_conseil(q)
+            log_entry["action"] = "conseil"
+            log_entry["reponse"] = result
+            self._log_action(log_entry)
+            return result
+
+        # Nettoie pour recherche data
+        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
+
+        # Salutation soldat
+        if any(g in q_clean for g in ["slt", "salut", "bonjour", "hello", "yo"]):
+            return "Présent chef. FLOKI opérationnel. Je lis, cherche, rédige, conseille et envoie. Donne l’ordre."
+
+        # 2. Réponses sur données ASYMAS
+        rep = self._search_asymas(q_clean)
         if rep:
+            log_entry["source"] = "ASYMAS"
+            log_entry["reponse"] = rep
+            self._log_action(log_entry)
             return rep + "\n\nSource: ASYMAS"
 
-        # 2. Stock bas
-        if any(k in q for k in ["stock bas", "rupture", "manque", "presque fini", "fini"]):
-            return self._stock_bas() + "\n\nSource: ASYMAS"
+        # 3. Réponses connectées au monde
+        web_rep = self._search_web(question)
+        log_entry["source"] = "WEB"
+        log_entry["reponse"] = web_rep
+        self._log_action(log_entry)
+        return web_rep + "\n\nSource: WEB"
 
-        # 3. CA / Compta
+    def _search_asymas(self, q):
+        """2. Recherche dans les données ASYMAS"""
+        # Produit
+        rep = self._search_product(q)
+        if rep: return rep
+
+        # Stock bas
+        if any(k in q for k in ["stock bas", "rupture", "manque", "presque fini"]):
+            return self._stock_bas()
+
+        # CA
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
-            return self._chiffre_affaires() + "\n\nSource: ASYMAS"
+            return self._chiffre_affaires()
 
-        return "Je n'ai rien trouvé dans ASYMAS pour ça. Vérifie l'orthographe ou demande 'stock bas'."
+        return None
 
     def _search_product(self, q):
         if self.df['articles'].empty:
             return None
-
         articles = self.df['articles'].copy()
         articles['nom_clean'] = articles['nom_article'].astype(str).str.lower()
         articles['nom_clean'] = articles['nom_clean'].str.replace(r'[^a-z0-9\s]', '', regex=True)
         articles['nom_clean'] = articles['nom_clean'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
         q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-
-        if not q_clean:
-            return None
-
-        # Match 1: tous les mots de la recherche sont dans le nom
         mots_q = [w for w in q_clean.split() if len(w) > 2]
+
         if mots_q:
             for _, r in articles.iterrows():
                 if all(word in r['nom_clean'] for word in mots_q):
-                    return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
 
-        # Match 2: flou avec difflib
         noms = articles['nom_clean'].tolist()
         closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
         if closest:
             r = articles[articles['nom_clean'] == closest[0]].iloc[0]
-            return f"Tu veux dire {r['nom_article']}? Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-
+            return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
         return None
 
     def _stock_bas(self):
         if self.df['articles'].empty:
-            return "Pas d'articles dans la base."
+            return "Pas d'articles chef."
         low = self.df['articles'][self.df['articles']['stock'] < 5]
         if low.empty:
-            return "Aucun stock bas. Tout est OK."
+            return "Stock OK chef. Rien en dessous de 5 unités."
         txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-        return f"Stock bas détecté :\n{txt}"
+        return f"Attention chef, stock bas:\n{txt}"
 
     def _chiffre_affaires(self):
         if self.df['compta'].empty:
-            return "Pas de données compta."
+            return "Pas de données compta chef."
         rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
         dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
-        return f"Revenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+        return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+
+    def _search_web(self, q):
+        """3. Recherche web temps réel avec vérification"""
+        try:
+            url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
+            r = requests.get(url, timeout=4)
+            data = r.json()
+            if data.get('AbstractText'):
+                return f"Info vérifiée: {data['AbstractText']}"
+            return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
+        except:
+            return "Le web ne répond pas chef."
+
+    def _action_rediger(self, question):
+        """4. Rédaction administrative"""
+        if "relance" in question.lower():
+            return """Objet: Relance de paiement
+
+Monsieur/Madame,
+
+Nous constatons que la facture reste impayée à ce jour.
+Nous vous prions de régulariser votre situation dans les 48h.
+
+Cordialement,
+ASYMAS BUSINESS
+Tel: +243 995 105 623"""
+
+        if "convocation" in question.lower():
+            return """Objet: Convocation
+
+Monsieur/Madame,
+
+Vous êtes convoqué(e) à nos bureaux le [DATE] à [HEURE]
+pour discussion concernant [OBJET].
+
+Merci de confirmer votre présence.
+
+ASYMAS BUSINESS"""
+
+        return "Chef, précise le type: 'redige une relance', 'redige une convocation'. Je te donne le texte prêt à valider."
+
+    def _action_send_whatsapp(self, question):
+        """5. Communication externe WhatsApp"""
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if not nums:
+            return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
+        numero = nums[0].replace("+", "")
+        message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip()
+        if not message:
+            message = "Message de ASYMAS BUSINESS"
+        url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
+        return f"Ordre exécuté chef. Lien WhatsApp prêt: {url}"
 
     def notify_internal(self, message):
+        """5. Communication interne"""
         try:
             self.supabase.table("notifications").insert({
                 "message": f"[{st.session_state.get('user_name')}]: {message}",
                 "created_at": datetime.now().isoformat()
             }).execute()
-            return "Notification envoyée"
+            return "Notification envoyée à l’équipe chef."
         except Exception as e:
-            return f"Erreur notif: {e}"
+            return f"Échec notification: {e}"
 
-# === UI FLOKI DANS SIDEBAR ===
+    def _action_conseil(self, q):
+        """6. Conseil business basé sur données ASYMAS + logique"""
+        if not self.df['articles'].empty and not self.df['compta'].empty:
+            stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
+            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
+
+            conseil = f"FAIT: {stock_bas} articles en stock bas. CA actuel: {rev:,.0f} FC.\n"
+            conseil += f"CONSEIL: Réapprovisionne les articles en stock bas pour éviter la rupture.\n"
+            conseil += f"RISQUE: Rupture = perte de vente. Action recommandée sous 48h."
+            return conseil
+
+        return "Chef, donne-moi plus de contexte. Je croise tes données ASYMAS pour te donner fait, conseil, risque."
+
+    def _log_action(self, log_entry):
+        """7. Traçabilité et rigueur"""
+        try:
+            self.supabase.table("floki_logs").insert(log_entry).execute()
+        except:
+            pass
+
+# === UI FLOKI ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2604,22 +2728,23 @@ if 'floki' not in st.session_state:
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
+    st.caption("Opérateur connecté - Exécute sans décider")
 
-    q = st.text_input("Pose ta question à FLOKI", key="floki_input", placeholder="Ex: prix du ciment, tomate, stock bas")
+    q = st.text_input("Ordre pour FLOKI", key="floki_input",
+                      placeholder="Ex: prix du ciment, redige une relance, envoie un message au +243...")
 
-    # Bouton micro pour parler à FLOKI
     st.components.v1.html("""
         <script>
         function startListening() {
             if (!('webkitSpeechRecognition' in window)) {
-                alert("Micro non supporté. Utilise Chrome ou Edge.");
+                alert("Utilise Chrome pour le micro");
                 return;
             }
             var recognition = new webkitSpeechRecognition();
             recognition.lang = 'fr-FR';
             recognition.onresult = function(event) {
                 var transcript = event.results[0][0].transcript;
-                let input = window.parent.document.querySelector('input[data-testid=\"stTextInput\"][aria-label=\"Pose ta question à FLOKI\"]');
+                let input = window.parent.document.querySelector('input[data-testid=\"stTextInput\"][aria-label=\"Ordre pour FLOKI\"]');
                 if(input){
                     input.value = transcript;
                     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2635,14 +2760,14 @@ with st.sidebar:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Lancer FLOKI", type="primary", use_container_width=True):
+        if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
-                with st.spinner("FLOKI réfléchit..."):
+                with st.spinner("FLOKI exécute..."):
                     rep = st.session_state.floki.ask(q)
                     st.session_state.floki_rep = rep
 
     with col2:
-        if st.button("Notifier", use_container_width=True):
+        if st.button("Notifier équipe", use_container_width=True):
             if q:
                 msg = st.session_state.floki.notify_internal(q)
                 st.toast(msg)
@@ -2660,4 +2785,4 @@ with st.sidebar:
             }}
             </script>
         """, height=0)
-        st.info(st.session_state.floki_rep)
+        st.success(st.session_state.floki_rep)
