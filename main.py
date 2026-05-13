@@ -2507,8 +2507,8 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
                         # ================================================
-# 👑 FLOKI V4 - ARCHITECTURE 9 COUCHES
-# À COLLER EN LIGNE 3099
+                    # ================================================
+# 👑 FLOKI V4 - CORRIGÉ FINAL
 # ================================================
 
 from urllib.parse import quote
@@ -2531,42 +2531,7 @@ if is_pdg and 'floki_placeholder' in locals():
         if "floki_reponse" not in st.session_state:
             st.session_state.floki_reponse = ""
 
-        # ===== COUCHE 1 : COCKPIT =====
-        def floki_cockpit():
-            prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v4", label_visibility="collapsed")
-            audio = st.audio_input("", key="floki_audio_v4", label_visibility="collapsed")
-            return prompt, audio
-
-        # ===== COUCHE 4 : MÉMOIRE =====
-        def save_memoire(texte):
-            try:
-                supabase.table("memoire_floki").insert({
-                    "user": nom_user,
-                    "texte": texte,
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-            except: pass
-
-        def load_memoire():
-            try:
-                data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
-                return data.data
-            except:
-                return []
-
-        # ===== COUCHE 7 : AUDIT =====
-        def log_audit(agent, input_q, output_r):
-            try:
-                supabase.table("audit_floki").insert({
-                    "user": nom_user,
-                    "agent": agent,
-                    "input": input_q[:500],
-                    "output": output_r[:500],
-                    "timestamp": datetime.now().isoformat()
-                }).execute()
-            except: pass
-
-        # ===== COUCHE 4 : CHARGEMENT ASYMAS 3000 LIGNES =====
+        # ===== CHARGEMENT ASYMAS 3000 LIGNES =====
         ASYMAS = {
             "BIENS": df_biens if 'df_biens' in locals() else pd.DataFrame(),
             "ARTICLES": df_articles if 'df_articles' in locals() else pd.DataFrame(),
@@ -2578,7 +2543,7 @@ if is_pdg and 'floki_placeholder' in locals():
             "VENTES": pd.DataFrame(supabase.table("ventes").select("*").execute().data) if 'supabase' in locals() else pd.DataFrame()
         }
 
-        # ===== COUCHE 3 : AGENT UTILITAIRES =====
+        # ===== AUTO-DÉTECTION COLONNES =====
         def get_colonnes_auto(df):
             cols_lower = [c.lower().strip() for c in df.columns]
             col_nom = col_prix = col_stock = None
@@ -2602,11 +2567,15 @@ if is_pdg and 'floki_placeholder' in locals():
                 if col_stock: break
             return col_nom, col_prix, col_stock
 
-        # ===== COUCHE 3 : AGENT PRIX =====
+        # ===== AGENT PRIX - CORRIGÉ =====
         class AgentPrix:
             def run(self, query):
                 try:
                     query = query.lower().strip()
+                    # On cherche uniquement si c'est un article
+                    if len(query) < 3 or any(x in query for x in ['ou es', 'qui es', 'comment', 'pourquoi', 'slt', 'bjr', 'bonjour']):
+                        return None
+
                     resultats = []
                     for nom_table, df in ASYMAS.items():
                         if df.empty: continue
@@ -2617,23 +2586,24 @@ if is_pdg and 'floki_placeholder' in locals():
                         df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
                         df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
 
-                        mask = df_temp[col_nom].str.contains(query, na=False, case=False)
-                        df_filtre = df_temp.dropna(subset=[col_prix])
+                        # Match mot exact pour éviter Novida/Tomate
+                        mask = df_temp[col_nom].str.contains(r'\b' + re.escape(query) + r'\b', na=False, case=False, regex=True)
+                        df_filtre = df_temp[mask].dropna(subset=[col_prix])
 
                         for idx, row in df_filtre.iterrows():
                             nom_article = str(row[col_nom]).title()
                             prix_article = row[col_prix]
                             stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
-                            if nom_article and str(nom_article).strip() and prix_article > 0:
+                            if nom_article.strip() and prix_article > 0:
                                 resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
 
                     if resultats:
-                        return f"Trouvé: " + " | ".join(resultats[:3])
+                        return f"Stock {query.title()}: " + " | ".join(resultats[:3])
                     return f"Aucun {query} trouvé chef"
                 except Exception as e:
                     return f"Erreur AgentPrix: {e}"
 
-        # ===== COUCHE 3 : AGENT VENTE =====
+        # ===== AGENT VENTE =====
         class AgentVente:
             def run(self, query):
                 try:
@@ -2655,12 +2625,28 @@ if is_pdg and 'floki_placeholder' in locals():
                 except Exception as e:
                     return f"Erreur AgentVente: {e}"
 
-        # ===== COUCHE 3 : AGENT SALUT =====
+        # ===== AGENT SALUT =====
         class AgentSalut:
             def run(self, query):
                 return "Bjr chef, ca va? Quel service pour toi aujourd'hui?"
 
-        # ===== COUCHE 3 : AGENT MÉMOIRE =====
+        # ===== AGENT MÉMOIRE =====
+        def save_memoire(texte):
+            try:
+                supabase.table("memoire_floki").insert({
+                    "user": nom_user,
+                    "texte": texte,
+                    "created_at": datetime.now().isoformat()
+                }).execute()
+            except: pass
+
+        def load_memoire():
+            try:
+                data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
+                return data.data
+            except:
+                return []
+
         class AgentMemoire:
             def run(self, query):
                 if "retient" in query:
@@ -2674,23 +2660,32 @@ if is_pdg and 'floki_placeholder' in locals():
                     return "Aucune mémoire chef"
                 return "Mémoire activée"
 
-        # ===== COUCHE 2 : ROUTAGE =====
+        # ===== ROUTAGE =====
         def floki_routeur(query):
             q = query.lower()
             if any(x in q for x in ['dernier', 'vendu', 'vente']):
                 return "agent_vente", q
-            if any(x in q for x in ['prix', 'combien', 'stock', 'moins cher']):
-                return "agent_prix", q
             if any(x in q for x in ['slt', 'bjr', 'bonjour', 'salut']):
                 return "agent_salut", q
             if any(x in q for x in ['retient', 'rappelle', 'mémoire']):
                 return "agent_memoire", q
             return "agent_prix", q
 
-        # ===== COUCHE 9 : OPERATOR FLOW =====
+        # ===== AUDIT =====
+        def log_audit(agent, input_q, output_r):
+            try:
+                supabase.table("audit_floki").insert({
+                    "user": nom_user,
+                    "agent": agent,
+                    "input": input_q[:500],
+                    "output": output_r[:500],
+                    "timestamp": datetime.now().isoformat()
+                }).execute()
+            except: pass
+
+        # ===== OPERATOR FLOW =====
         def floki_operator(query):
             agent_name, clean_query = floki_routeur(query)
-
             agents = {
                 "agent_prix": AgentPrix(),
                 "agent_vente": AgentVente(),
@@ -2698,13 +2693,13 @@ if is_pdg and 'floki_placeholder' in locals():
                 "agent_memoire": AgentMemoire()
             }
             agent = agents.get(agent_name, AgentPrix())
-
             reponse = agent.run(clean_query)
             log_audit(agent_name, query, reponse)
             return reponse
 
-        # ===== EXÉCUTION COCKPIT =====
-        prompt, audio = floki_cockpit()
+        # ===== COCKPIT =====
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v4", label_visibility="collapsed")
+        audio = st.audio_input("", key="floki_audio_v4", label_visibility="collapsed")
 
         # MICRO
         if audio:
