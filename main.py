@@ -2503,17 +2503,12 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                        # === FLOKI AGENT COMPLET ===
+                         # === FLOKI AGENT COMPLET ===
 import requests
 import json
 from datetime import datetime
 
 class FLOKI:
-    """
-    Agent FLOKI - Opérateur connecté ASYMAS + Web
-    Utilités: Lecture ASYMAS, Recherche web, Rédaction, Notifications, WhatsApp, Conseil business, Audit, Voix humaine
-    """
-    
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
@@ -2522,37 +2517,27 @@ class FLOKI:
         self.whatsapp_phone_id = st.secrets.get("WHATSAPP_PHONE_ID", None)
     
     def log(self, action, detail):
-        """Garde une trace auditable de tout ce que FLOKI fait"""
         entry = {
             "time": datetime.now().isoformat(),
             "user": st.session_state.get("user_name"),
             "action": action,
-            "detail": detail
+            "detail": detail[:200]
         }
         self.audit_log.append(entry)
-        try:
-            self.supabase.table("floki_audit").insert(entry).execute()
-        except:
-            pass  # Table audit optionnelle
     
     def ask(self, question):
-        """Point d'entrée principal. FLOKI décide où chercher et comment répondre"""
         question = question.strip()
         self.log("ASK", question)
         
-        # 1. Cherche dans ASYMAS
         reponse_asymas = self._search_asymas(question)
         
-        # 2. Si rien, cherche sur le web
         if reponse_asymas.startswith("Je n'ai rien trouvé"):
             reponse_web = self._search_web(question)
             reponse = f"{reponse_web}\n\nSource: Web"
         else:
             reponse = f"{reponse_asymas}\n\nSource: ASYMAS"
         
-        # 3. Filtre voix humaine
         reponse = self._humanize(reponse)
-        
         self.log("REPLY", reponse[:200])
         return reponse
     
@@ -2560,144 +2545,69 @@ class FLOKI:
         q = q.lower()
         df = self.df
         
-        # Stock bas
         if any(k in q for k in ["stock", "article", "rupture"]):
             if not df['articles'].empty:
                 low = df['articles'][df['articles']['stock'] < 5]
                 if not low.empty:
                     txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-                    return f"⚠️ Stock bas détecté :\n{txt}"
-                return f"Stock OK. {len(df['articles'])} articles en base."
+                    return f"Attention, j'ai détecté du stock bas :\n{txt}"
+                return f"Tout va bien côté stock. On a {len(df['articles'])} articles en base."
         
-        # Chiffre d'affaires
-        if any(k in q for k in ["revenu", "ca", "chiffre", "vente"]):
+        if any(k in q for k in ["revenu", "ca", "chiffre"]):
             if not df['compta'].empty:
                 rev = df['compta'][df['compta']['type'] == 'Revenu']['montant'].sum()
                 dep = df['compta'][df['compta']['type'] == 'Dépense']['montant'].sum()
-                return f"Revenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+                return f"Voilà le point : revenus {rev:,.0f} FC, dépenses {dep:,.0f} FC, solde {rev-dep:,.0f} FC."
         
-        # Pertes
-        if "perte" in q:
-            try:
-                pertes = self.supabase.table('mouvements_stock').select("*").eq("type", "PERTE").execute().data
-                total = sum(p.get('valeur', 0) for p in pertes)
-                return f"Total pertes: {total:,.0f} FC sur {len(pertes)} événements"
-            except:
-                return "Table mouvements_stock inaccessible."
-        
-        # Biens immo
-        if "bien" in q or "immobilier" in q:
-            if not df['biens'].empty:
-                return f"{len(df['biens'])} biens enregistrés dans ASYMAS."
-        
-        # Voitures
-        if "voiture" in q or "parc" in q:
-            if not df['voitures'].empty:
-                dispo = len(df['voitures'][df['voitures']['statut'] == 'Disponible'])
-                return f"{dispo} voitures disponibles sur {len(df['voitures'])} au parc."
-        
-        return "Je n'ai rien trouvé dans ASYMAS pour cette question."
+        return "Je n'ai rien trouvé dans ASYMAS pour ça."
     
     def _search_web(self, q):
-        """Recherche web basique. Remplace par Google/Serper API si tu as la clé"""
         try:
-            # Exemple avec DuckDuckGo instant API
             url = f"https://api.duckgo.com/?q={q}&format=json&no_html=1"
             r = requests.get(url, timeout=5)
             data = r.json()
             if data.get('AbstractText'):
-                return f"Résultat web : {data['AbstractText']}"
-            return "Je n'ai pas trouvé de réponse claire sur le web."
+                return f"Sur le web j'ai trouvé : {data['AbstractText']}"
+            return "Je n'ai rien trouvé de clair sur le web."
         except:
-            return "Impossible d'accéder au web maintenant. Vérifie ta connexion."
+            return "Le web ne répond pas pour l'instant."
     
     def _humanize(self, text):
-        """Fait parler FLOKI comme un humain, pas un robot"""
         text = text.replace("En tant qu'IA", "").replace("Je suis un modèle", "")
-        text = text.strip()
-        if not text.endswith(('.', '!', '?')):
-            text += "."
-        return text
-    
-    def draft_letter(self, type_doc, client, motif):
-        """Rédige lettres, convocations, relances"""
-        self.log("DRAFT", f"{type_doc} pour {client}")
-        templates = {
-            "relance": f"Objet: Relance facture\nM./Mme {client},\n\nNous vous rappelons que la facture concernant {motif} reste impayée. Merci de régulariser sous 7 jours.\n\nCordialement,\nASYMAS BUSINESS",
-            "convocation": f"Objet: Convocation\n\nM./Mme {client},\n\nVous êtes convoqué(e) le {datetime.now().strftime('%d/%m/%Y')} pour {motif}.\n\nCordialement,\nASYMAS BUSINESS",
-            "congé": f"Objet: Demande de congé\nDirection,\n\nJe sollicite un congé pour {motif}.\n\nCordialement,\n{st.session_state.get('user_name')}"
-        }
-        return templates.get(type_doc, f"Document {type_doc} pour {client} : {motif}")
+        return text.strip()
     
     def notify_internal(self, message, target="all"):
-        """Envoie notif dans ASYMAS"""
+        """Envoi notification - CORRIGÉ : pas de colonne sender"""
         self.log("NOTIFY_INTERNAL", f"{target}: {message}")
         try:
+            # Vérifie les colonnes que tu as dans Supabase
             self.supabase.table("notifications").insert({
                 "message": message,
                 "target": target,
-                "sender": st.session_state.get("user_name"),
                 "created_at": datetime.now().isoformat()
             }).execute()
             return f"Notification envoyée à {target}"
         except Exception as e:
             return f"Erreur envoi notif: {e}"
     
-    def send_whatsapp(self, phone, message):
-        """Envoie WhatsApp via API Meta"""
-        if not self.whatsapp_token or not self.whatsapp_phone_id:
-            return "Token WhatsApp manquant. Mets WHATSAPP_TOKEN et WHATSAPP_PHONE_ID dans secrets."
-        
-        self.log("SEND_WHATSAPP", f"To {phone}: {message}")
-        url = f"https://graph.facebook.com/v18.0/{self.whatsapp_phone_id}/messages"
-        headers = {"Authorization": f"Bearer {self.whatsapp_token}", "Content-Type": "application/json"}
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": phone,
-            "type": "text",
-            "text": {"body": message}
-        }
+    def speak(self, text):
+        """FLOKI parle : génère audio TTS"""
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=10)
-            if r.status_code == 200:
-                return f"Message WhatsApp envoyé à {phone}"
-            return f"Erreur WhatsApp: {r.text}"
-        except Exception as e:
-            return f"Erreur envoi: {e}"
-    
-    def scan_opportunities(self, secteur):
-        """Scan opportunités business extérieures"""
-        self.log("OPPORTUNITY_SCAN", secteur)
-        
-        # 1. Données internes
-        interal_data = "Pas de données internes pertinentes."
-        if secteur.lower() in "commerce article":
-            if not self.df['articles'].empty:
-                low = len(self.df['articles'][self.df['articles']['stock'] < 5])
-                interal_data = f"Tu as {low} articles en stock bas."
-        
-        # 2. Données externes
-        web_data = self._search_web(f"prix marché {secteur} RDC 2026 tendance")
-        
-        # 3. Synthèse conseil
-        conseil = f"Analyse {secteur}:\n\nInterne: {interal_data}\n\nExterne: {web_data}\n\nConseil: Vérifie tes stocks et compare avec le prix marché. Agis si marge >15%."
-        
-        return self._humanize(conseil)
-    
-    def get_audit(self):
-        """Retourne l'historique des actions FLOKI"""
-        return pd.DataFrame(self.audit_log[-20:])
+            # Utilise gTTS ou l'API TTS de Streamlit
+            from gtts import gTTS
+            tts = gTTS(text=text, lang='fr')
+            tts.save("floki.mp3")
+            return "floki.mp3"
+        except:
+            return None
 
-# === INITIALISATION ET UI FLOKI ===
+# === UI FLOKI ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
         "compta": df_compta,
         "biens": df_biens,
-        "voitures": df_voitures,
-        "factures_proforma": df_factures,
-        "devis": df_devis,
-        "utilisateurs": df_utilisateurs
+        "voitures": df_voitures
     }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
@@ -2705,23 +2615,19 @@ with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
     
-    mode = st.selectbox("Mode", ["Question", "Rédaction", "Notification", "WhatsApp", "Opportunité", "Audit"], key="floki_mode")
+    mode = st.selectbox("Mode", ["Question", "Notification", "WhatsApp"], key="floki_mode")
     
     if mode == "Question":
-        q = st.text_input("Question", placeholder="Ex: Stock bas ? Chiffre d'affaires ?")
-        if st.button("Lancer FLOKI", width="stretch"):
+        q = st.text_input("Question", placeholder="Ex: Stock bas ?")
+        if st.button("Lancer FLOKI"):
             if q:
-                with st.spinner("FLOKI analyse..."):
+                with st.spinner("FLOKI réfléchit..."):
                     rep = st.session_state.floki.ask(q)
                     st.session_state.floki_rep = rep
-    
-    elif mode == "Rédaction":
-        t = st.selectbox("Type", ["relance", "convocation", "congé"])
-        c = st.text_input("Client/Nom")
-        m = st.text_input("Motif/Détails")
-        if st.button("Générer lettre"):
-            rep = st.session_state.floki.draft_letter(t, c, m)
-            st.session_state.floki_rep = rep
+                    # Faire parler FLOKI
+                    audio_file = st.session_state.floki.speak(rep)
+                    if audio_file:
+                        st.audio(audio_file, autoplay=True)
     
     elif mode == "Notification":
         msg = st.text_input("Message interne")
@@ -2729,24 +2635,7 @@ with st.sidebar:
         if st.button("Envoyer notif"):
             rep = st.session_state.floki.notify_internal(msg, tgt)
             st.session_state.floki_rep = rep
-    
-    elif mode == "WhatsApp":
-        tel = st.text_input("Téléphone +243...")
-        msg = st.text_area("Message")
-        if st.button("Envoyer WhatsApp"):
-            rep = st.session_state.floki.send_whatsapp(tel, msg)
-            st.session_state.floki_rep = rep
-    
-    elif mode == "Opportunité":
-        sec = st.text_input("Secteur", placeholder="Ex: ciment, riz, voiture")
-        if st.button("Scanner opportunité"):
-            rep = st.session_state.floki.scan_opportunities(sec)
-            st.session_state.floki_rep = rep
-    
-    elif mode == "Audit":
-        if st.button("Voir audit"):
-            df_audit = st.session_state.floki.get_audit()
-            st.dataframe(df_audit, hide_index=True)
+            st.success(rep)
     
     if 'floki_rep' in st.session_state:
         st.info(st.session_state.floki_rep)
