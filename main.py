@@ -2503,14 +2503,11 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                            # === FLOKI SOLDAT COMPLET V4 ===
+# === FLOKI SOLDAT COMPLET V6 ===
 import difflib
 import re
 import urllib.parse
-import inspect
-import json
 import requests
-import sys
 from datetime import datetime
 
 class FLOKI:
@@ -2540,7 +2537,7 @@ class FLOKI:
         q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
 
         if any(g in q_clean for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Je vois tout ASYMAS. Donne l’ordre."
+            return "Présent chef. FLOKI opérationnel. Je vois tout ASYMAS."
 
         rep = self._search_asymas(q_clean)
         if rep:
@@ -2698,7 +2695,7 @@ if st.session_state.get('user_role') == "PDG":
         q = st.text_input("Ordre pour FLOKI", key="floki_input",
                           placeholder="Ex: prix toyota, maison à louer, redige une relance")
 
-        # Micro corrigé
+        # Micro qui marche comme avant
         st.components.v1.html("""
             <script>
             function startListening() {
@@ -2720,7 +2717,6 @@ if st.session_state.get('user_role') == "PDG":
                     if(input){
                         input.value = transcript;
                         input.dispatchEvent(new Event('input', { bubbles: true }));
-                        // Auto-clic sur Exécuter
                         setTimeout(() => {
                             let btn = window.parent.document.querySelector('button[kind=\"primary\"]');
                             if(btn) btn.click();
@@ -2758,17 +2754,35 @@ if st.session_state.get('user_role') == "PDG":
                 if q:
                     msg = st.session_state.floki.notify_internal(q)
                     st.toast(msg)
-                    st.rerun() # Force le refresh pour voir la notif
+                    st.rerun() # Force le refresh pour afficher la notif
 
         if 'floki_rep' in st.session_state:
-            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+            st.success(st.session_state.floki_rep)
             st.components.v1.html(f"""
                 <script>
                 if ('speechSynthesis' in window) {{
                     window.speechSynthesis.cancel();
-                    let msg = new SpeechSynthesisUtterance("{rep_clean}");
+                    let msg = new SpeechSynthesisUtterance("{st.session_state.floki_rep.replace('"', '\\"').replace("\n", ")}");
                     msg.lang = 'fr-FR'; msg.rate = 1; window.speechSynthesis.speak(msg);
                 }}
                 </script>
             """, height=0)
-            st.success(st.session_state.floki_rep)
+
+        # Affichage des notifications non lues
+        st.divider()
+        st.markdown("**🔔 Notifications:**")
+        try:
+            notifs = supabase.table("notifications").select("*").eq("lu", False).order("created_at", desc=True).limit(5).execute()
+            if notifs.data:
+                for n in notifs.data:
+                    col1, col2 = st.columns([4,1])
+                    with col1:
+                        st.info(n['message'])
+                    with col2:
+                        if st.button("✓", key=f"lu_{n['id']}", help="Marquer comme lu"):
+                            supabase.table("notifications").update({"lu": True}).eq("id", n['id']).execute()
+                            st.rerun()
+            else:
+                st.caption("Aucune notification")
+        except:
+            st.caption("Table notifications introuvable")
