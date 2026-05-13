@@ -2503,7 +2503,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-# === FLOKI AGENT AUTO ===
+                          # === FLOKI AGENT AUTO ===
 import requests
 from datetime import datetime
 
@@ -2515,24 +2515,24 @@ class FLOKI:
     def ask(self, question):
         q = question.lower().strip()
 
-        # 1. Si c'est un salut, répond direct
+        # Salut
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Salut! Je suis FLOKI. Demande-moi le stock, le CA, ou un produit comme 'combien de ciment'."
 
-        # 2. Cherche produit dans articles
+        # Recherche produit
         rep = self._search_product(q)
         if rep:
             return rep + "\n\nSource: ASYMAS"
 
-        # 3. Cherche stock bas
-        if any(k in q for k in ["stock bas", "rupture", "presque fini"]):
+        # Stock bas
+        if any(k in q for k in ["stock bas", "rupture", "presque fini", "manque"]):
             return self._stock_bas() + "\n\nSource: ASYMAS"
 
-        # 4. Cherche CA
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent"]):
+        # Chiffre affaires
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice"]):
             return self._chiffre_affaires() + "\n\nSource: ASYMAS"
 
-        # 5. Si rien trouvé, web
+        # Web fallback
         rep = self._search_web(q)
         return rep + "\n\nSource: Web"
 
@@ -2541,8 +2541,7 @@ class FLOKI:
             return None
         for _, r in self.df['articles'].iterrows():
             nom = str(r['nom_article']).lower()
-            # Match exact ou partiel
-            if nom in q or q in nom or nom.split()[0] in q:
+            if nom in q or q in nom or any(word in q for word in nom.split()):
                 stock = int(r['stock'])
                 prix = float(r['prix_vente'])
                 return f"{r['nom_article']} : Stock {stock} unités, Prix {prix:,.0f} FC"
@@ -2575,6 +2574,17 @@ class FLOKI:
         except:
             return "Le web ne répond pas."
 
+    def notify_internal(self, message):
+        """Envoi notif pour ton schéma Supabase id, message, created_at"""
+        try:
+            self.supabase.table("notifications").insert({
+                "message": f"[{st.session_state.get('user_name')}]: {message}",
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            return "Notification envoyée"
+        except Exception as e:
+            return f"Erreur notif: {e}"
+
 # === UI FLOKI SIMPLE ===
 if 'floki' not in st.session_state:
     dataframes = {
@@ -2590,24 +2600,34 @@ with st.sidebar:
     st.markdown("### 🤖 FLOKI")
 
     q = st.text_input("Pose ta question à FLOKI", placeholder="Ex: salut, combien de ciment, stock bas, CA?")
-    if st.button("Lancer FLOKI", type="primary"):
-        if q:
-            with st.spinner("FLOKI réfléchit..."):
-                rep = st.session_state.floki.ask(q)
-                st.session_state.floki_rep = rep
-
-                # Voix avec TTS navigateur
-                st.components.v1.html(f"""
-                    <script>
-                    if ('speechSynthesis' in window) {{
-                        window.speechSynthesis.cancel();
-                        var msg = new SpeechSynthesisUtterance("{rep.replace('"', "'").replace('\n', ')}");
-                        msg.lang = 'fr-FR';
-                        msg.rate = 1;
-                        window.speechSynthesis.speak(msg);
-                    }}
-                    </script>
-                """, height=0)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Lancer FLOKI", type="primary", use_container_width=True):
+            if q:
+                with st.spinner("FLOKI réfléchit..."):
+                    rep = st.session_state.floki.ask(q)
+                    st.session_state.floki_rep = rep
+    
+    with col2:
+        if st.button("Notifier", use_container_width=True):
+            if q:
+                msg = st.session_state.floki.notify_internal(q)
+                st.toast(msg)
 
     if 'floki_rep' in st.session_state:
+        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+        
+        st.components.v1.html(f"""
+            <script>
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("{rep_clean}");
+                msg.lang = 'fr-FR';
+                msg.rate = 1;
+                window.speechSynthesis.speak(msg);
+            }}
+            </script>
+        """, height=0)
+        
         st.info(st.session_state.floki_rep)
