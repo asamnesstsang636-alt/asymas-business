@@ -2503,9 +2503,10 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                          # === FLOKI AGENT AUTO ===
+# === FLOKI AGENT AUTO ===
 import requests
 from datetime import datetime
+import difflib
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2515,36 +2516,53 @@ class FLOKI:
     def ask(self, question):
         q = question.lower().strip()
 
-        # Salut
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Salut! Je suis FLOKI. Demande-moi le stock, le CA, ou un produit comme 'combien de ciment'."
+            return "Salut! Je suis FLOKI. Demande-moi 'prix de tomate', 'stock bas', 'CA'."
 
-        # Recherche produit
+        # Recherche produit avec matching flou
         rep = self._search_product(q)
         if rep:
             return rep + "\n\nSource: ASYMAS"
 
-        # Stock bas
         if any(k in q for k in ["stock bas", "rupture", "presque fini", "manque"]):
             return self._stock_bas() + "\n\nSource: ASYMAS"
 
-        # Chiffre affaires
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice"]):
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent"]):
             return self._chiffre_affaires() + "\n\nSource: ASYMAS"
 
-        # Web fallback
         rep = self._search_web(q)
         return rep + "\n\nSource: Web"
 
     def _search_product(self, q):
         if self.df['articles'].empty:
             return None
-        for _, r in self.df['articles'].iterrows():
-            nom = str(r['nom_article']).lower()
-            if nom in q or q in nom or any(word in q for word in nom.split()):
-                stock = int(r['stock'])
-                prix = float(r['prix_vente'])
-                return f"{r['nom_article']} : Stock {stock} unités, Prix {prix:,.0f} FC"
+
+        # Nettoie les noms : minuscule, strip, enlève espaces multiples
+        articles = self.df['articles'].copy()
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.strip()
+        articles['nom_clean'] = articles['nom_clean'].str.replace(r'\s+', ' ', regex=True)
+
+        q_clean = q.replace("prix de", "").replace("combien", "").replace("donne", "").strip()
+
+        # 1. Match exact
+        match = articles[articles['nom_clean'] == q_clean]
+        if not match.empty:
+            r = match.iloc[0]
+            return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+
+        # 2. Match partiel
+        match = articles[articles['nom_clean'].str.contains(q_clean, na=False)]
+        if not match.empty:
+            r = match.iloc[0]
+            return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+
+        # 3. Match flou avec difflib
+        noms = articles['nom_clean'].tolist()
+        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.6)
+        if closest:
+            r = articles[articles['nom_clean'] == closest[0]].iloc[0]
+            return f"Tu veux dire {r['nom_article']}? Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+
         return None
 
     def _stock_bas(self):
@@ -2574,18 +2592,7 @@ class FLOKI:
         except:
             return "Le web ne répond pas."
 
-    def notify_internal(self, message):
-        """Envoi notif pour ton schéma Supabase id, message, created_at"""
-        try:
-            self.supabase.table("notifications").insert({
-                "message": f"[{st.session_state.get('user_name')}]: {message}",
-                "created_at": datetime.now().isoformat()
-            }).execute()
-            return "Notification envoyée"
-        except Exception as e:
-            return f"Erreur notif: {e}"
-
-# === UI FLOKI SIMPLE ===
+# === UI FLOKI AVEC MICRO ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2599,16 +2606,40 @@ with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
 
-    q = st.text_input("Pose ta question à FLOKI", placeholder="Ex: salut, combien de ciment, stock bas, CA?")
+    # Champ texte + Micro
+    q = st.text_input("Pose ta question à FLOKI", key="floki_input")
+
+    # Bouton micro avec SpeechRecognition JS
+    st.components.v1.html("""
+        <script>
+        function startListening() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Micro non supporté. Utilise Chrome.");
+                return;
+            }
+            var recognition = new webkitSpeechRecognition();
+            recognition.lang = 'fr-FR';
+            recognition.onresult = function(event) {
+                var transcript = event.results[0][0].transcript;
+                document.querySelector('input[data-testid="stTextInput"]').value = transcript;
+                document.querySelector('input[data-testid="stTextInput"]').dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            recognition.start();
+        }
+        </script>
+        <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;">
+            🎤 Parler à FLOKI
+        </button>
+    """, height=50)
+
     col1, col2 = st.columns(2)
-    
     with col1:
         if st.button("Lancer FLOKI", type="primary", use_container_width=True):
             if q:
                 with st.spinner("FLOKI réfléchit..."):
                     rep = st.session_state.floki.ask(q)
                     st.session_state.floki_rep = rep
-    
+
     with col2:
         if st.button("Notifier", use_container_width=True):
             if q:
@@ -2617,7 +2648,7 @@ with st.sidebar:
 
     if 'floki_rep' in st.session_state:
         rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-        
+
         st.components.v1.html(f"""
             <script>
             if ('speechSynthesis' in window) {{
@@ -2629,5 +2660,5 @@ with st.sidebar:
             }}
             </script>
         """, height=0)
-        
+
         st.info(st.session_state.floki_rep)
