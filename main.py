@@ -2503,10 +2503,9 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-# === FLOKI AGENT AUTO ===
-import requests
-from datetime import datetime
+# === FLOKI AGENT COMPLET ===
 import difflib
+import re
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2515,50 +2514,51 @@ class FLOKI:
 
     def ask(self, question):
         q = question.lower().strip()
+        # Nettoie la question
+        q = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
 
-        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Salut! Je suis FLOKI. Demande-moi 'prix de tomate', 'stock bas', 'CA'."
+        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo", "wesh"]):
+            return "Salut! Je suis FLOKI. Pose-moi une question sur tes articles, stock, ou compta. Ex: 'prix de tomate', 'stock bas', 'CA'"
 
-        # Recherche produit avec matching flou
+        # 1. Recherche produit
         rep = self._search_product(q)
         if rep:
             return rep + "\n\nSource: ASYMAS"
 
-        if any(k in q for k in ["stock bas", "rupture", "presque fini", "manque"]):
+        # 2. Stock bas
+        if any(k in q for k in ["stock bas", "rupture", "manque", "presque fini", "fini"]):
             return self._stock_bas() + "\n\nSource: ASYMAS"
 
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent"]):
+        # 3. CA / Compta
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires() + "\n\nSource: ASYMAS"
 
-        rep = self._search_web(q)
-        return rep + "\n\nSource: Web"
+        return "Je n'ai rien trouvé dans ASYMAS pour ça. Vérifie l'orthographe ou demande 'stock bas'."
 
     def _search_product(self, q):
         if self.df['articles'].empty:
             return None
 
-        # Nettoie les noms : minuscule, strip, enlève espaces multiples
         articles = self.df['articles'].copy()
-        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.strip()
-        articles['nom_clean'] = articles['nom_clean'].str.replace(r'\s+', ' ', regex=True)
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower()
+        articles['nom_clean'] = articles['nom_clean'].str.replace(r'[^a-z0-9\s]', '', regex=True)
+        articles['nom_clean'] = articles['nom_clean'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
-        q_clean = q.replace("prix de", "").replace("combien", "").replace("donne", "").strip()
+        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
 
-        # 1. Match exact
-        match = articles[articles['nom_clean'] == q_clean]
-        if not match.empty:
-            r = match.iloc[0]
-            return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        if not q_clean:
+            return None
 
-        # 2. Match partiel
-        match = articles[articles['nom_clean'].str.contains(q_clean, na=False)]
-        if not match.empty:
-            r = match.iloc[0]
-            return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        # Match 1: tous les mots de la recherche sont dans le nom
+        mots_q = [w for w in q_clean.split() if len(w) > 2]
+        if mots_q:
+            for _, r in articles.iterrows():
+                if all(word in r['nom_clean'] for word in mots_q):
+                    return f"{r['nom_article']} : Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
 
-        # 3. Match flou avec difflib
+        # Match 2: flou avec difflib
         noms = articles['nom_clean'].tolist()
-        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.6)
+        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
         if closest:
             r = articles[articles['nom_clean'] == closest[0]].iloc[0]
             return f"Tu veux dire {r['nom_article']}? Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
@@ -2581,18 +2581,17 @@ class FLOKI:
         dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
         return f"Revenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
 
-    def _search_web(self, q):
+    def notify_internal(self, message):
         try:
-            url = f"https://api.duckgo.com/?q={q}&format=json&no_html=1"
-            r = requests.get(url, timeout=4)
-            data = r.json()
-            if data.get('AbstractText'):
-                return f"Sur le web : {data['AbstractText']}"
-            return "Je n'ai rien trouvé sur le web."
-        except:
-            return "Le web ne répond pas."
+            self.supabase.table("notifications").insert({
+                "message": f"[{st.session_state.get('user_name')}]: {message}",
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            return "Notification envoyée"
+        except Exception as e:
+            return f"Erreur notif: {e}"
 
-# === UI FLOKI AVEC MICRO ===
+# === UI FLOKI DANS SIDEBAR ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2606,28 +2605,30 @@ with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
 
-    # Champ texte + Micro
-    q = st.text_input("Pose ta question à FLOKI", key="floki_input")
+    q = st.text_input("Pose ta question à FLOKI", key="floki_input", placeholder="Ex: prix du ciment, tomate, stock bas")
 
-    # Bouton micro avec SpeechRecognition JS
+    # Bouton micro pour parler à FLOKI
     st.components.v1.html("""
         <script>
         function startListening() {
             if (!('webkitSpeechRecognition' in window)) {
-                alert("Micro non supporté. Utilise Chrome.");
+                alert("Micro non supporté. Utilise Chrome ou Edge.");
                 return;
             }
             var recognition = new webkitSpeechRecognition();
             recognition.lang = 'fr-FR';
             recognition.onresult = function(event) {
                 var transcript = event.results[0][0].transcript;
-                document.querySelector('input[data-testid="stTextInput"]').value = transcript;
-                document.querySelector('input[data-testid="stTextInput"]').dispatchEvent(new Event('input', { bubbles: true }));
+                let input = window.parent.document.querySelector('input[data-testid=\"stTextInput\"][aria-label=\"Pose ta question à FLOKI\"]');
+                if(input){
+                    input.value = transcript;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             };
             recognition.start();
         }
         </script>
-        <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;">
+        <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
             🎤 Parler à FLOKI
         </button>
     """, height=50)
@@ -2648,7 +2649,6 @@ with st.sidebar:
 
     if 'floki_rep' in st.session_state:
         rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-
         st.components.v1.html(f"""
             <script>
             if ('speechSynthesis' in window) {{
@@ -2660,5 +2660,4 @@ with st.sidebar:
             }}
             </script>
         """, height=0)
-
         st.info(st.session_state.floki_rep)
