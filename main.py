@@ -2510,8 +2510,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                    # ================================================
-# ================================================
+                        # ================================================
 # 👑 FLOKI V6 - MULTI-AGENT + MÉTA-COGNITION
 # ================================================
 
@@ -2526,9 +2525,8 @@ import unicodedata
 from datetime import datetime
 from urllib.parse import quote
 
-# --- Vérifie que supabase et les dfs existent déjà dans ton app ---
-supabase = st.session_state.get("supabase") if "supabase" in st.session_state else None
-
+# --- Récupère tes données existantes ---
+supabase = st.session_state.get("supabase")
 ASYMAS = {
     "BIENS": st.session_state.get("df_biens", pd.DataFrame()),
     "ARTICLES": st.session_state.get("df_articles", pd.DataFrame()),
@@ -2544,275 +2542,270 @@ role_user = st.session_state.get("user_role", "")
 nom_user = st.session_state.get("user_name", "")
 is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-# Crée le placeholder si il n'existe pas
-if "floki_placeholder" not in st.session_state:
-    st.session_state.floki_placeholder = st.empty()
+if not is_pdg:
+    st.stop()
 
-if is_pdg:
-    with st.session_state.floki_placeholder.container():
-        st.caption("🔒 FLOKI V6 - MULTI-AGENT")
+# --- UI FLOKI ---
+st.divider()
+st.subheader("🔒 FLOKI V6 - MULTI-AGENT")
 
-        if "floki_reponse" not in st.session_state:
-            st.session_state.floki_reponse = ""
-        if "floki_memoire_courte" not in st.session_state:
-            st.session_state.floki_memoire_courte = []
+if "floki_reponse" not in st.session_state:
+    st.session_state.floki_reponse = ""
+if "floki_memoire_courte" not in st.session_state:
+    st.session_state.floki_memoire_courte = []
 
-        # ===== UTILS =====
-        def get_colonnes_auto(df):
-            if df.empty: return None, None, None
-            cols_lower = [c.lower().strip() for c in df.columns]
-            col_nom = col_prix = col_stock = None
-            for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name']:
-                for i, col in enumerate(cols_lower):
-                    if pattern in col:
-                        col_nom = df.columns[i]
-                        break
-                if col_nom: break
-            for pattern in ['pu', 'prix_vente', 'prix vente', 'prix', 'price', 'montant', 'prix_unitaire', 'total', 'montant_ttc']:
-                for i, col in enumerate(cols_lower):
-                    if pattern == col or pattern in col:
-                        col_prix = df.columns[i]
-                        break
-                if col_prix: break
-            for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
-                for i, col in enumerate(cols_lower):
-                    if pattern in col:
-                        col_stock = df.columns[i]
-                        break
-                if col_stock: break
-            return col_nom, col_prix, col_stock
+# ===== UTILS =====
+def get_colonnes_auto(df):
+    if df.empty: return None, None, None
+    cols_lower = [c.lower().strip() for c in df.columns]
+    col_nom = col_prix = col_stock = None
+    for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name']:
+        for i, col in enumerate(cols_lower):
+            if pattern in col:
+                col_nom = df.columns[i]
+                break
+        if col_nom: break
+    for pattern in ['pu', 'prix_vente', 'prix vente', 'prix', 'price', 'montant', 'prix_unitaire', 'total', 'montant_ttc']:
+        for i, col in enumerate(cols_lower):
+            if pattern == col or pattern in col:
+                col_prix = df.columns[i]
+                break
+        if col_prix: break
+    for pattern in ['stock', 'qte', 'quantite', 'quantity', 'disponible']:
+        for i, col in enumerate(cols_lower):
+            if pattern in col:
+                col_stock = df.columns[i]
+                break
+        if col_stock: break
+    return col_nom, col_prix, col_stock
 
-        def extraire_article(query):
-            q = query.lower().strip()
-            stop_words = ['trouve', 'le', 'prix', 'de', 'la', 'du', 'des', 'pour', 'moi', 'stock', 'combien', 'quel', 'quelle', 'est', 'sont', 'donne', 'montre', 'cherche', 'facture', 'factures', 'devis', 'vente', 'ventes', 'google', 'web', 'internet']
-            mots = [m for m in re.findall(r'\w+', q) if m not in stop_words and len(m) > 2]
-            return " ".join(mots) if mots else q
+def extraire_article(query):
+    q = query.lower().strip()
+    stop_words = ['trouve', 'le', 'prix', 'de', 'la', 'du', 'des', 'pour', 'moi', 'stock', 'combien', 'quel', 'quelle', 'est', 'sont', 'donne', 'montre', 'cherche', 'facture', 'factures', 'devis', 'vente', 'ventes', 'google', 'web', 'internet']
+    mots = [m for m in re.findall(r'\w+', q) if m not in stop_words and len(m) > 2]
+    return " ".join(mots) if mots else q
 
-        # ===== AGENTS =====
-        class AgentGoogle:
-            def run(self, query):
-                try:
-                    api_key = st.secrets.get("GOOGLE_API_KEY", "")
-                    cse_id = st.secrets.get("GOOGLE_CSE_ID", "")
-                    if not api_key or not cse_id:
-                        return "❌ Clé Google manquante. Mets GOOGLE_API_KEY et GOOGLE_CSE_ID dans secrets"
-                    url = f"https://www.googleapis.com/customsearch/v1?q={quote(query)}&key={api_key}&cx={cse_id}&num=3"
-                    r = requests.get(url, timeout=10)
-                    if r.status_code!= 200:
-                        return f"❌ Erreur Google: {r.status_code}"
-                    items = r.json().get("items", [])
-                    if not items:
-                        return "Aucun résultat web trouvé chef"
-                    resultats = [f"{i.get('title', '')} : {i.get('snippet', '')}" for i in items]
-                    return "🌐 Résultats web : " + " | ".join(resultats)
-                except Exception as e:
-                    return f"❌ Erreur AgentGoogle: {e}"
+# ===== AGENTS =====
+class AgentGoogle:
+    def run(self, query):
+        try:
+            api_key = st.secrets.get("GOOGLE_API_KEY", "")
+            cse_id = st.secrets.get("GOOGLE_CSE_ID", "")
+            if not api_key or not cse_id:
+                return "❌ Mets GOOGLE_API_KEY et GOOGLE_CSE_ID dans secrets Streamlit"
+            url = f"https://www.googleapis.com/customsearch/v1?q={quote(query)}&key={api_key}&cx={cse_id}&num=3"
+            r = requests.get(url, timeout=10)
+            if r.status_code!= 200:
+                return f"❌ Erreur Google: {r.status_code}"
+            items = r.json().get("items", [])
+            if not items:
+                return "Aucun résultat web trouvé chef"
+            resultats = [f"{i.get('title', '')} : {i.get('snippet', '')}" for i in items]
+            return "🌐 Résultats web : " + " | ".join(resultats)
+        except Exception as e:
+            return f"❌ Erreur AgentGoogle: {e}"
 
-        class AgentPrix:
-            def run(self, query):
-                try:
-                    article = extraire_article(query)
-                    if len(article) < 3: return None
-                    resultats = []
-                    for nom_table, df in ASYMAS.items():
-                        if df.empty: continue
-                        col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                        if not col_nom or not col_prix: continue
-                        df_temp = df.copy()
-                        df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
-                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                        mask = df_temp[col_nom].str.contains(r'\b' + re.escape(article) + r'\b', na=False, case=False, regex=True)
-                        df_filtre = df_temp[mask].dropna(subset=[col_prix])
-                        for _, row in df_filtre.iterrows():
-                            nom_article = str(row[col_nom]).title()
-                            prix_article = row[col_prix]
-                            stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
-                            if nom_article.strip() and prix_article > 0:
-                                resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
-                    if resultats:
-                        return f"📦 Stock {article.title()}: " + " | ".join(resultats[:3])
-                    return f"Aucun {article} trouvé dans ASYMAS chef"
-                except Exception as e:
-                    return f"❌ Erreur AgentPrix: {e}"
+class AgentPrix:
+    def run(self, query):
+        try:
+            article = extraire_article(query)
+            if len(article) < 3: return None
+            resultats = []
+            for nom_table, df in ASYMAS.items():
+                if df.empty: continue
+                col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                if not col_nom or not col_prix: continue
+                df_temp = df.copy()
+                df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
+                df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+                mask = df_temp[col_nom].str.contains(re.escape(article), na=False, case=False, regex=True)
+                df_filtre = df_temp[mask].dropna(subset=[col_prix])
+                for _, row in df_filtre.iterrows():
+                    nom_article = str(row[col_nom]).title()
+                    prix_article = row[col_prix]
+                    stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
+                    if nom_article.strip() and prix_article > 0:
+                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
+            if resultats:
+                return f"📦 Stock {article.title()}: " + " | ".join(resultats[:3])
+            return f"Aucun {article} trouvé dans ASYMAS chef"
+        except Exception as e:
+            return f"❌ Erreur AgentPrix: {e}"
 
-        class AgentFacture:
-            def run(self, query):
-                try:
-                    df_f = ASYMAS["FACTURES"]
-                    if df_f.empty: return "Aucune facture trouvée chef"
-                    df_f_num = df_f.select_dtypes(include=['number'])
-                    total = df_f_num.sum().sum() if not df_f_num.empty else 0
-                    return f"🧾 Total factures: {total:.0f}fc sur {len(df_f)} factures"
-                except Exception as e:
-                    return f"❌ Erreur AgentFacture: {e}"
+class AgentFacture:
+    def run(self, query):
+        try:
+            df_f = ASYMAS["FACTURES"]
+            if df_f.empty: return "Aucune facture trouvée chef"
+            df_f_num = df_f.select_dtypes(include=['number'])
+            total = df_f_num.sum().sum() if not df_f_num.empty else 0
+            return f"🧾 Total factures: {total:.0f}fc sur {len(df_f)} factures"
+        except Exception as e:
+            return f"❌ Erreur AgentFacture: {e}"
 
-        class AgentDevis:
-            def run(self, query):
-                try:
-                    df_d = ASYMAS["DEVIS"]
-                    if df_d.empty: return "Aucun devis trouvé chef"
-                    df_d_num = df_d.select_dtypes(include=['number'])
-                    total = df_d_num.sum().sum() if not df_d_num.empty else 0
-                    return f"📄 Total devis: {total:.0f}fc sur {len(df_d)} devis"
-                except Exception as e:
-                    return f"❌ Erreur AgentDevis: {e}"
+class AgentDevis:
+    def run(self, query):
+        try:
+            df_d = ASYMAS["DEVIS"]
+            if df_d.empty: return "Aucun devis trouvé chef"
+            df_d_num = df_d.select_dtypes(include=['number'])
+            total = df_d_num.sum().sum() if not df_d_num.empty else 0
+            return f"📄 Total devis: {total:.0f}fc sur {len(df_d)} devis"
+        except Exception as e:
+            return f"❌ Erreur AgentDevis: {e}"
 
-        class AgentVente:
-            def run(self, query):
-                try:
-                    df_v = ASYMAS["VENTES"]
-                    if not df_v.empty:
-                        if 'created_at' in df_v.columns:
-                            df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
-                            df_v = df_v.sort_values('created_at', ascending=False)
-                        elif 'id' in df_v.columns:
-                            df_v = df_v.sort_values('id', ascending=False)
-                        if not df_v.empty:
-                            last = df_v.iloc[0]
-                            article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
-                            qte = last.get('quantite', last.get('qte', 0))
-                            prix = last.get('prix_unitaire', last.get('total', 0))
-                            vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
-                            return f"💰 Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
-                    return "Aucune vente trouvée chef"
-                except Exception as e:
-                    return f"❌ Erreur AgentVente: {e}"
+class AgentVente:
+    def run(self, query):
+        try:
+            df_v = ASYMAS["VENTES"]
+            if not df_v.empty:
+                if 'created_at' in df_v.columns:
+                    df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
+                    df_v = df_v.sort_values('created_at', ascending=False)
+                elif 'id' in df_v.columns:
+                    df_v = df_v.sort_values('id', ascending=False)
+                if not df_v.empty:
+                    last = df_v.iloc[0]
+                    article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
+                    qte = last.get('quantite', last.get('qte', 0))
+                    prix = last.get('prix_unitaire', last.get('total', 0))
+                    vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
+                    return f"💰 Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
+            return "Aucune vente trouvée chef"
+        except Exception as e:
+            return f"❌ Erreur AgentVente: {e}"
 
-        def save_memoire(texte):
-            try:
-                if supabase:
-                    supabase.table("memoire_floki").insert({
-                        "user": nom_user,
-                        "texte": texte,
-                        "created_at": datetime.now().isoformat()
-                    }).execute()
-            except: pass
+def save_memoire(texte):
+    try:
+        if supabase:
+            supabase.table("memoire_floki").insert({
+                "user": nom_user,
+                "texte": texte,
+                "created_at": datetime.now().isoformat()
+            }).execute()
+    except: pass
 
-        def load_memoire():
-            try:
-                if supabase:
-                    data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
-                    return data.data
-                return []
-            except:
-                return []
+def load_memoire():
+    try:
+        if supabase:
+            data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
+            return data.data
+        return []
+    except:
+        return []
 
-        class AgentMemoire:
-            def run(self, query):
-                if "retient" in query:
-                    texte = query.replace("retient", "").strip()
-                    save_memoire(texte)
-                    st.session_state.floki_memoire_courte.append(texte)
-                    return f"🧠 Mémorisé: {texte}"
-                if "rappelle" in query:
-                    mems = load_memoire() + st.session_state.floki_memoire_courte
-                    if mems:
-                        return "🧠 Mémoire: " + " | ".join([m['texte'] if isinstance(m, dict) else m for m in mems[-5:]])
-                    return "Aucune mémoire chef"
-                return "Mémoire activée"
+class AgentMemoire:
+    def run(self, query):
+        if "retient" in query:
+            texte = query.replace("retient", "").strip()
+            save_memoire(texte)
+            st.session_state.floki_memoire_courte.append(texte)
+            return f"🧠 Mémorisé: {texte}"
+        if "rappelle" in query:
+            mems = load_memoire() + st.session_state.floki_memoire_courte
+            if mems:
+                return "🧠 Mémoire: " + " | ".join([m['texte'] if isinstance(m, dict) else m for m in mems[-5:]])
+            return "Aucune mémoire chef"
+        return "Mémoire activée"
 
-        class AgentMeta:
-            def run(self, query, dernier_agent, derniere_reponse, contexte):
-                try:
-                    intuition = "Tu cherches une info externe" if dernier_agent == "agent_google" else "Tu cherches dans ASYMAS"
-                    signaux = [w for w in query.lower().split() if len(w) > 3]
-                    criteres = "Résultat non vide, source fiable, cohérent avec ASYMAS"
-                    artefacts = f"Requête exécutée, log audit créé, réponse: {derniere_reponse[:100]}..."
-                    limites = "Pas d'accès temps réel à WhatsApp, pas de modification DB sans validation PDG"
-                    next_action = "Vérifier les stocks fournisseurs" if "stock" in query else "Générer rapport PDF" if "facture" in query else "Continuer monitoring"
-                    memoire = f"Session: {len(st.session_state.floki_memoire_courte)} items. Long terme: {len(load_memoire())} items"
-                    autonomie = 2 if dernier_agent in ["agent_prix", "agent_vente"] else 1
-                    controle = "Toute modification DB, envoi WhatsApp, génération facture finale nécessite validation PDG"
-                    return f"""**Analyse FLOKI Meta**
+class AgentMeta:
+    def run(self, query, dernier_agent, derniere_reponse):
+        try:
+            intuition = "Info externe" if "google" in dernier_agent else "Recherche ASYMAS"
+            signaux = [w for w in query.lower().split() if len(w) > 3]
+            return f"""**Analyse FLOKI Meta**
 **Intuition**: {intuition}
 **Signaux**: {', '.join(signaux[:5])}
-**Critères**: {criteres}
-**Limites**: {limites}
-**Next action**: {next_action}
-**Mémoire**: {memoire}
-**Autonomie**: {autonomie}/3"""
-                except Exception as e:
-                    return f"❌ Erreur AgentMeta: {e}"
+**Agent utilisé**: {dernier_agent}
+**Limites**: Pas de modif DB sans validation PDG
+**Mémoire**: Session {len(st.session_state.floki_memoire_courte)} | Long terme {len(load_memoire())}"""
+        except Exception as e:
+            return f"❌ Erreur AgentMeta: {e}"
 
-        # ===== ROUTAGE =====
-        def floki_routeur(query):
-            q = query.lower()
-            if any(x in q for x in ['google', 'web', 'internet', 'recherche web']):
-                return "agent_google", q
-            if any(x in q for x in ['facture', 'factures']):
-                return "agent_facture", q
-            if any(x in q for x in ['devis', 'devises']):
-                return "agent_devis", q
-            if any(x in q for x in ['dernier', 'vendu', 'vente']):
-                return "agent_vente", q
-            if any(x in q for x in ['retient', 'rappelle', 'mémoire']):
-                return "agent_memoire", q
-            if any(x in q for x in ['analyse', 'meta', 'pourquoi', 'comment tu as fait']):
-                return "agent_meta", q
-            return "agent_prix", q
+# ===== ROUTAGE AVEC FALLBACK =====
+def floki_operator(query):
+    q = query.lower().strip()
 
-        def log_audit(agent, input_q, output_r):
-            try:
-                if supabase:
-                    supabase.table("audit_floki").insert({
-                        "user": nom_user,
-                        "agent": agent,
-                        "input": input_q[:500],
-                        "output": output_r[:500],
-                        "timestamp": datetime.now().isoformat()
-                    }).execute()
-            except: pass
+    # Ordres internes directs
+    if any(x in q for x in ['retient', 'rappelle', 'mémoire']):
+        agent_name = "agent_memoire"
+        reponse = AgentMemoire().run(q)
+    elif any(x in q for x in ['analyse', 'meta', 'pourquoi', 'comment tu as fait']):
+        agent_name = "agent_meta"
+        reponse = AgentMeta().run(q, "direct", "")
+    elif any(x in q for x in ['facture', 'factures']):
+        agent_name = "agent_facture"
+        reponse = AgentFacture().run(q)
+    elif any(x in q for x in ['devis', 'devises']):
+        agent_name = "agent_devis"
+        reponse = AgentDevis().run(q)
+    elif any(x in q for x in ['dernier', 'vendu', 'vente']):
+        agent_name = "agent_vente"
+        reponse = AgentVente().run(q)
 
-        def floki_operator(query):
-            agent_name, clean_query = floki_routeur(query)
-            agents = {
-                "agent_google": AgentGoogle(),
-                "agent_prix": AgentPrix(),
-                "agent_facture": AgentFacture(),
-                "agent_devis": AgentDevis(),
-                "agent_vente": AgentVente(),
-                "agent_memoire": AgentMemoire(),
-                "agent_meta": AgentMeta()
-            }
-            agent = agents.get(agent_name, AgentPrix())
-            reponse = agent.run(clean_query)
-            if agent_name!= "agent_meta":
-                meta = AgentMeta().run(query, agent_name, reponse, st.session_state.floki_memoire_courte)
-                reponse = reponse + "\n\n" + meta
-            log_audit(agent_name, query, reponse)
-            return reponse
+    # Recherche ASYMAS d'abord
+    else:
+        agent_name = "agent_prix"
+        reponse = AgentPrix().run(q)
 
-        # ===== UI =====
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef... tape 'google prix ciment'", key="floki_v6", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_v6", label_visibility="collapsed")
+        # Si rien trouvé dans ASYMAS, fallback auto vers Google
+        if reponse and "Aucun" in reponse and "trouvé dans ASYMAS" in reponse:
+            if not any(x in q for x in ['google', 'web', 'internet']):
+                reponse_google = AgentGoogle().run(q)
+                reponse = f"{reponse}\n\n{reponse_google}"
+                agent_name = "agent_prix + agent_google"
 
-        if audio:
-            try:
-                if len(audio.getvalue()) > 800:
-                    files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
-                    headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
-                    data = {"model": "whisper-large-v3", "language": "fr"}
-                    with st.spinner("🎤"):
-                        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
-                    if r.status_code == 200:
-                        prompt = r.json().get("text", "").strip()
-            except: pass
+    # Analyse Meta finale
+    if agent_name not in ["agent_meta", "agent_memoire"]:
+        meta = AgentMeta().run(query, agent_name, reponse)
+        reponse = reponse + "\n\n" + meta
 
-        if prompt:
-            reponse = floki_operator(prompt.strip())
-            txt_voice = unicodedata.normalize('NFKD', reponse).encode('ASCII', 'ignore').decode('ASCII')
-            txt_voice = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', txt_voice)
-            txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
-            b64 = base64.b64encode(txt_voice.encode()).decode()
-            components.html(f"""
-                <script>
-                window.speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(atob('{b64}'));
-                u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
-                window.speechSynthesis.speak(u);
-                </script>
-            """, height=0)
-            st.session_state.floki_reponse = reponse
+    # Log audit
+    try:
+        if supabase:
+            supabase.table("audit_floki").insert({
+                "user": nom_user,
+                "agent": agent_name,
+                "input": query[:500],
+                "output": reponse[:500],
+                "timestamp": datetime.now().isoformat()
+            }).execute()
+    except: pass
 
-        if st.session_state.get("floki_reponse"):
-            st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
+    return reponse
+
+# ===== CHAT UI =====
+prompt = st.text_input("", placeholder="Parlez à FLOKI chef... 'prix ciment' ou 'google prix ciment'", key="floki_v6", label_visibility="collapsed")
+audio = st.audio_input("", key="floki_audio_v6", label_visibility="collapsed")
+
+if audio:
+    try:
+        if len(audio.getvalue()) > 800:
+            files = {"file": ("audio.wav", audio.getvalue(), "audio/wav")}
+            headers = {"Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"}
+            data = {"model": "whisper-large-v3", "language": "fr"}
+            with st.spinner("🎤"):
+                r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, data=data, timeout=15)
+            if r.status_code == 200:
+                prompt = r.json().get("text", "").strip()
+    except: pass
+
+if prompt:
+    reponse = floki_operator(prompt.strip())
+    # Voix
+    txt_voice = unicodedata.normalize('NFKD', reponse).encode('ASCII', 'ignore').decode('ASCII')
+    txt_voice = re.sub(r'[^a-zA-Z0-9\s.,?!:-]', ' ', txt_voice)
+    txt_voice = txt_voice.replace("'", "\\'").replace('"', '\\"')
+    b64 = base64.b64encode(txt_voice.encode()).decode()
+    components.html(f"""
+        <script>
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(atob('{b64}'));
+        u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 0.9; u.volume = 1.0;
+        window.speechSynthesis.speak(u);
+        </script>
+    """, height=0)
+    st.session_state.floki_reponse = reponse
+
+if st.session_state.get("floki_reponse"):
+    st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
