@@ -2503,10 +2503,12 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI AGENT COMPLET ===
+# === FLOKI AGENT COMPLET ===
 import requests
 import json
 from datetime import datetime
+import tempfile
+import os
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2521,7 +2523,7 @@ class FLOKI:
             "time": datetime.now().isoformat(),
             "user": st.session_state.get("user_name"),
             "action": action,
-            "detail": detail[:200]
+            "detail": str(detail)[:200]
         }
         self.audit_log.append(entry)
     
@@ -2529,17 +2531,15 @@ class FLOKI:
         question = question.strip()
         self.log("ASK", question)
         
-        reponse_asymas = self._search_asymas(question)
-        
-        if reponse_asymas.startswith("Je n'ai rien trouvé"):
-            reponse_web = self._search_web(question)
-            reponse = f"{reponse_web}\n\nSource: Web"
+        rep = self._search_asymas(question)
+        if rep.startswith("Je n'ai rien trouvé"):
+            rep = self._search_web(question) + "\n\nSource: Web"
         else:
-            reponse = f"{reponse_asymas}\n\nSource: ASYMAS"
+            rep = rep + "\n\nSource: ASYMAS"
         
-        reponse = self._humanize(reponse)
-        self.log("REPLY", reponse[:200])
-        return reponse
+        rep = self._humanize(rep)
+        self.log("REPLY", rep[:200])
+        return rep
     
     def _search_asymas(self, q):
         q = q.lower()
@@ -2550,14 +2550,14 @@ class FLOKI:
                 low = df['articles'][df['articles']['stock'] < 5]
                 if not low.empty:
                     txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-                    return f"Attention, j'ai détecté du stock bas :\n{txt}"
-                return f"Tout va bien côté stock. On a {len(df['articles'])} articles en base."
+                    return f"Attention, stock bas détecté :\n{txt}"
+                return f"Stock OK. {len(df['articles'])} articles en base."
         
         if any(k in q for k in ["revenu", "ca", "chiffre"]):
             if not df['compta'].empty:
                 rev = df['compta'][df['compta']['type'] == 'Revenu']['montant'].sum()
                 dep = df['compta'][df['compta']['type'] == 'Dépense']['montant'].sum()
-                return f"Voilà le point : revenus {rev:,.0f} FC, dépenses {dep:,.0f} FC, solde {rev-dep:,.0f} FC."
+                return f"Revenus {rev:,.0f} FC, Dépenses {dep:,.0f} FC, Solde {rev-dep:,.0f} FC."
         
         return "Je n'ai rien trouvé dans ASYMAS pour ça."
     
@@ -2567,38 +2567,43 @@ class FLOKI:
             r = requests.get(url, timeout=5)
             data = r.json()
             if data.get('AbstractText'):
-                return f"Sur le web j'ai trouvé : {data['AbstractText']}"
-            return "Je n'ai rien trouvé de clair sur le web."
+                return f"Sur le web : {data['AbstractText']}"
+            return "Je n'ai rien trouvé sur le web."
         except:
-            return "Le web ne répond pas pour l'instant."
+            return "Le web ne répond pas."
     
     def _humanize(self, text):
         text = text.replace("En tant qu'IA", "").replace("Je suis un modèle", "")
         return text.strip()
     
-    def notify_internal(self, message, target="all"):
-        """Envoi notification - CORRIGÉ : pas de colonne sender"""
-        self.log("NOTIFY_INTERNAL", f"{target}: {message}")
+    def notify_internal(self, message):
+        """CORRIGÉ pour ton schéma: seulement message et created_at"""
+        self.log("NOTIFY_INTERNAL", message)
         try:
-            # Vérifie les colonnes que tu as dans Supabase
             self.supabase.table("notifications").insert({
-                "message": message,
-                "target": target,
+                "message": f"[{st.session_state.get('user_name')}]: {message}",
                 "created_at": datetime.now().isoformat()
             }).execute()
-            return f"Notification envoyée à {target}"
+            return "Notification envoyée à tout le monde"
         except Exception as e:
             return f"Erreur envoi notif: {e}"
     
+    def draft_letter(self, type_doc, client, motif):
+        templates = {
+            "relance": f"Objet: Relance\nM./Mme {client},\n\nLa facture concernant {motif} est impayée. Merci de régulariser sous 7 jours.\n\nASYMAS BUSINESS",
+            "convocation": f"Objet: Convocation\nM./Mme {client},\n\nConvocation le {datetime.now().strftime('%d/%m/%Y')} pour {motif}.\n\nASYMAS BUSINESS"
+        }
+        return templates.get(type_doc, f"{type_doc} pour {client}: {motif}")
+    
     def speak(self, text):
-        """FLOKI parle : génère audio TTS"""
+        """FLOKI parle avec gTTS"""
         try:
-            # Utilise gTTS ou l'API TTS de Streamlit
             from gtts import gTTS
             tts = gTTS(text=text, lang='fr')
-            tts.save("floki.mp3")
-            return "floki.mp3"
-        except:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+            tts.save(tmp.name)
+            return tmp.name
+        except Exception as e:
             return None
 
 # === UI FLOKI ===
@@ -2615,27 +2620,33 @@ with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
     
-    mode = st.selectbox("Mode", ["Question", "Notification", "WhatsApp"], key="floki_mode")
+    mode = st.selectbox("Mode", ["Question", "Rédaction", "Notification"], key="floki_mode")
     
     if mode == "Question":
-        q = st.text_input("Question", placeholder="Ex: Stock bas ?")
+        q = st.text_input("Question", placeholder="Ex: Stock bas ? CA ?")
         if st.button("Lancer FLOKI"):
             if q:
-                with st.spinner("FLOKI réfléchit..."):
+                with st.spinner("FLOKI analyse..."):
                     rep = st.session_state.floki.ask(q)
                     st.session_state.floki_rep = rep
-                    # Faire parler FLOKI
-                    audio_file = st.session_state.floki.speak(rep)
-                    if audio_file:
-                        st.audio(audio_file, autoplay=True)
+                    # Voix
+                    audio = st.session_state.floki.speak(rep)
+                    if audio:
+                        st.audio(audio, autoplay=True)
+    
+    elif mode == "Rédaction":
+        t = st.selectbox("Type", ["relance", "convocation"])
+        c = st.text_input("Client/Nom")
+        m = st.text_input("Motif")
+        if st.button("Générer"):
+            rep = st.session_state.floki.draft_letter(t, c, m)
+            st.session_state.floki_rep = rep
     
     elif mode == "Notification":
-        msg = st.text_input("Message interne")
-        tgt = st.text_input("Destinataire", value="all")
+        msg = st.text_area("Message interne")
         if st.button("Envoyer notif"):
-            rep = st.session_state.floki.notify_internal(msg, tgt)
+            rep = st.session_state.floki.notify_internal(msg)
             st.session_state.floki_rep = rep
-            st.success(rep)
     
     if 'floki_rep' in st.session_state:
         st.info(st.session_state.floki_rep)
