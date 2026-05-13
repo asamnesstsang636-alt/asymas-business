@@ -2515,19 +2515,40 @@ if "👥 Utilisateurs" in tab_map:
 # 👑 FLOKI V6 - MULTI-AGENT + MÉTA-COGNITION
 # ================================================
 
-from urllib.parse import quote
+import streamlit as st
+import pandas as pd
+import json
 import re
 import base64
 import requests
 import streamlit.components.v1 as components
 import unicodedata
 from datetime import datetime
+from urllib.parse import quote
+
+# --- Vérifie que supabase et les dfs existent déjà dans ton app ---
+supabase = st.session_state.get("supabase") if "supabase" in st.session_state else None
+
+ASYMAS = {
+    "BIENS": st.session_state.get("df_biens", pd.DataFrame()),
+    "ARTICLES": st.session_state.get("df_articles", pd.DataFrame()),
+    "VOITURES": st.session_state.get("df_voitures", pd.DataFrame()),
+    "COMPTA": st.session_state.get("df_compta", pd.DataFrame()),
+    "FACTURES": st.session_state.get("df_factures", pd.DataFrame()),
+    "DEVIS": st.session_state.get("df_devis", pd.DataFrame()),
+    "UTILISATEURS": st.session_state.get("df_utilisateurs", pd.DataFrame()),
+    "VENTES": pd.DataFrame(supabase.table("ventes").select("*").execute().data) if supabase else pd.DataFrame()
+}
 
 role_user = st.session_state.get("user_role", "")
 nom_user = st.session_state.get("user_name", "")
 is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 
-if is_pdg and 'floki_placeholder' in st.session_state:
+# Crée le placeholder si il n'existe pas
+if "floki_placeholder" not in st.session_state:
+    st.session_state.floki_placeholder = st.empty()
+
+if is_pdg:
     with st.session_state.floki_placeholder.container():
         st.caption("🔒 FLOKI V6 - MULTI-AGENT")
 
@@ -2536,20 +2557,9 @@ if is_pdg and 'floki_placeholder' in st.session_state:
         if "floki_memoire_courte" not in st.session_state:
             st.session_state.floki_memoire_courte = []
 
-        # ===== CHARGEMENT ASYMAS =====
-        ASYMAS = {
-            "BIENS": df_biens if 'df_biens' in locals() else pd.DataFrame(),
-            "ARTICLES": df_articles if 'df_articles' in locals() else pd.DataFrame(),
-            "VOITURES": df_voitures if 'df_voitures' in locals() else pd.DataFrame(),
-            "COMPTA": df_compta if 'df_compta' in locals() else pd.DataFrame(),
-            "FACTURES": df_factures if 'df_factures' in locals() else pd.DataFrame(),
-            "DEVIS": df_devis if 'df_devis' in locals() else pd.DataFrame(),
-            "UTILISATEURS": df_utilisateurs if 'df_utilisateurs' in locals() else pd.DataFrame(),
-            "VENTES": pd.DataFrame(supabase.table("ventes").select("*").execute().data) if 'supabase' in locals() else pd.DataFrame()
-        }
-
         # ===== UTILS =====
         def get_colonnes_auto(df):
+            if df.empty: return None, None, None
             cols_lower = [c.lower().strip() for c in df.columns]
             col_nom = col_prix = col_stock = None
             for pattern in ['nom', 'designation', 'libelle', 'article', 'produit', 'intitule', 'name']:
@@ -2578,35 +2588,26 @@ if is_pdg and 'floki_placeholder' in st.session_state:
             mots = [m for m in re.findall(r'\w+', q) if m not in stop_words and len(m) > 2]
             return " ".join(mots) if mots else q
 
-        # ===== AGENT GOOGLE =====
+        # ===== AGENTS =====
         class AgentGoogle:
             def run(self, query):
                 try:
                     api_key = st.secrets.get("GOOGLE_API_KEY", "")
                     cse_id = st.secrets.get("GOOGLE_CSE_ID", "")
-                    if not api_key or not api_key:
-                        return "Clé Google manquante. Mets GOOGLE_API_KEY et GOOGLE_CSE_ID dans secrets"
-
+                    if not api_key or not cse_id:
+                        return "❌ Clé Google manquante. Mets GOOGLE_API_KEY et GOOGLE_CSE_ID dans secrets"
                     url = f"https://www.googleapis.com/customsearch/v1?q={quote(query)}&key={api_key}&cx={cse_id}&num=3"
                     r = requests.get(url, timeout=10)
                     if r.status_code!= 200:
-                        return f"Erreur Google: {r.status_code}"
-
+                        return f"❌ Erreur Google: {r.status_code}"
                     items = r.json().get("items", [])
                     if not items:
                         return "Aucun résultat web trouvé chef"
-
-                    resultats = []
-                    for item in items:
-                        title = item.get("title", "")
-                        snippet = item.get("snippet", "")
-                        resultats.append(f"{title} : {snippet}")
-
-                    return "Résultats web : " + " | ".join(resultats)
+                    resultats = [f"{i.get('title', '')} : {i.get('snippet', '')}" for i in items]
+                    return "🌐 Résultats web : " + " | ".join(resultats)
                 except Exception as e:
-                    return f"Erreur AgentGoogle: {e}"
+                    return f"❌ Erreur AgentGoogle: {e}"
 
-        # ===== AGENT PRIX =====
         class AgentPrix:
             def run(self, query):
                 try:
@@ -2622,19 +2623,18 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                         df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
                         mask = df_temp[col_nom].str.contains(r'\b' + re.escape(article) + r'\b', na=False, case=False, regex=True)
                         df_filtre = df_temp[mask].dropna(subset=[col_prix])
-                        for idx, row in df_filtre.iterrows():
+                        for _, row in df_filtre.iterrows():
                             nom_article = str(row[col_nom]).title()
                             prix_article = row[col_prix]
                             stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
                             if nom_article.strip() and prix_article > 0:
                                 resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
                     if resultats:
-                        return f"Stock {article.title()}: " + " | ".join(resultats[:3])
+                        return f"📦 Stock {article.title()}: " + " | ".join(resultats[:3])
                     return f"Aucun {article} trouvé dans ASYMAS chef"
                 except Exception as e:
-                    return f"Erreur AgentPrix: {e}"
+                    return f"❌ Erreur AgentPrix: {e}"
 
-        # ===== AGENT FACTURE =====
         class AgentFacture:
             def run(self, query):
                 try:
@@ -2642,11 +2642,10 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                     if df_f.empty: return "Aucune facture trouvée chef"
                     df_f_num = df_f.select_dtypes(include=['number'])
                     total = df_f_num.sum().sum() if not df_f_num.empty else 0
-                    return f"Total factures: {total:.0f}fc sur {len(df_f)} factures"
+                    return f"🧾 Total factures: {total:.0f}fc sur {len(df_f)} factures"
                 except Exception as e:
-                    return f"Erreur AgentFacture: {e}"
+                    return f"❌ Erreur AgentFacture: {e}"
 
-        # ===== AGENT DEVIS =====
         class AgentDevis:
             def run(self, query):
                 try:
@@ -2654,11 +2653,10 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                     if df_d.empty: return "Aucun devis trouvé chef"
                     df_d_num = df_d.select_dtypes(include=['number'])
                     total = df_d_num.sum().sum() if not df_d_num.empty else 0
-                    return f"Total devis: {total:.0f}fc sur {len(df_d)} devis"
+                    return f"📄 Total devis: {total:.0f}fc sur {len(df_d)} devis"
                 except Exception as e:
-                    return f"Erreur AgentDevis: {e}"
+                    return f"❌ Erreur AgentDevis: {e}"
 
-        # ===== AGENT VENTE =====
         class AgentVente:
             def run(self, query):
                 try:
@@ -2675,25 +2673,27 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                             qte = last.get('quantite', last.get('qte', 0))
                             prix = last.get('prix_unitaire', last.get('total', 0))
                             vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
-                            return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
+                            return f"💰 Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
                     return "Aucune vente trouvée chef"
                 except Exception as e:
-                    return f"Erreur AgentVente: {e}"
+                    return f"❌ Erreur AgentVente: {e}"
 
-        # ===== AGENT MÉMOIRE =====
         def save_memoire(texte):
             try:
-                supabase.table("memoire_floki").insert({
-                    "user": nom_user,
-                    "texte": texte,
-                    "created_at": datetime.now().isoformat()
-                }).execute()
+                if supabase:
+                    supabase.table("memoire_floki").insert({
+                        "user": nom_user,
+                        "texte": texte,
+                        "created_at": datetime.now().isoformat()
+                    }).execute()
             except: pass
 
         def load_memoire():
             try:
-                data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
-                return data.data
+                if supabase:
+                    data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
+                    return data.data
+                return []
             except:
                 return []
 
@@ -2703,62 +2703,38 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                     texte = query.replace("retient", "").strip()
                     save_memoire(texte)
                     st.session_state.floki_memoire_courte.append(texte)
-                    return f"Mémorisé: {texte}"
+                    return f"🧠 Mémorisé: {texte}"
                 if "rappelle" in query:
                     mems = load_memoire() + st.session_state.floki_memoire_courte
                     if mems:
-                        return "Mémoire: " + " | ".join([m['texte'] if isinstance(m, dict) else m for m in mems[-5:]])
+                        return "🧠 Mémoire: " + " | ".join([m['texte'] if isinstance(m, dict) else m for m in mems[-5:]])
                     return "Aucune mémoire chef"
                 return "Mémoire activée"
 
-        # ===== AGENT META - COEUR DE L'AUTO-GROWTH =====
         class AgentMeta:
             def run(self, query, dernier_agent, derniere_reponse, contexte):
-                """
-                Donne : intuitions, signaux, critères, artefacts, limites, next action, mémoire, autonomie, contrôle humain
-                """
                 try:
-                    # Intuitions : ce que FLOKI pense du problème
                     intuition = "Tu cherches une info externe" if dernier_agent == "agent_google" else "Tu cherches dans ASYMAS"
-
-                    # Signaux : ce qui a déclenché le choix d'agent
                     signaux = [w for w in query.lower().split() if len(w) > 3]
-
-                    # Critères : ce qui définit une bonne réponse
                     criteres = "Résultat non vide, source fiable, cohérent avec ASYMAS"
-
-                    # Artefacts : preuves générées
-                    artefacts = f"Requête SQL/Supabase exécutée, log audit créé, réponse: {derniere_reponse[:100]}..."
-
-                    # Limites : ce que FLOKI ne peut pas faire maintenant
+                    artefacts = f"Requête exécutée, log audit créé, réponse: {derniere_reponse[:100]}..."
                     limites = "Pas d'accès temps réel à WhatsApp, pas de modification DB sans validation PDG"
-
-                    # Next action : ce que FLOKI propose de faire ensuite
                     next_action = "Vérifier les stocks fournisseurs" if "stock" in query else "Générer rapport PDF" if "facture" in query else "Continuer monitoring"
-
-                    # Mémoire : ce qui est retenu
                     memoire = f"Session: {len(st.session_state.floki_memoire_courte)} items. Long terme: {len(load_memoire())} items"
-
-                    # Niveau d'autonomie : 0=manuel, 1=suggestion, 2=auto avec confirmation, 3=auto complet
                     autonomie = 2 if dernier_agent in ["agent_prix", "agent_vente"] else 1
-
-                    # Contrôle humain : ce qui nécessite ton accord
                     controle = "Toute modification DB, envoi WhatsApp, génération facture finale nécessite validation PDG"
-
                     return f"""**Analyse FLOKI Meta**
 **Intuition**: {intuition}
-**Signaux détectés**: {', '.join(signaux[:5])}
-**Critères qualité**: {criteres}
-**Artefacts produits**: {artefacts}
-**Limites actuelles**: {limites}
-**Next action proposée**: {next_action}
+**Signaux**: {', '.join(signaux[:5])}
+**Critères**: {criteres}
+**Limites**: {limites}
+**Next action**: {next_action}
 **Mémoire**: {memoire}
-**Niveau autonomie**: {autonomie}/3
-**Contrôle humain requis**: {controle}"""
+**Autonomie**: {autonomie}/3"""
                 except Exception as e:
-                    return f"Erreur AgentMeta: {e}"
+                    return f"❌ Erreur AgentMeta: {e}"
 
-        # ===== ROUTAGE V6 =====
+        # ===== ROUTAGE =====
         def floki_routeur(query):
             q = query.lower()
             if any(x in q for x in ['google', 'web', 'internet', 'recherche web']):
@@ -2775,19 +2751,18 @@ if is_pdg and 'floki_placeholder' in st.session_state:
                 return "agent_meta", q
             return "agent_prix", q
 
-        # ===== AUDIT =====
         def log_audit(agent, input_q, output_r):
             try:
-                supabase.table("audit_floki").insert({
-                    "user": nom_user,
-                    "agent": agent,
-                    "input": input_q[:500],
-                    "output": output_r[:500],
-                    "timestamp": datetime.now().isoformat()
-                }).execute()
+                if supabase:
+                    supabase.table("audit_floki").insert({
+                        "user": nom_user,
+                        "agent": agent,
+                        "input": input_q[:500],
+                        "output": output_r[:500],
+                        "timestamp": datetime.now().isoformat()
+                    }).execute()
             except: pass
 
-        # ===== OPERATOR FLOW =====
         def floki_operator(query):
             agent_name, clean_query = floki_routeur(query)
             agents = {
@@ -2801,17 +2776,14 @@ if is_pdg and 'floki_placeholder' in st.session_state:
             }
             agent = agents.get(agent_name, AgentPrix())
             reponse = agent.run(clean_query)
-
-            # Si c'est pas Meta, on lance Meta après pour l'analyse
             if agent_name!= "agent_meta":
                 meta = AgentMeta().run(query, agent_name, reponse, st.session_state.floki_memoire_courte)
                 reponse = reponse + "\n\n" + meta
-
             log_audit(agent_name, query, reponse)
             return reponse
 
-        # ===== COCKPIT =====
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef... tape 'google prix ciment' pour le web", key="floki_v6", label_visibility="collapsed")
+        # ===== UI =====
+        prompt = st.text_input("", placeholder="Parlez à FLOKI chef... tape 'google prix ciment'", key="floki_v6", label_visibility="collapsed")
         audio = st.audio_input("", key="floki_audio_v6", label_visibility="collapsed")
 
         if audio:
