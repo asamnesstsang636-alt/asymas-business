@@ -571,8 +571,8 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-    # PLACEHOLDER FLOKI - AFFICHAGE ICI
-    floki_placeholder = st.empty()
+# PLACEHOLDER FLOKI V4
+floki_placeholder = st.empty()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
@@ -2506,13 +2506,18 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                        # 👑 FLOKI V33 - CODE À LA FIN MAIS AFFICHAGE À GAUCHE
+                        # ================================================
+# 👑 FLOKI V4 - ARCHITECTURE 9 COUCHES
+# À COLLER EN LIGNE 3099
+# ================================================
+
 from urllib.parse import quote
 import re
 import base64
 import requests
 import streamlit.components.v1 as components
 import unicodedata
+from datetime import datetime
 
 role_user = st.session_state.get("user_role", "")
 nom_user = st.session_state.get("user_name", "")
@@ -2521,12 +2526,47 @@ is_pdg = role_user.upper() == "PDG" or nom_user.upper() == "PDG"
 if is_pdg and 'floki_placeholder' in locals():
     with floki_placeholder.container():
         st.divider()
-        st.caption("🔒 FLOKI LIVE")
+        st.caption("🔒 FLOKI V4 - COCKPIT")
 
         if "floki_reponse" not in st.session_state:
             st.session_state.floki_reponse = ""
 
-        # FLOKI VOIT TOUT - 3000 LIGNES
+        # ===== COUCHE 1 : COCKPIT =====
+        def floki_cockpit():
+            prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_v4", label_visibility="collapsed")
+            audio = st.audio_input("", key="floki_audio_v4", label_visibility="collapsed")
+            return prompt, audio
+
+        # ===== COUCHE 4 : MÉMOIRE =====
+        def save_memoire(texte):
+            try:
+                supabase.table("memoire_floki").insert({
+                    "user": nom_user,
+                    "texte": texte,
+                    "created_at": datetime.now().isoformat()
+                }).execute()
+            except: pass
+
+        def load_memoire():
+            try:
+                data = supabase.table("memoire_floki").select("*").eq("user", nom_user).order("created_at", desc=True).limit(10).execute()
+                return data.data
+            except:
+                return []
+
+        # ===== COUCHE 7 : AUDIT =====
+        def log_audit(agent, input_q, output_r):
+            try:
+                supabase.table("audit_floki").insert({
+                    "user": nom_user,
+                    "agent": agent,
+                    "input": input_q[:500],
+                    "output": output_r[:500],
+                    "timestamp": datetime.now().isoformat()
+                }).execute()
+            except: pass
+
+        # ===== COUCHE 4 : CHARGEMENT ASYMAS 3000 LIGNES =====
         ASYMAS = {
             "BIENS": df_biens if 'df_biens' in locals() else pd.DataFrame(),
             "ARTICLES": df_articles if 'df_articles' in locals() else pd.DataFrame(),
@@ -2535,11 +2575,10 @@ if is_pdg and 'floki_placeholder' in locals():
             "FACTURES": df_factures if 'df_factures' in locals() else pd.DataFrame(),
             "DEVIS": df_devis if 'df_devis' in locals() else pd.DataFrame(),
             "UTILISATEURS": df_utilisateurs if 'df_utilisateurs' in locals() else pd.DataFrame(),
-            "VENTES": supabase.table("ventes").select("*").execute().data if 'supabase' in locals() else []
+            "VENTES": pd.DataFrame(supabase.table("ventes").select("*").execute().data) if 'supabase' in locals() else pd.DataFrame()
         }
-        ASYMAS["VENTES"] = pd.DataFrame(ASYMAS["VENTES"])
 
-        # AUTO-DÉTECTION COLONNES
+        # ===== COUCHE 3 : AGENT UTILITAIRES =====
         def get_colonnes_auto(df):
             cols_lower = [c.lower().strip() for c in df.columns]
             col_nom = col_prix = col_stock = None
@@ -2563,66 +2602,109 @@ if is_pdg and 'floki_placeholder' in locals():
                 if col_stock: break
             return col_nom, col_prix, col_stock
 
-        # CHERCHE DANS TOUT ASYMAS
-        def chercher_asymas_live(nom_recherche):
-            try:
-                resultats = []
-                nom_recherche = nom_recherche.lower().strip()
-                for nom_table, df in ASYMAS.items():
-                    if df.empty: continue
-                    col_nom, col_prix, col_stock = get_colonnes_auto(df)
-                    if not col_nom or not col_prix: continue
-                    df_temp = df.copy()
-                    df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
-                    df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
-                    mask = df_temp[col_nom].str.contains(nom_recherche, na=False, case=False)
-                    df_filtre = df_temp.dropna(subset=[col_prix])
-                    for idx, row in df_filtre.iterrows():
-                        nom_article = str(row[col_nom]).title()
-                        prix_article = row[col_prix]
-                        stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
-                        resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
-                if resultats:
-                    return f"Trouvé: " + " | ".join(resultats[:3])
-                else:
-                    return f"Aucun {nom_recherche} trouvé chef"
-            except:
-                return "Erreur recherche chef"
+        # ===== COUCHE 3 : AGENT PRIX =====
+        class AgentPrix:
+            def run(self, query):
+                try:
+                    query = query.lower().strip()
+                    resultats = []
+                    for nom_table, df in ASYMAS.items():
+                        if df.empty: continue
+                        col_nom, col_prix, col_stock = get_colonnes_auto(df)
+                        if not col_nom or not col_prix: continue
 
-        # DERNIÈRE VENTE
-        def get_derniere_vente():
-            try:
-                df_v = ASYMAS["VENTES"]
-                if not df_v.empty:
-                    if 'created_at' in df_v.columns:
-                        df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
-                        df_v = df_v.sort_values('created_at', ascending=False)
-                    elif 'id' in df_v.columns:
-                        df_v = df_v.sort_values('id', ascending=False)
+                        df_temp = df.copy()
+                        df_temp[col_nom] = df_temp[col_nom].astype(str).str.lower().str.strip()
+                        df_temp[col_prix] = pd.to_numeric(df_temp[col_prix], errors='coerce')
+
+                        mask = df_temp[col_nom].str.contains(query, na=False, case=False)
+                        df_filtre = df_temp.dropna(subset=[col_prix])
+
+                        for idx, row in df_filtre.iterrows():
+                            nom_article = str(row[col_nom]).title()
+                            prix_article = row[col_prix]
+                            stock = row[col_stock] if col_stock and col_stock in df.columns else "N/A"
+                            if nom_article and str(nom_article).strip() and prix_article > 0:
+                                resultats.append(f"{nom_article} - {prix_article:.0f}fc - Stock:{stock}")
+
+                    if resultats:
+                        return f"Trouvé: " + " | ".join(resultats[:3])
+                    return f"Aucun {query} trouvé chef"
+                except Exception as e:
+                    return f"Erreur AgentPrix: {e}"
+
+        # ===== COUCHE 3 : AGENT VENTE =====
+        class AgentVente:
+            def run(self, query):
+                try:
+                    df_v = ASYMAS["VENTES"]
                     if not df_v.empty:
-                        last = df_v.iloc[0]
-                        article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
-                        qte = last.get('quantite', last.get('qte', 0))
-                        prix = last.get('prix_unitaire', last.get('total', 0))
-                        vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
-                        return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
-                return "Aucune vente trouvée chef"
-            except:
-                return "Erreur lecture ventes chef"
+                        if 'created_at' in df_v.columns:
+                            df_v['created_at'] = pd.to_datetime(df_v['created_at'], errors='coerce')
+                            df_v = df_v.sort_values('created_at', ascending=False)
+                        elif 'id' in df_v.columns:
+                            df_v = df_v.sort_values('id', ascending=False)
+                        if not df_v.empty:
+                            last = df_v.iloc[0]
+                            article = last.get('article_nom', last.get('nom_article', 'Article inconnu'))
+                            qte = last.get('quantite', last.get('qte', 0))
+                            prix = last.get('prix_unitaire', last.get('total', 0))
+                            vendeur = last.get('vendeur', last.get('utilisateur', 'Inconnu'))
+                            return f"Dernière vente: {article} x{qte} - {prix:.0f}fc - Vendeur: {vendeur}"
+                    return "Aucune vente trouvée chef"
+                except Exception as e:
+                    return f"Erreur AgentVente: {e}"
 
-        # ROUTEUR
-        def get_asymas_data(query):
+        # ===== COUCHE 3 : AGENT SALUT =====
+        class AgentSalut:
+            def run(self, query):
+                return "Bjr chef, ca va? Quel service pour toi aujourd'hui?"
+
+        # ===== COUCHE 3 : AGENT MÉMOIRE =====
+        class AgentMemoire:
+            def run(self, query):
+                if "retient" in query:
+                    texte = query.replace("retient", "").strip()
+                    save_memoire(texte)
+                    return f"Mémorisé: {texte}"
+                if "rappelle" in query:
+                    mems = load_memoire()
+                    if mems:
+                        return "Mémoire: " + " | ".join([m['texte'] for m in mems[:3]])
+                    return "Aucune mémoire chef"
+                return "Mémoire activée"
+
+        # ===== COUCHE 2 : ROUTAGE =====
+        def floki_routeur(query):
             q = query.lower()
             if any(x in q for x in ['dernier', 'vendu', 'vente']):
-                return get_derniere_vente()
-            if 'combien' in q:
-                stats = [f"{nom}:{len(df)}" for nom, df in ASYMAS.items() if not df.empty]
-                return f"ASYMAS: " + " | ".join(stats)
-            return chercher_asymas_live(q)
+                return "agent_vente", q
+            if any(x in q for x in ['prix', 'combien', 'stock', 'moins cher']):
+                return "agent_prix", q
+            if any(x in q for x in ['slt', 'bjr', 'bonjour', 'salut']):
+                return "agent_salut", q
+            if any(x in q for x in ['retient', 'rappelle', 'mémoire']):
+                return "agent_memoire", q
+            return "agent_prix", q
 
-        # INPUTS
-        prompt = st.text_input("", placeholder="Parlez à FLOKI chef...", key="floki_final", label_visibility="collapsed")
-        audio = st.audio_input("", key="floki_audio_final", label_visibility="collapsed")
+        # ===== COUCHE 9 : OPERATOR FLOW =====
+        def floki_operator(query):
+            agent_name, clean_query = floki_routeur(query)
+
+            agents = {
+                "agent_prix": AgentPrix(),
+                "agent_vente": AgentVente(),
+                "agent_salut": AgentSalut(),
+                "agent_memoire": AgentMemoire()
+            }
+            agent = agents.get(agent_name, AgentPrix())
+
+            reponse = agent.run(clean_query)
+            log_audit(agent_name, query, reponse)
+            return reponse
+
+        # ===== EXÉCUTION COCKPIT =====
+        prompt, audio = floki_cockpit()
 
         # MICRO
         if audio:
@@ -2637,13 +2719,9 @@ if is_pdg and 'floki_placeholder' in locals():
                         prompt = r.json().get("text", "").strip()
             except: pass
 
-        # EXÉCUTION
+        # TRAITEMENT
         if prompt:
-            reponse = get_asymas_data(prompt.strip().lower())
-            if not reponse:
-                reponse = f"Pas trouvé chef. {date.today().strftime('%d/%m/%Y')}"
-
-            st.session_state.floki_reponse = reponse
+            reponse = floki_operator(prompt.strip())
 
             # VOIX
             txt_voice = unicodedata.normalize('NFKD', reponse).encode('ASCII', 'ignore').decode('ASCII')
@@ -2659,6 +2737,8 @@ if is_pdg and 'floki_placeholder' in locals():
                 </script>
             """, height=0)
 
-        # AFFICHE
+            st.session_state.floki_reponse = reponse
+
+        # AFFICHAGE
         if st.session_state.get("floki_reponse"):
             st.success(f"👑 FLOKI: {st.session_state.floki_reponse}")
