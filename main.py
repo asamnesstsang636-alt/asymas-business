@@ -501,6 +501,7 @@ if st.session_state.user_role is None:
             if profil!= "-- Sélectionner --":
                 nom_connect = profil.split(" - ")[0]
                 role_connect = profil.split(" - ")[1] if " - " in profil else profil
+                st.write(df_users_login.columns.tolist())
                 user_data = df_users_login[df_users_login['nom'] == nom_connect]
                 if not user_data.empty and password == user_data.iloc[0]['password']:
                     st.session_state.user_role = user_data.iloc[0]['role']
