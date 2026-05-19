@@ -2506,13 +2506,15 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                                 # === FLOKI SOLDAT V3 - PDG ONLY + MICRO + COMMERCE EXTERIEUR ===
+                             # === FLOKI SOLDAT V4 - PDG ONLY + MICRO + TRANSCRIPTION + COMMERCE EXTERIEUR ===
 import difflib
 import re
 import urllib.parse
 import requests
 import streamlit as st
 import pandas as pd
+import tempfile
+import speech_recognition as sr
 from datetime import datetime, date, timedelta
 
 class FLOKI:
@@ -2781,7 +2783,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - VISIBLE UNIQUEMENT AU PDG ===
+# === UI FLOKI - PDG ONLY + MICRO AVEC TRANSCRIPTION ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2791,24 +2793,41 @@ if 'floki' not in st.session_state:
     }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
-# Récupère le rôle de l’utilisateur connecté
 user_role = str(st.session_state.get('user_role', '')).upper()
 user_name = st.session_state.get('user_name', 'Utilisateur')
 
 with st.sidebar:
-    # Affiche FLOKI UNIQUEMENT si rôle = PDG
     if user_role == 'PDG':
         st.divider()
         st.markdown("### 🤖 FLOKI")
         st.caption(f"Conseiller du PDG - {user_name}")
 
-        # MICRO : enregistrement vocal
+        # MICRO AVEC TRANSCRIPTION
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
         if audio_bytes:
-            st.audio(audio_bytes)
-            st.info("Transcription vocale à activer avec Whisper API si besoin.")
+            with st.spinner("FLOKI écoute..."):
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                        tmp.write(audio_bytes.getvalue())
+                        tmp_path = tmp.name
 
-        q = st.text_input("Ton ordre", key="floki_input",
+                    recognizer = sr.Recognizer()
+                    with sr.AudioFile(tmp_path) as source:
+                        audio_data = recognizer.record(source)
+                        texte = recognizer.recognize_google(audio_data, language="fr-FR")
+
+                    st.session_state.floki_input_auto = texte
+                    st.success(f"Tu as dit : {texte}")
+                except sr.UnknownValueError:
+                    st.error("FLOKI n’a pas compris. Répète plus clairement chef.")
+                except sr.RequestError as e:
+                    st.error(f"Erreur Google Speech : {e}")
+                except Exception as e:
+                    st.error(f"Erreur transcription : {e}")
+
+        q = st.text_input("Ton ordre",
+                          value=st.session_state.get('floki_input_auto', ''),
+                          key="floki_input",
                           placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
 
         col1, col2 = st.columns(2)
@@ -2818,6 +2837,7 @@ with st.sidebar:
                     with st.spinner("FLOKI réfléchit..."):
                         rep = st.session_state.floki.ask(q)
                         st.session_state.floki_rep = rep
+                        st.session_state.floki_input_auto = ""
 
         with col2:
             if st.button("Notifier équipe", use_container_width=True, key="floki_notify"):
