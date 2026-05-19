@@ -14,4 +14,4 @@ gunicorn
 requests
 flask-cors
 SpeechRecognition
-pyaudio
+
