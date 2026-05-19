@@ -2628,7 +2628,7 @@ class FLOKI:
 
     def _signature_block(self):
         return "\n\nFait à Kinshasa, le " + date.today().strftime('%d/%m/%Y') + "\n\n" + \
-               "Signature de l'employé : __________________" + " + \
+               "Signature de l employé : __________________" + " + \
                "Signature Direction ASYMAS : __________________"
 
     def _template_contrat(self, d):
