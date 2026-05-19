@@ -2506,15 +2506,8 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                          # === FLOKI SOLDAT V13.1 - VERSION COMPLETE + FIX PDF ===
-import difflib
-import re
-import urllib.parse
-import requests
-import streamlit as st
-import pandas as pd
-import tempfile
-import speech_recognition as sr
+                                  # === FLOKI SOLDAT V15 - AVEC TRANSFERT DE DOCUMENTS ===
+import difflib, re, urllib.parse, streamlit as st, pandas as pd, tempfile, speech_recognition as sr, base64
 from datetime import datetime, date, timedelta
 from fpdf import FPDF
 
@@ -2525,124 +2518,85 @@ class PDF(FPDF):
         self.set_left_margin(15)
         self.set_right_margin(15)
         self.set_top_margin(20)
-
     def header(self):
         self.set_font('Arial', 'B', 14)
         self.cell(0, 10, 'ASYMAS SARL', 0, 1, 'C')
         self.ln(5)
-    
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-def _create_pdf_bytes(self, filename, text):
-    pdf = PDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    page_width = pdf.w - pdf.l_margin - pdf.r_margin  # largeur utile réelle
-    
-    for line in text.strip().split('\n'):
-        line = line.strip()
-        if not line:
-            pdf.ln(5)
-            continue
-        safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
-        # sécurité : si largeur <= 0 on force 170mm
-        w = page_width if page_width > 0 else 170
-        pdf.multi_cell(w, 10, safe_line)
-
-    return pdf.output(dest='S').encode('latin-1', errors='replace')
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
-        self.system_knowledge = self._get_supabase_schema()
-
-    def _get_supabase_schema(self):
-        schema = {}
-        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock",
-                  "devis", "factures", "pointage", "employes", "commandes",
-                  "importations", "exportations", "notifications", "floki_logs"]
-        for t in tables:
-            try:
-                result = self.supabase.table(t).select("*").limit(1).execute()
-                schema[t] = list(result.data[0].keys()) if result.data else []
-            except:
-                schema[t] = []
-        return schema
 
     def _clean_question(self, q):
-        q = q.lower()
-        q = q.replace("é", "e").replace("è", "e").replace("ê", "e").replace("à", "a").replace("ç", "c")
+        q = q.lower().replace("é", "e").replace("è", "e").replace("ê", "e").replace("à", "a").replace("ç", "c")
         q = re.sub(r'[^\w\s]', ' ', q)
-        q = re.sub(r'\s+', ' ', q).strip()
-        return q
+        return re.sub(r'\s+', ' ', q).strip()
 
     def ask(self, question):
-        q_raw = question
-        q = self._clean_question(question)
-        log_entry = {"demande": q_raw, "date": datetime.now().isoformat(), "source": "ASYMAS"}
-
+        q_raw, q = question, self._clean_question(question)
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
+            return "Présent chef. FLOKI opérationnel."
 
         if "genere" in q or "redige" in q or "ecris" in q or "lettre" in q:
-            result = self._generate_document_illimite(q_raw)
-            log_entry.update({"action": "generate_document", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
+            return self._generate_document_illimite(q_raw)
         if "envoi" in q and "message" in q:
-            result = self._action_send_message(q_raw)
-            log_entry.update({"action": "send_message", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
+            return self._action_send_message(q_raw)
         if "commande" in q or "commander" in q:
-            result = self._action_commander(q)
-            log_entry.update({"action": "commande", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
+            return self._action_commander(q)
         rep = self._search_asymas(q)
-        if rep:
-            log_entry.update({"source": "ASYMAS", "reponse": rep})
-            self._log_action(log_entry)
-            return rep + "\n\nSource: ASYMAS"
+        return rep + "\n\nSource: ASYMAS" if rep else "Chef, je n’ai pas cette donnée dans ASYMAS."
 
-        log_entry.update({"source": "ASYMAS", "reponse": "Table manquante"})
-        self._log_action(log_entry)
-        return "Chef, je n’ai pas cette donnée dans ASYMAS."
-
-    # === REDACTION AVEC MEMOIRE ===
     def _generate_document_illimite(self, q):
-        data = self._extract_all_fields(q)
         q_clean = self._clean_question(q)
-
+        doc_type_map = {
+            "mise en garde": "mise_en_garde", "conge de maternite": "conge_maternite",
+            "conge": "conge", "rupture": "rupture", "contrat": "contrat",
+            "pret": "pret", "attestation": "attestation", "licenciement": "licenciement",
+            "avertissement": "avertissement"
+        }
         doc_type = "lettre"
-        for key in ["mise en garde", "conge", "rupture", "contrat", "pret", "attestation", "licenciement", "avertissement"]:
+        for key, val in doc_type_map.items():
             if key in q_clean:
-                doc_type = key
+                doc_type = val
                 break
 
-        template_func = getattr(self, f"_template_{doc_type.replace(' ', '_')}", self._template_lettre)
+        required_fields = {
+            "contrat": ["nom", "poste", "salaire", "date_debut", "date_fin"],
+            "conge": ["nom", "poste", "date_debut", "date_fin", "motif"],
+            "conge_maternite": ["nom", "poste", "date_debut", "date_fin"],
+            "mise_en_garde": ["nom", "poste", "motif", "date_debut"],
+            "licenciement": ["nom", "poste", "motif", "date_debut"],
+            "avertissement": ["nom", "poste", "motif", "date_debut"],
+            "pret": ["nom", "poste", "montant", "motif"],
+            "attestation": ["nom", "poste", "date_debut"],
+            "rupture": ["nom", "poste", "motif", "date_debut"],
+            "lettre": ["nom", "poste", "objet", "corps"]
+        }
+
+        data = self._extract_all_fields(q)
+        template_func = getattr(self, f"_template_{doc_type}", self._template_lettre)
         text = template_func(data)
 
         st.session_state['floki_doc_data'] = data
         st.session_state['floki_doc_text'] = text
         st.session_state['floki_doc_type'] = doc_type
+        st.session_state['floki_required_fields'] = required_fields.get(doc_type, ["nom"])
 
-        missing = [k for k, v in data.items() if v == "______" or v == "______ FC"]
+        missing = [k for k in required_fields.get(doc_type, ["nom"]) if data.get(k) in ["______", "______ FC"]]
         if missing:
             st.session_state['floki_missing_fields'] = missing
-            return f"Document {doc_type} généré pour {data['nom']}, mais il manque : {', '.join(missing)}. Corrige ci-dessous avant téléchargement."
+            return f"Document {doc_type.replace('_', ')} généré pour {data['nom']}, mais il manque : {', '.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text)
-            st.session_state[f'pdf_bytes_{doc_type}_{data["nom"]}'] = pdf_bytes
-            st.session_state[f'pdf_name_{doc_type}_{data["nom"]}'] = f"{doc_type}_{data['nom']}.pdf"
-            return f"{doc_type.capitalize()} complet généré pour {data['nom']}. Télécharge le PDF ci-dessous."
+            filename = f"{doc_type}_{data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+            st.session_state['pdf_ready'] = pdf_bytes
+            st.session_state['pdf_name'] = filename
+            return f"{doc_type.replace('_', ' ').capitalize()} complet généré pour {data['nom']}. Choisis comment le transférer ci-dessous."
 
     def _extract_all_fields(self, q):
         return {
@@ -2669,44 +2623,42 @@ class FLOKI:
         match = re.search(rf'{keyword}\s*:\s*(.+)', q, re.IGNORECASE)
         return match.group(1).strip() if match else None
 
-    # === TEMPLATES ===
-    def _template_mise_en_garde(self, d):
-        return f"""MISE EN GARDE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nNous avons constaté un manquement le {d['date_debut']}.\nCette lettre constitue une mise en garde formelle.\n\nDirection ASYMAS"""
-    def _template_conge(self, d):
-        return f"""DEMANDE DE CONGE\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, demande congé du {d['date_debut']} au {d['date_fin']}.\nMotif : {d['motif']}\nSignature"""
-    def _template_rupture(self, d):
-        return f"""RUPTURE DE CONTRAT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
-    def _template_contrat(self, d):
-        return f"""CONTRAT DE TRAVAIL\nEntre ASYMAS et {d['nom']}\nPoste : {d['poste']}\nDurée : {d['date_debut']} au {d['date_fin']}\nSalaire : {d['salaire']}\nFait à Kinshasa le {d['date']}"""
-    def _template_pret(self, d):
-        return f"""DEMANDE DE PRET\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, sollicite {d['montant']}.\nMotif : {d['motif']}\nSignature"""
-    def _template_attestation(self, d):
-        return f"""ATTESTATION DE TRAVAIL\nKinshasa, le {d['date']}\nNous certifions que {d['nom']}, {d['poste']}, travaille chez ASYMAS depuis {d['date_debut']}.\nDirection ASYMAS"""
-    def _template_licenciement(self, d):
-        return f"""LICENCIEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
-    def _template_avertissement(self, d):
-        return f"""AVERTISSEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nDate : {d['date_debut']}\nDirection ASYMAS"""
-    def _template_lettre(self, d):
-        return f"""LETTRE ADMINISTRATIVE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n\nDirection ASYMAS"""
+    # Templates
+    def _template_contrat(self, d): return f"""CONTRAT DE TRAVAIL\nEntre ASYMAS et {d['nom']}\nPoste : {d['poste']}\nDurée : {d['date_debut']} au {d['date_fin']}\nSalaire : {d['salaire']}\nFait à Kinshasa le {d['date']}"""
+    def _template_conge(self, d): return f"""DEMANDE DE CONGE\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, demande congé du {d['date_debut']} au {d['date_fin']}.\nMotif : {d['motif']}\nSignature"""
+    def _template_conge_maternite(self, d): return f"""DEMANDE DE CONGE DE MATERNITE\nKinshasa, le {d['date']}\nJe soussignée {d['nom']}, {d['poste']}, sollicite un congé de maternité du {d['date_debut']} au {d['date_fin']}.\nSignature"""
+    def _template_mise_en_garde(self, d): return f"""MISE EN GARDE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nFaits constatés le {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_licenciement(self, d): return f"""LICENCIEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_avertissement(self, d): return f"""AVERTISSEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nDate : {d['date_debut']}\nDirection ASYMAS"""
+    def _template_pret(self, d): return f"""DEMANDE DE PRET\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, sollicite {d['montant']}.\nMotif : {d['motif']}\nSignature"""
+    def _template_attestation(self, d): return f"""ATTESTATION DE TRAVAIL\nKinshasa, le {d['date']}\nNous certifions que {d['nom']}, {d['poste']}, travaille chez ASYMAS depuis {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_rupture(self, d): return f"""RUPTURE DE CONTRAT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_lettre(self, d): return f"""LETTRE ADMINISTRATIVE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n\nDirection ASYMAS"""
 
-    # === FIX PDF CRASH ===
     def _create_pdf_bytes(self, filename, text):
         pdf = PDF()
         pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", size=12)
-
+        page_width = pdf.w - pdf.l_margin - pdf.r_margin
         for line in text.strip().split('\n'):
             line = line.strip()
             if not line:
                 pdf.ln(5)
                 continue
             safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
-            pdf.multi_cell(0, 10, safe_line)
-
+            w = page_width if page_width > 0 else 170
+            pdf.multi_cell(w, 10, safe_line)
         return pdf.output(dest='S').encode('latin-1', errors='replace')
 
-    # === ACTIONS ===
+    def _upload_to_supabase(self, pdf_bytes, filename):
+        try:
+            path = f"documents/{filename}"
+            self.supabase.storage.from_("floki-docs").upload(path, pdf_bytes, {"upsert": "true"})
+            url = self.supabase.storage.from_("floki-docs").get_public_url(path)
+            return url
+        except Exception as e:
+            return None
+
     def _action_send_message(self, question):
         nums = re.findall(r'\+?\d{9,15}', question)
         if nums:
@@ -2722,34 +2674,23 @@ class FLOKI:
             produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q)
         if not produit_match:
             return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
-        produit = produit_match.group(1).strip()
-        quantite = int(produit_match.group(2))
+        produit, quantite = produit_match.group(1).strip(), int(produit_match.group(2))
         try:
             self.supabase.table("commandes").insert({
-                "produit": produit,
-                "quantite": quantite,
-                "date": datetime.now().isoformat(),
-                "statut": "en_attente",
-                "commande_par": st.session_state.get('user_name', 'PDG')
+                "produit": produit, "quantite": quantite, "date": datetime.now().isoformat(),
+                "statut": "en_attente", "commande_par": st.session_state.get('user_name', 'PDG')
             }).execute()
             return f"Commande enregistrée chef: {quantite} x {produit}."
         except Exception as e:
-            return f"Erreur: {e}. Vérifie RLS sur table commandes."
+            return f"Erreur: {e}."
 
-    # === ASYMAS ===
     def _search_asymas(self, q):
         if "commerce" in q and "exterieur" in q:
-            return self._get_commerce_exterieur()
+            return self._get_commerce_exterieur(q)
         if "importation" in q or "importer" in q:
-            return self._get_importations()
+            return self._get_importations(q)
         if "exportation" in q or "exporter" in q:
-            return self._get_exportations()
-        if "facture" in q and ("genere" in q or "generee" in q or "fait" in q or "par" in q):
-            return self._get_facture_par()
-        if "qui" in q and "travail" in q and "hier" in q:
-            return self._get_travail_hier()
-        if "facture" in q and "immobili" in q and ("derniere" in q or "dernier" in q):
-            return self._get_derniere_facture_immobilier()
+            return self._get_exportations(q)
         if "stock" in q and "de" in q:
             produit = q.split("de")[-1].strip()
             return self._search_product(produit)
@@ -2757,166 +2698,81 @@ class FLOKI:
             return self._get_commandes_attente()
         if "voiture" in q and ("moins cher" in q or "prix" in q):
             return self._get_voiture_moins_cher()
-        if "voiture" in q and ("liste" in q or "donne" in q):
-            return self._get_voitures_stock()
-        if "perte" in q and "commerce" in q:
-            return self._get_pertes_commerce()
-        if any(k in q for k in ["stock bas", "rupture", "manque"]):
-            return self._stock_bas()
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
+        if "chiffre" in q or "ca" in q or "revenu" in q:
             return self._chiffre_affaires()
         return None
 
-    def _get_commerce_exterieur(self):
-        imp = self._get_importations()
-        exp = self._get_exportations()
+    def _get_commerce_exterieur(self, q):
+        imp = self._get_importations(q)
+        exp = self._get_exportations(q)
         return f"RAPPORT COMMERCE EXTERIEUR:\n\n{imp}\n\n{exp}"
 
-    def _get_importations(self):
+    def _get_importations(self, q=""):
         try:
-            result = self.supabase.table("importations").select("*").order("date", desc=True).limit(5).execute()
-            if not result.data:
-                return "Aucune importation enregistrée chef."
-            total = sum(float(r.get('montant', 0)) for r in result.data)
-            txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            result = self.supabase.table("importations").select("*").order("date", desc=True).limit(20).execute()
+            if not result.data: return "Aucune importation enregistrée chef."
+            data = result.data
+            pays_mots = ["dubaï", "dubai", "chine", "kampala", "europe", "usa", "etats unis"]
+            for mot in pays_mots:
+                if mot in q:
+                    data = [r for r in data if mot in str(r.get('pays', r.get('destination', ''))).lower()]
+                    break
+            if not data: return f"Aucune importation trouvée pour {mot} chef."
+            total = sum(float(r.get('montant', 0)) for r in data[:5])
+            txt = "\n".join([f"- {r.get('produit', 'N/A')} de {r.get('pays', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC" for r in data[:5]])
             return f"Dernières importations - Total: {total:,.0f} FC\n{txt}"
-        except:
-            return "Chef, table 'importations' vide ou manquante."
+        except: return "Chef, table 'importations' vide."
 
-    def _get_exportations(self):
+    def _get_exportations(self, q=""):
         try:
-            result = self.supabase.table("exportations").select("*").order("date", desc=True).limit(5).execute()
-            if not result.data:
-                return "Aucune exportation enregistrée chef."
-            total = sum(float(r.get('montant', 0)) for r in result.data)
-            txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            result = self.supabase.table("exportations").select("*").order("date", desc=True).limit(20).execute()
+            if not result.data: return "Aucune exportation enregistrée chef."
+            data = result.data
+            pays_mots = ["dubaï", "dubai", "chine", "kampala", "europe", "usa", "etats unis"]
+            for mot in pays_mots:
+                if mot in q:
+                    data = [r for r in data if mot in str(r.get('pays', r.get('destination', ''))).lower()]
+                    break
+            if not data: return f"Aucune exportation trouvée pour {mot} chef."
+            total = sum(float(r.get('montant', 0)) for r in data[:5])
+            txt = "\n".join([f"- {r.get('produit', 'N/A')} vers {r.get('pays', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC" for r in data[:5]])
             return f"Dernières exportations - Total: {total:,.0f} FC\n{txt}"
-        except:
-            return "Chef, table 'exportations' vide ou manquante."
+        except: return "Chef, table 'exportations' vide."
 
-    def _get_facture_par(self):
-        try:
-            result = self.supabase.table("factures").select("*").order("date", desc=True).limit(1).execute()
-            if result.data:
-                f = result.data[0]
-                auteur = f.get('genere_par', f.get('created_by', f.get('auteur', 'Inconnu')))
-                return f"Dernière facture N°{f.get('numero', 'N/A')} générée par: {auteur} le {f.get('date', '')[:10]}"
-        except:
-            return "Chef, je ne trouve pas table 'factures' ou colonne 'genere_par'."
-
-    def _get_travail_hier(self):
-        hier = (date.today() - timedelta(days=1)).isoformat()
-        try:
-            result = self.supabase.table("pointage").select("*").eq("date", hier).execute()
-            if result.data:
-                noms = [r.get('nom', r.get('employe', 'N/A')) for r in result.data]
-                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
-        except:
-            return "Chef, je ne trouve pas table 'pointage'."
-
-    def _get_derniere_facture_immobilier(self):
-        try:
-            result = self.supabase.table("factures").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
-            if result.data:
-                f = result.data[0]
-                return f"Dernière facture immobilière: N°{f.get('numero', 'N/A')} - {float(f.get('montant', 0)):,.0f} FC le {f.get('date', '')[:10]}"
-        except:
-            return "Chef, je ne trouve pas table 'factures' avec type='immobilier'."
+    def _search_product(self, q):
+        if self.df['articles'].empty: return None
+        articles = self.df['articles'].copy()
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
+        for _, r in articles.iterrows():
+            if q_clean in r['nom_clean']:
+                return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        return None
 
     def _get_commandes_attente(self):
         try:
             result = self.supabase.table("commandes").select("*").eq("statut", "en_attente").order("date", desc=True).limit(10).execute()
-            if not result.data:
-                return "Aucune commande en attente chef."
-            txt = "\n".join([f"- {r['quantite']} x {r['produit']} - {r['date'][:10]}" for r in result.data])
+            if not result.data: return "Aucune commande en attente chef."
+            txt = "\n".join([f"- {r['quantite']} x {r['produit']}" for r in result.data])
             return f"Commandes en attente:\n{txt}"
-        except:
-            return "Chef, je ne trouve pas table 'commandes'."
+        except: return "Chef, table 'commandes' manquante."
 
     def _get_voiture_moins_cher(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
+        if self.df['voitures'].empty: return "Pas de données voitures chef."
         prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
-        if not prix_col:
-            return "Chef, je ne trouve pas colonne prix dans voitures."
+        if not prix_col: return "Chef, pas de colonne prix."
         dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
+        if dispo.empty: return "Aucune voiture en stock chef."
         moins_chere = dispo.loc[dispo[prix_col].idxmin()]
-        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
-        prix = float(moins_chere[prix_col])
-        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
-
-    def _get_voitures_stock(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
-        return f"Voitures en stock:\n{txt}"
-
-    def _get_pertes_commerce(self):
-        try:
-            result = self.supabase.table("mouvements_stock").select("*").eq("type", "perte").eq("categorie", "commerce").order("date", desc=True).limit(10).execute()
-            if not result.data:
-                return "Aucune perte commerce enregistrée chef."
-            txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
-            return f"Dernières pertes commerce:\n{txt}"
-        except Exception as e:
-            return f"Erreur lecture pertes: {e}."
-
-    def _search_product(self, q):
-        if self.df['articles'].empty:
-            return None
-        articles = self.df['articles'].copy()
-        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-        mots_q = [w for w in q_clean.split() if len(w) > 2]
-        if mots_q:
-            for _, r in articles.iterrows():
-                if all(word in r['nom_clean'] for word in mots_q):
-                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-        noms = articles['nom_clean'].tolist()
-        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.4)
-        if closest:
-            r = articles[articles['nom_clean'] == closest[0]].iloc[0]
-            return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-        return None
-
-    def _stock_bas(self):
-        if self.df['articles'].empty:
-            return "Pas d'articles chef."
-        low = self.df['articles'][self.df['articles']['stock'] < 5]
-        if low.empty:
-            return "Stock OK chef. Rien en dessous de 5 unités."
-        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-        return f"Attention chef, stock bas:\n{txt}"
+        return f"Voiture la moins chère: {moins_chere.get('modele', 'N/A')} à {float(moins_chere[prix_col]):,.0f} FC"
 
     def _chiffre_affaires(self):
-        if self.df['compta'].empty:
-            return "Pas de données compta chef."
+        if self.df['compta'].empty: return "Pas de données compta chef."
         rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
         dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
         return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
 
-    def notify_internal(self, message):
-        try:
-            self.supabase.table("notifications").insert({
-                "message": f"[{st.session_state.get('user_name', 'PDG')}]: {message}",
-                "created_at": datetime.now().isoformat()
-            }).execute()
-            return "Notification envoyée à l’équipe chef."
-        except Exception as e:
-            return f"Échec notification: {e}"
-
-    def _log_action(self, log_entry):
-        try:
-            self.supabase.table("floki_logs").insert(log_entry).execute()
-        except:
-            pass
-
-# === UI FLOKI V13.1 ===
+# === UI ===
 if 'floki' not in st.session_state:
     dataframes = {"articles": df_articles, "compta": df_compta, "biens": df_biens, "voitures": df_voitures}
     st.session_state.floki = FLOKI(supabase, dataframes)
@@ -2927,70 +2783,64 @@ with st.sidebar:
     if user_role == 'PDG':
         st.divider()
         st.markdown("### 🤖 FLOKI")
-        st.caption(f"Conseiller du PDG - {st.session_state.get('user_name', 'Utilisateur')}")
 
-        audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
-        if audio_bytes and not st.session_state.get('floki_done', False):
-            with st.spinner("FLOKI écoute..."):
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                        tmp.write(audio_bytes.getvalue())
-                        tmp_path = tmp.name
-                    recognizer = sr.Recognizer()
-                    with sr.AudioFile(tmp_path) as source:
-                        audio_data = recognizer.record(source)
-                    texte = recognizer.recognize_google(audio_data, language="fr-FR")
-                    st.success(f"Tu as dit : {texte}")
-                    with st.spinner("FLOKI réfléchit..."):
-                        rep = st.session_state.floki.ask(texte)
-                        st.session_state.floki_rep = rep
-                        st.session_state.floki_done = True
-                        st.rerun()
-                except:
-                    st.error("FLOKI n’a pas compris chef.")
-
-        if audio_bytes is None:
-            st.session_state.floki_done = False
-
-        q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: stock de riz, genere contrat pour Paul")
+        q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: genere contrat pour Paul")
         if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
-                with st.spinner("FLOKI réfléchit..."):
-                    rep = st.session_state.floki.ask(q)
-                    st.session_state.floki_rep = rep
-
-        if st.button("Notifier équipe", use_container_width=True):
-            if q:
-                msg = st.session_state.floki.notify_internal(q)
-                st.toast(msg)
+                with st.spinner("FLOKI rédige..."):
+                    st.session_state.floki_rep = st.session_state.floki.ask(q)
 
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
 
             if 'floki_missing_fields' in st.session_state:
-                st.warning("Chef, remplis les champs vides avant téléchargement :")
+                st.warning("Chef, remplis les champs vides :")
                 with st.form("correction_form"):
                     data = st.session_state['floki_doc_data']
                     new_data = data.copy()
                     for field in st.session_state['floki_missing_fields']:
-                        new_data[field] = st.text_input(f"{field}", value="", placeholder=f"Renseigne {field}")
+                        new_data[field] = st.text_input(field, value="", placeholder=f"Renseigne {field}")
                     submitted = st.form_submit_button("Valider et générer PDF")
                     if submitted:
                         st.session_state['floki_doc_data'].update(new_data)
                         doc_type = st.session_state['floki_doc_type']
-                        template_func = getattr(st.session_state.floki, f"_template_{doc_type.replace(' ', '_')}", st.session_state.floki._template_lettre)
+                        template_func = getattr(st.session_state.floki, f"_template_{doc_type}", st.session_state.floki._template_lettre)
                         new_text = template_func(st.session_state['floki_doc_data'])
                         pdf_bytes = st.session_state.floki._create_pdf_bytes(f"{doc_type}_{new_data['nom']}", new_text)
-                        st.session_state[f'pdf_bytes_{doc_type}_{new_data["nom"]}'] = pdf_bytes
-                        st.session_state[f'pdf_name_{doc_type}_{new_data["nom"]}'] = f"{doc_type}_{new_data['nom']}.pdf"
+                        st.session_state['pdf_ready'] = pdf_bytes
+                        st.session_state['pdf_name'] = f"{doc_type}_{new_data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
                         del st.session_state['floki_missing_fields']
                         st.rerun()
 
-            for key in list(st.session_state.keys()):
-                if key.startswith('pdf_bytes_'):
-                    filename_key = key.replace('pdf_bytes_', '')
-                    pdf_bytes = st.session_state[key]
-                    pdf_name = st.session_state[f'pdf_name_{filename_key}']
-                    st.download_button("Télécharger le PDF", data=pdf_bytes, file_name=pdf_name, mime="application/pdf", key=f"dl_{filename_key}")
-                    del st.session_state[key]
-                    del st.session_state[f'pdf_name_{filename_key}']
+            # === TRANSFERT DE DOCUMENTS ===
+            if 'pdf_ready' in st.session_state:
+                st.markdown("#### Transfert du document")
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.download_button("Télécharger", data=st.session_state['pdf_ready'],
+                                       file_name=st.session_state['pdf_name'], mime="application/pdf",
+                                       use_container_width=True)
+
+                with col2:
+                    numero = st.text_input("N° WhatsApp", placeholder="+243...", key="whatsapp_num")
+                    if st.button("Envoyer WhatsApp", use_container_width=True):
+                        if numero:
+                            b64 = base64.b64encode(st.session_state['pdf_ready']).decode()
+                            data_url = f"data:application/pdf;base64,{b64}"
+                            msg = f"Document ASYMAS: {st.session_state['pdf_name']}"
+                            wa_url = f"https://wa.me/{numero.replace('+','')}?text={urllib.parse.quote(msg)}"
+                            st.markdown(f"[Clique ici pour envoyer via WhatsApp]({wa_url})")
+                            st.caption("Ouvre le lien sur ton téléphone, puis joint le PDF téléchargé.")
+                        else:
+                            st.error("Renseigne un numéro chef.")
+
+                with col3:
+                    if st.button("Générer lien de partage", use_container_width=True):
+                        with st.spinner("Upload en cours..."):
+                            url = st.session_state.floki._upload_to_supabase(st.session_state['pdf_ready'], st.session_state['pdf_name'])
+                            if url:
+                                st.code(url, language=None)
+                                st.success("Lien copié. Partage-le chef.")
+                            else:
+                                st.error("Upload échoué. Vérifie que le bucket 'floki-docs' existe en public sur Supabase Storage.")
