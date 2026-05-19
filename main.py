@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                                                        # === FLOKI SOLDAT V15.1 - CORRIGÉ + HUMAIN + ENTÊTES + SIGNATURES ===
+                         # === FLOKI SOLDAT V15.2 - CODE COMPLET CORRIGÉ ===
 import difflib, re, urllib.parse, streamlit as st, pandas as pd, tempfile, speech_recognition as sr, base64
 from datetime import datetime, date, timedelta
 from fpdf import FPDF
@@ -2540,19 +2540,14 @@ class FLOKI:
 
     def ask(self, question):
         q_raw, q = question, self._clean_question(question)
-
-        # Floki plus humain : comprend même sans mots clés
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. Floki à l’écoute. Donnez-moi l’ordre."
-
-        # Détection naturelle pour génération de document
         if any(m in q for m in ["genere", "redige", "ecris", "fais", "prepare", "lettre", "contrat", "conge"]):
             return self._generate_document_illimite(q_raw)
         if "envoi" in q and "message" in q:
             return self._action_send_message(q_raw)
         if "commande" in q or "commander" in q:
             return self._action_commander(q)
-
         rep = self._search_asymas(q)
         return rep + "\n\nSource: ASYMAS" if rep else "Chef, je n’ai pas cette donnée dans ASYMAS."
 
@@ -2592,11 +2587,12 @@ class FLOKI:
         st.session_state['floki_doc_type'] = doc_type
         st.session_state['floki_required_fields'] = required_fields.get(doc_type, ["nom"])
 
-        # FIX SyntaxError : on utilise "_" au lieu de "'" dans replace
         missing = [k for k in required_fields.get(doc_type, ["nom"]) if data.get(k) in ["______", "______ FC"]]
         if missing:
             st.session_state['floki_missing_fields'] = missing
-            return f"Document {doc_type.replace('_', ')} généré pour {data['nom']}, mais il manque : {', '.join(missing)}. Corrige ci-dessous."
+            # FIX SYNTAXERROR : on utilise une variable séparateur
+            sep = ", "
+            return f"Document {doc_type.replace('_', ')} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
             filename = f"{doc_type}_{data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
@@ -2631,55 +2627,45 @@ class FLOKI:
 
     def _signature_block(self):
         return "\n\nFait à Kinshasa, le " + date.today().strftime('%d/%m/%Y') + "\n\n" + \
-               "Signature de l'employé : __________________" + " " + \
+               "Signature de l'employé : __________________" + " + \
                "Signature Direction ASYMAS : __________________"
 
-    # Templates avec entêtes et signatures
     def _template_contrat(self, d):
         header = "AFRICA INNOVATION INDUSTRIAL\nCONTRAT DE TRAVAIL\n"
         body = f"Entre AFRICA INNOVATION INDUSTRIAL et {d['nom']}\nPoste : {d['poste']}\nDurée : {d['date_debut']} au {d['date_fin']}\nSalaire : {d['salaire']}\n"
         return header + body + self._signature_block()
-
     def _template_conge(self, d):
-        header = "ASYMAS COMPANY\nDEMANDE DE CONGE\n\n"
+        header = "ASYMAS COMPANY\nDEMANDE DE CONGE\n"
         body = f"Je soussigné(e) {d['nom']}, {d['poste']}, demande congé du {d['date_debut']} au {d['date_fin']}.\nMotif : {d['motif']}\n"
         return header + body + self._signature_block()
-
     def _template_conge_maternite(self, d):
         header = "ASYMAS COMPANY\nDEMANDE DE CONGE DE MATERNITE\n"
         body = f"Je soussignée {d['nom']}, {d['poste']}, sollicite un congé de maternité du {d['date_debut']} au {d['date_fin']}, conformément au code du travail.\n"
         return header + body + self._signature_block()
-
     def _template_mise_en_garde(self, d):
         header = "ASYMAS COMPANY\nMISE EN GARDE\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nFaits constatés le {d['date_debut']}.\n"
         return header + body + "\n\nSignature Direction ASYMAS : __________________"
-
     def _template_licenciement(self, d):
         header = "ASYMAS COMPANY\nLICENCIEMENT\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\n"
         return header + body + self._signature_block()
-
     def _template_avertissement(self, d):
         header = "ASYMAS COMPANY\nAVERTISSEMENT\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nDate : {d['date_debut']}\n"
         return header + body + "\n\nSignature Direction ASYMAS : __________________"
-
     def _template_pret(self, d):
         header = "ASYMAS COMPANY\nDEMANDE DE PRET\n"
         body = f"Je soussigné(e) {d['nom']}, {d['poste']}, sollicite {d['montant']}.\nMotif : {d['motif']}\n"
         return header + body + self._signature_block()
-
     def _template_attestation(self, d):
         header = "ASYMAS COMPANY\nATTESTATION DE TRAVAIL\n"
         body = f"Nous certifions que {d['nom']}, {d['poste']}, travaille chez ASYMAS depuis {d['date_debut']}.\n"
         return header + body + "\n\nSignature Direction ASYMAS : __________________"
-
     def _template_rupture(self, d):
         header = "ASYMAS COMPANY\nRUPTURE DE CONTRAT\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\n"
         return header + body + self._signature_block()
-
     def _template_lettre(self, d):
         header = "ASYMAS COMPANY\nLETTRE ADMINISTRATIVE\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
@@ -2687,13 +2673,8 @@ class FLOKI:
 
     def _create_pdf_bytes(self, filename, text, doc_type):
         pdf = PDF()
-        # Pour contrat : entête spéciale AFRICA INNOVATION INDUSTRIAL
         if doc_type == "contrat":
-            pdf.header = lambda: (
-                pdf.set_font('Arial', 'B', 12),
-                pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'),
-                pdf.ln(2)
-            )
+            pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
         pdf.add_page()
         pdf.set_font("Arial", size=11)
         page_width = pdf.w - pdf.l_margin - pdf.r_margin
@@ -2840,16 +2821,13 @@ with st.sidebar:
     if user_role == 'PDG':
         st.divider()
         st.markdown("### 🤖 FLOKI")
-
         q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: fais un contrat pour Paul")
         if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
                 with st.spinner("Floki réfléchit..."):
                     st.session_state.floki_rep = st.session_state.floki.ask(q)
-
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
-
             if 'floki_missing_fields' in st.session_state:
                 st.warning("Chef, remplis les champs vides :")
                 with st.form("correction_form"):
@@ -2868,7 +2846,6 @@ with st.sidebar:
                         st.session_state['pdf_name'] = f"{doc_type}_{new_data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
                         del st.session_state['floki_missing_fields']
                         st.rerun()
-
             if 'pdf_ready' in st.session_state:
                 st.markdown("#### Transfert du document")
                 col1, col2, col3 = st.columns(3)
