@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI SOLDAT COMPLET - VERSION PDG ===
+# === FLOKI SOLDAT COMPLET - VERSION PDG ===
 import difflib
 import re
 import urllib.parse
@@ -2550,10 +2550,9 @@ Tables disponibles et leurs colonnes:
 Règles:
 1. Si demande sur pertes commerce → lis mouvements_stock, filtre type='perte' et categorie='commerce'
 2. Si demande CA/chiffre → lis compta, somme type='Revenu' et 'Dépense'
-3. Si demande stock voiture → lis voitures, vérifie colonne quantite
+3. Si demande voiture moins cher → lis voitures, cherche prix min sur stock > 0
 4. Si insertion échoue → c'est RLS, dis-le clairement au PDG
 5. Réponds court, en français, avec source des données
-6. Avant d'exécuter, dis ce que tu vas faire
 """
 
     def ask(self, question):
@@ -2602,27 +2601,56 @@ Règles:
         return web_rep + "\n\nSource: WEB"
 
     def _search_asymas(self, q):
-        # Produit
+        # 1. Prix voiture la moins chère
+        if "voiture" in q and ("moins cher" in q or "prix" in q):
+            return self._get_voiture_moins_cher()
+
+        # 2. Produit
         rep = self._search_product(q)
         if rep: return rep
 
-        # Pertes commerce
+        # 3. Pertes commerce
         if "perte" in q and "commerce" in q:
             return self._get_pertes_commerce()
 
-        # Stock bas
+        # 4. Stock bas
         if any(k in q for k in ["stock bas", "rupture", "manque", "presque fini"]):
             return self._stock_bas()
 
-        # CA
+        # 5. CA
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
 
-        # Voitures dispo
+        # 6. Voitures dispo
         if "voiture" in q and ("stock" in q or "dispo" in q):
             return self._get_voitures_stock()
 
         return None
+
+    def _get_voiture_moins_cher(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+
+        # Cherche la colonne prix, gère plusieurs noms possibles
+        prix_col = None
+        for col in ['prix', 'prix_vente', 'prix_achat', 'montant']:
+            if col in self.df['voitures'].columns:
+                prix_col = col
+                break
+
+        if not prix_col:
+            return "Chef, je ne trouve pas la colonne prix dans la table voitures."
+
+        # Filtre stock > 0 et prend la moins chère
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+
+        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
+        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
+        prix = float(moins_chere[prix_col])
+
+        return f"Voiture la moins chère en stock: {modele} à {prix:,.0f} FC"
 
     def _get_pertes_commerce(self):
         try:
@@ -2747,7 +2775,7 @@ with st.sidebar:
     st.caption("Conseiller du PDG - Comprend le système ASYMAS")
 
     q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: liste les pertes commerce, CA du mois, redige une relance")
+                      placeholder="Ex: trouve notre voiture le moins cher, liste les pertes commerce")
 
     st.components.v1.html("""
         <script>
