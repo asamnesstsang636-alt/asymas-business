@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                            # === FLOKI SOLDAT V9 - REDACTEUR ADMINISTRATIF + AUTO-EXECUTE ===
+                              # === FLOKI SOLDAT V13 - VERSION COMPLETE ASYMAS + REDACTION ===
 import difflib
 import re
 import urllib.parse
@@ -2523,7 +2523,6 @@ class PDF(FPDF):
         self.set_font('Arial', 'B', 14)
         self.cell(0, 10, 'ASYMAS SARL', 0, 1, 'C')
         self.ln(5)
-
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
@@ -2563,13 +2562,14 @@ class FLOKI:
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-        # === GENERATION DE DOCUMENTS ===
-        if "genere" in q or "redige" in q or "ecris" in q:
-            result = self._generate_document(q_raw)
+        # === MODULE REDACTION ===
+        if "genere" in q or "redige" in q or "ecris" in q or "lettre" in q:
+            result = self._generate_document_illimite(q_raw)
             log_entry.update({"action": "generate_document", "reponse": result})
             self._log_action(log_entry)
             return result
 
+        # === MODULE ACTIONS ===
         if "envoi" in q and "message" in q:
             result = self._action_send_message(q_raw)
             log_entry.update({"action": "send_message", "reponse": result})
@@ -2582,6 +2582,7 @@ class FLOKI:
             self._log_action(log_entry)
             return result
 
+        # === MODULE ASYMAS ===
         rep = self._search_asymas(q)
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
@@ -2592,151 +2593,117 @@ class FLOKI:
         self._log_action(log_entry)
         return "Chef, je n’ai pas cette donnée dans ASYMAS. Dis-moi le nom exact de la table ou colonne."
 
-    def _generate_document(self, q):
+    # === REDACTION AVEC MEMOIRE ===
+    def _generate_document_illimite(self, q):
+        data = self._extract_all_fields(q)
         q_clean = self._clean_question(q)
 
-        # Détection type de document
-        if "mise en garde" in q_clean or "avertissement" in q_clean:
-            nom = self._extract_name(q)
-            return self._doc_mise_en_garde(nom)
+        doc_type = "lettre"
+        for key in ["mise en garde", "conge", "rupture", "contrat", "pret", "attestation", "licenciement", "avertissement"]:
+            if key in q_clean:
+                doc_type = key
+                break
 
-        if "conge" in q_clean:
-            nom = self._extract_name(q)
-            return self._doc_conge(nom)
+        template_func = getattr(self, f"_template_{doc_type.replace(' ', '_')}", self._template_lettre)
+        text = template_func(data)
 
-        if "rupture" in q_clean and "contrat" in q_clean:
-            nom = self._extract_name(q)
-            return self._doc_rupture_contrat(nom)
+        st.session_state['floki_doc_data'] = data
+        st.session_state['floki_doc_text'] = text
+        st.session_state['floki_doc_type'] = doc_type
 
-        if "contrat" in q_clean and ("embauche" in q_clean or "travail" in q_clean):
-            nom = self._extract_name(q)
-            return self._doc_contrat_travail(nom)
+        missing = [k for k, v in data.items() if v == "______" or v == "______ FC"]
+        if missing:
+            st.session_state['floki_missing_fields'] = missing
+            return f"Document {doc_type} généré pour {data['nom']}, mais il manque : {', '.join(missing)}. Corrige ci-dessous avant téléchargement."
+        else:
+            pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text)
+            st.session_state[f'pdf_bytes_{doc_type}_{data["nom"]}'] = pdf_bytes
+            st.session_state[f'pdf_name_{doc_type}_{data["nom"]}'] = f"{doc_type}_{data['nom']}.pdf"
+            return f"{doc_type.capitalize()} complet généré pour {data['nom']}. Télécharge le PDF ci-dessous."
 
-        if "pret" in q_clean or "prets" in q_clean:
-            nom = self._extract_name(q)
-            montant = self._extract_amount(q)
-            return self._doc_demande_pret(nom, montant)
+    def _extract_all_fields(self, q):
+        return {
+            "nom": self._extract_value(q, ["pour", "a", "de", "nomme", "appele"]) or "______",
+            "poste": self._extract_value(q, ["poste", "fonction"]) or "______",
+            "salaire": self._extract_value(q, ["salaire", "remuneration"]) or "______ FC",
+            "montant": self._extract_value(q, ["montant", "somme"]) or "______ FC",
+            "date_debut": self._extract_value(q, ["du", "debut"]) or "______",
+            "date_fin": self._extract_value(q, ["au", "fin"]) or "______",
+            "motif": self._extract_value(q, ["motif", "raison"]) or "______",
+            "objet": self._extract_after(q, "objet") or "______",
+            "corps": self._extract_after(q, "texte") or "______",
+            "date": date.today().strftime('%d/%m/%Y')
+        }
 
-        if "lettre" in q_clean:
-            return "Chef, précise le type de lettre : mise en garde, congé, rupture, contrat, prêt..."
+    def _extract_value(self, q, keywords):
+        for kw in keywords:
+            match = re.search(rf'{kw}\s+([a-z0-9\s\-]+)', q, re.IGNORECASE)
+            if match:
+                return match.group(1).strip().capitalize()
+        return None
 
-        return "Chef, je peux générer : mise en garde, congé, rupture de contrat, contrat de travail, demande de prêt. Donne-moi le nom de la personne."
+    def _extract_after(self, q, keyword):
+        match = re.search(rf'{keyword}\s*:\s*(.+)', q, re.IGNORECASE)
+        return match.group(1).strip() if match else None
 
-    def _extract_name(self, q):
-        mots = q.split()
-        for i, mot in enumerate(mots):
-            if mot.lower() in ["pour", "a", "de", "nomme", "appele"]:
-                if i+1 < len(mots):
-                    return mots[i+1].capitalize()
-        return "EMPLOYE"
+    def _template_mise_en_garde(self, d):
+        return f"""MISE EN GARDE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nNous avons constaté un manquement le {d['date_debut']}.\nCette lettre constitue une mise en garde formelle.\n\nDirection ASYMAS"""
+    def _template_conge(self, d):
+        return f"""DEMANDE DE CONGE\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, demande congé du {d['date_debut']} au {d['date_fin']}.\nMotif : {d['motif']}\nSignature"""
+    def _template_rupture(self, d):
+        return f"""RUPTURE DE CONTRAT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_contrat(self, d):
+        return f"""CONTRAT DE TRAVAIL\nEntre ASYMAS et {d['nom']}\nPoste : {d['poste']}\nDurée : {d['date_debut']} au {d['date_fin']}\nSalaire : {d['salaire']}\nFait à Kinshasa le {d['date']}"""
+    def _template_pret(self, d):
+        return f"""DEMANDE DE PRET\nKinshasa, le {d['date']}\nJe soussigné(e) {d['nom']}, {d['poste']}, sollicite {d['montant']}.\nMotif : {d['motif']}\nSignature"""
+    def _template_attestation(self, d):
+        return f"""ATTESTATION DE TRAVAIL\nKinshasa, le {d['date']}\nNous certifions que {d['nom']}, {d['poste']}, travaille chez ASYMAS depuis {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_licenciement(self, d):
+        return f"""LICENCIEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\nDirection ASYMAS"""
+    def _template_avertissement(self, d):
+        return f"""AVERTISSEMENT\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nDate : {d['date_debut']}\nDirection ASYMAS"""
+    def _template_lettre(self, d):
+        return f"""LETTRE ADMINISTRATIVE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n\nDirection ASYMAS"""
 
-    def _extract_amount(self, q):
-        nums = re.findall(r'\d+', q)
-        return nums[0] if nums else "XXXXX"
-
-    def _doc_mise_en_garde(self, nom):
-        contenu = f"""
-MISE EN GARDE
-
-Kinshasa, le {date.today().strftime('%d/%m/%Y')}
-
-Monsieur/Madame {nom}
-
-Objet : Mise en garde pour manquement au règlement intérieur
-
-Nous avons constaté que vous avez manqué à vos obligations professionnelles.
-Cette lettre constitue une mise en garde formelle.
-
-Nous vous demandons de vous conformer strictement aux règles de l’entreprise.
-
-Direction ASYMAS
-"""
-        pdf_path = self._create_pdf(f"Mise_en_Garde_{nom}", contenu)
-        return f"Mise en garde générée pour {nom}. Télécharge le PDF ci-dessous."
-
-    def _doc_conge(self, nom):
-        contenu = f"""
-DEMANDE DE CONGE
-
-Kinshasa, le {date.today().strftime('%d/%m/%Y')}
-
-Je soussigné(e) {nom}, employé(e) chez ASYMAS,
-demande un congé annuel à partir du {date.today().strftime('%d/%m/%Y')}.
-
-Merci de bien vouloir accepter ma demande.
-
-Signature
-"""
-        pdf_path = self._create_pdf(f"Demande_Conge_{nom}", contenu)
-        return f"Demande de congé générée pour {nom}. Télécharge le PDF ci-dessous."
-
-    def _doc_rupture_contrat(self, nom):
-        contenu = f"""
-NOTIFICATION DE RUPTURE DE CONTRAT
-
-Kinshasa, le {date.today().strftime('%d/%m/%Y')}
-
-Monsieur/Madame {nom}
-
-Nous sommes au regret de vous notifier la rupture de votre contrat de travail
-conformément aux dispositions du code du travail.
-
-Votre préavis court à partir de la date de réception de la présente.
-
-Direction ASYMAS
-"""
-        pdf_path = self._create_pdf(f"Rupture_Contrat_{nom}", contenu)
-        return f"Rupture de contrat générée pour {nom}. Télécharge le PDF ci-dessous."
-
-    def _doc_contrat_travail(self, nom):
-        contenu = f"""
-CONTRAT DE TRAVAIL
-
-Entre ASYMAS SARL, ci-après dénommé l’Employeur,
-Et Monsieur/Madame {nom}, ci-après dénommé l’Employé.
-
-Article 1 : Objet
-L’Employé est engagé au poste défini par l’Employeur.
-
-Article 2 : Durée
-Contrat à durée indéterminée à compter du {date.today().strftime('%d/%m/%Y')}.
-
-Article 3 : Rémunération
-Salaire mensuel défini selon grille ASYMAS.
-
-Fait à Kinshasa, en deux exemplaires.
-"""
-        pdf_path = self._create_pdf(f"Contrat_Travail_{nom}", contenu)
-        return f"Contrat de travail généré pour {nom}. Télécharge le PDF ci-dessous."
-
-    def _doc_demande_pret(self, nom, montant):
-        contenu = f"""
-DEMANDE DE PRET
-
-Kinshasa, le {date.today().strftime('%d/%m/%Y')}
-
-Je soussigné(e) {nom}, employé(e) chez ASYMAS,
-sollicite un prêt d’un montant de {montant} FC,
-remboursable selon les modalités définies par la direction.
-
-Merci de l’étude de ma demande.
-
-Signature
-"""
-        pdf_path = self._create_pdf(f"Demande_Pret_{nom}", contenu)
-        return f"Demande de prêt générée pour {nom} - {montant} FC. Télécharge le PDF ci-dessous."
-
-    def _create_pdf(self, filename, text):
+    def _create_pdf_bytes(self, filename, text):
         pdf = PDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
         for line in text.strip().split('\n'):
             pdf.multi_cell(0, 10, line)
-        pdf_path = f"/tmp/{filename}.pdf"
-        pdf.output(pdf_path)
-        st.session_state[f'pdf_{filename}'] = pdf_path
-        return pdf_path
+        return pdf.output(dest='S').encode('latin-1')
 
+    # === ACTIONS ===
+    def _action_send_message(self, question):
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if nums:
+            numero = nums[0].replace("+", "")
+            message = re.sub(r'envoi.*?message.*?\+?\d{9,15}\s*:?', '', question, flags=re.IGNORECASE).strip()
+            url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
+            return f"Ordre exécuté chef. Lien WhatsApp: {url}"
+        return "Chef, donne-moi un numéro."
+
+    def _action_commander(self, q):
+        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q)
+        if not produit_match:
+            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q)
+        if not produit_match:
+            return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
+        produit = produit_match.group(1).strip()
+        quantite = int(produit_match.group(2))
+        try:
+            self.supabase.table("commandes").insert({
+                "produit": produit,
+                "quantite": quantite,
+                "date": datetime.now().isoformat(),
+                "statut": "en_attente",
+                "commande_par": st.session_state.get('user_name', 'PDG')
+            }).execute()
+            return f"Commande enregistrée chef: {quantite} x {produit}."
+        except Exception as e:
+            return f"Erreur: {e}. Vérifie RLS sur table commandes."
+
+    # === ASYMAS ===
     def _search_asymas(self, q):
         if "commerce" in q and "exterieur" in q:
             return self._get_commerce_exterieur()
@@ -2833,35 +2800,6 @@ Signature
         except:
             return "Chef, je ne trouve pas table 'commandes'."
 
-    def _action_send_message(self, question):
-        nums = re.findall(r'\+?\d{9,15}', question)
-        if nums:
-            numero = nums[0].replace("+", "")
-            message = re.sub(r'envoi.*?message.*?\+?\d{9,15}\s*:?', '', question, flags=re.IGNORECASE).strip()
-            url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-            return f"Ordre exécuté chef. Lien WhatsApp: {url}"
-        return "Chef, donne-moi un numéro. Ex: 'envoi message au +243995105623 : texte'"
-
-    def _action_commander(self, q):
-        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q)
-        if not produit_match:
-            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q)
-        if not produit_match:
-            return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
-        produit = produit_match.group(1).strip()
-        quantite = int(produit_match.group(2))
-        try:
-            self.supabase.table("commandes").insert({
-                "produit": produit,
-                "quantite": quantite,
-                "date": datetime.now().isoformat(),
-                "statut": "en_attente",
-                "commande_par": st.session_state.get('user_name', 'PDG')
-            }).execute()
-            return f"Commande enregistrée chef: {quantite} x {produit}."
-        except Exception as e:
-            return f"Erreur: {e}. Vérifie RLS sur table commandes."
-
     def _get_voiture_moins_cher(self):
         if self.df['voitures'].empty:
             return "Pas de données voitures chef."
@@ -2945,97 +2883,83 @@ Signature
         except:
             pass
 
-# === UI FLOKI - AUTO-EXECUTE + TELECHARGEMENT PDF ===
+# === UI FLOKI V13 ===
 if 'floki' not in st.session_state:
-    dataframes = {
-        "articles": df_articles,
-        "compta": df_compta,
-        "biens": df_biens,
-        "voitures": df_voitures
-    }
+    dataframes = {"articles": df_articles, "compta": df_compta, "biens": df_biens, "voitures": df_voitures}
     st.session_state.floki = FLOKI(supabase, dataframes)
 
 user_role = str(st.session_state.get('user_role', '')).upper()
-user_name = st.session_state.get('user_name', 'Utilisateur')
 
 with st.sidebar:
     if user_role == 'PDG':
         st.divider()
         st.markdown("### 🤖 FLOKI")
-        st.caption(f"Conseiller du PDG - {user_name}")
+        st.caption(f"Conseiller du PDG - {st.session_state.get('user_name', 'Utilisateur')}")
 
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
-
         if audio_bytes and not st.session_state.get('floki_done', False):
-            with st.spinner("FLOKI écoute avec Google..."):
+            with st.spinner("FLOKI écoute..."):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                         tmp.write(audio_bytes.getvalue())
                         tmp_path = tmp.name
-
                     recognizer = sr.Recognizer()
                     with sr.AudioFile(tmp_path) as source:
                         audio_data = recognizer.record(source)
-
                     texte = recognizer.recognize_google(audio_data, language="fr-FR")
                     st.success(f"Tu as dit : {texte}")
-
-                    with st.spinner("FLOKI rédige..."):
+                    with st.spinner("FLOKI réfléchit..."):
                         rep = st.session_state.floki.ask(texte)
                         st.session_state.floki_rep = rep
                         st.session_state.floki_done = True
                         st.rerun()
-
-                except sr.UnknownValueError:
-                    st.error("FLOKI n’a pas compris. Répète plus clairement chef.")
-                except Exception as e:
-                    st.error(f"Erreur : {e}")
+                except:
+                    st.error("FLOKI n’a pas compris chef.")
 
         if audio_bytes is None:
             st.session_state.floki_done = False
 
-        q = st.text_input("Ton ordre",
-                          value=st.session_state.get('floki_input_auto', ''),
-                          key="floki_input",
-                          placeholder="Ex: genere mise en garde pour Paul")
+        q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: stock de riz, genere contrat pour Paul")
+        if st.button("Exécuter", type="primary", use_container_width=True):
+            if q:
+                with st.spinner("FLOKI réfléchit..."):
+                    rep = st.session_state.floki.ask(q)
+                    st.session_state.floki_rep = rep
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Exécuter", type="primary", use_container_width=True, key="floki_exec"):
-                if q:
-                    with st.spinner("FLOKI rédige..."):
-                        rep = st.session_state.floki.ask(q)
-                        st.session_state.floki_rep = rep
-
-        with col2:
-            if st.button("Notifier équipe", use_container_width=True, key="floki_notify"):
-                if q:
-                    msg = st.session_state.floki.notify_internal(q)
-                    st.toast(msg)
+        if st.button("Notifier équipe", use_container_width=True):
+            if q:
+                msg = st.session_state.floki.notify_internal(q)
+                st.toast(msg)
 
         if 'floki_rep' in st.session_state:
-            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-            st.components.v1.html(f"""
-                <script>
-                if ('speechSynthesis' in window) {{
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                    msg.lang = 'fr-FR';
-                    msg.rate = 1;
-                    window.speechSynthesis.speak(msg);
-                }}
-                </script>
-            """, height=0)
             st.success(st.session_state.floki_rep)
 
-            # Bouton de téléchargement PDF si généré
-            for key in st.session_state.keys():
-                if key.startswith('pdf_'):
-                    pdf_path = st.session_state[key]
-                    with open(pdf_path, "rb") as f:
-                        st.download_button(
-                            label="Télécharger le document PDF",
-                            data=f,
-                            file_name=key.replace('pdf_', '') + ".pdf",
-                            mime="application/pdf"
-                        )
+            # Formulaire correction champs vides
+            if 'floki_missing_fields' in st.session_state:
+                st.warning("Chef, remplis les champs vides avant téléchargement :")
+                with st.form("correction_form"):
+                    data = st.session_state['floki_doc_data']
+                    new_data = data.copy()
+                    for field in st.session_state['floki_missing_fields']:
+                        new_data[field] = st.text_input(f"{field}", value="", placeholder=f"Renseigne {field}")
+                    submitted = st.form_submit_button("Valider et générer PDF")
+                    if submitted:
+                        st.session_state['floki_doc_data'].update(new_data)
+                        doc_type = st.session_state['floki_doc_type']
+                        template_func = getattr(st.session_state.floki, f"_template_{doc_type.replace(' ', '_')}", st.session_state.floki._template_lettre)
+                        new_text = template_func(st.session_state['floki_doc_data'])
+                        pdf_bytes = st.session_state.floki._create_pdf_bytes(f"{doc_type}_{new_data['nom']}", new_text)
+                        st.session_state[f'pdf_bytes_{doc_type}_{new_data["nom"]}'] = pdf_bytes
+                        st.session_state[f'pdf_name_{doc_type}_{new_data["nom"]}'] = f"{doc_type}_{new_data['nom']}.pdf"
+                        del st.session_state['floki_missing_fields']
+                        st.rerun()
+
+            # Bouton téléchargement
+            for key in list(st.session_state.keys()):
+                if key.startswith('pdf_bytes_'):
+                    filename_key = key.replace('pdf_bytes_', '')
+                    pdf_bytes = st.session_state[key]
+                    pdf_name = st.session_state[f'pdf_name_{filename_key}']
+                    st.download_button("Télécharger le PDF", data=pdf_bytes, file_name=pdf_name, mime="application/pdf", key=f"dl_{filename_key}")
+                    del st.session_state[key]
+                    del st.session_state[f'pdf_name_{filename_key}']
