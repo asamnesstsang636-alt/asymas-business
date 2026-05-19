@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                            # === FLOKI SOLDAT V3 - PDG ONLY + MICRO + COMMERCE EXTERIEUR ===
+                                 # === FLOKI SOLDAT V3 - PDG ONLY + MICRO + COMMERCE EXTERIEUR ===
 import difflib
 import re
 import urllib.parse
@@ -2781,7 +2781,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - PDG ONLY + MICRO ===
+# === UI FLOKI - VISIBLE UNIQUEMENT AU PDG ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2791,24 +2791,16 @@ if 'floki' not in st.session_state:
     }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
-if 'floki_unlocked' not in st.session_state:
-    st.session_state.floki_unlocked = False
+# Récupère le rôle de l’utilisateur connecté
+user_role = str(st.session_state.get('user_role', '')).upper()
+user_name = st.session_state.get('user_name', 'Utilisateur')
 
 with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Accès total ASYMAS")
-
-    if not st.session_state.floki_unlocked:
-        pwd = st.text_input("Mot de passe PDG", type="password", key="floki_pwd")
-        if st.button("Déverrouiller", key="floki_unlock"):
-            if pwd == "ASYMAS2025": # CHANGE CE MOT DE PASSE
-                st.session_state.floki_unlocked = True
-                st.rerun()
-            else:
-                st.error("Mot de passe incorrect")
-    else:
-        st.success("FLOKI déverrouillé")
+    # Affiche FLOKI UNIQUEMENT si rôle = PDG
+    if user_role == 'PDG':
+        st.divider()
+        st.markdown("### 🤖 FLOKI")
+        st.caption(f"Conseiller du PDG - {user_name}")
 
         # MICRO : enregistrement vocal
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
@@ -2816,7 +2808,7 @@ with st.sidebar:
             st.audio(audio_bytes)
             st.info("Transcription vocale à activer avec Whisper API si besoin.")
 
-        q = st.text_input("Ou tape ton ordre", key="floki_input",
+        q = st.text_input("Ton ordre", key="floki_input",
                           placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
 
         col1, col2 = st.columns(2)
