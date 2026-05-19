@@ -2515,7 +2515,6 @@ import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta
-import speech_recognition as sr
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2802,20 +2801,8 @@ with st.sidebar:
     st.markdown("### 🤖 FLOKI")
     st.caption("Conseiller du PDG - Accès total ASYMAS")
 
-    audio = st.audio_input("🎤 Parle à FLOKI")
-    q = st.text_input("Ou tape ton ordre", key="floki_input",
+    q = st.text_input("Ordre pour FLOKI", key="floki_input",
                       placeholder="Ex: commande ciment quantité 50, envoi message à Jean : réunion 14h")
-
-    if audio is not None:
-        with st.spinner("FLOKI écoute..."):
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(audio) as source:
-                audio_data = recognizer.record(source)
-            try:
-                q = recognizer.recognize_google(audio_data, language="fr-FR")
-                st.text_input("Ordre détecté:", q, disabled=True)
-            except:
-                st.warning("Micro: je n’ai pas compris. Réessaie ou tape.")
 
     col1, col2 = st.columns(2)
     with col1:
