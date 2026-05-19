@@ -2506,14 +2506,14 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-# === FLOKI SOLDAT COMPLET - VERSION PDG ===
+                         # === FLOKI SOLDAT COMPLET - VERSION PDG ===
 import difflib
 import re
 import urllib.parse
-import inspect
 import json
 import requests
 import streamlit as st
+import pandas as pd
 from datetime import datetime
 
 class FLOKI:
@@ -2521,136 +2521,104 @@ class FLOKI:
         self.supabase = supabase_client
         self.df = dataframes
         self.system_knowledge = self._get_supabase_schema()
-        self.system_prompt = self._build_system_prompt()
 
     def _get_supabase_schema(self):
-        """Lit le schéma réel de Supabase pour connaître les tables et colonnes"""
         schema = {}
         tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
         for t in tables:
             try:
                 result = self.supabase.table(t).select("*").limit(1).execute()
-                if result.data:
-                    schema[t] = list(result.data[0].keys())
-                else:
-                    schema[t] = []
+                schema[t] = list(result.data[0].keys()) if result.data else []
             except:
                 schema[t] = []
         return schema
-
-    def _build_system_prompt(self):
-        """System prompt pour que FLOKI comprenne le métier ASYMAS"""
-        return f"""
-Tu es FLOKI, l'assistant direct du PDG d'ASYMAS BUSINESS.
-Ton rôle: comprendre les demandes en français et exécuter des actions sur Supabase.
-
-Tables disponibles et leurs colonnes:
-{json.dumps(self.system_knowledge, indent=2, ensure_ascii=False)}
-
-Règles:
-1. Si demande sur pertes commerce → lis mouvements_stock, filtre type='perte' et categorie='commerce'
-2. Si demande CA/chiffre → lis compta, somme type='Revenu' et 'Dépense'
-3. Si demande voiture moins cher → lis voitures, cherche prix min sur stock > 0
-4. Si insertion échoue → c'est RLS, dis-le clairement au PDG
-5. Réponds court, en français, avec source des données
-"""
 
     def ask(self, question):
         q = question.lower().strip()
         log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
 
-        # Salutation soldat
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Je connais toutes vos tables Supabase. Donnez l'ordre."
+            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-        # Action WhatsApp
         if "envoie" in q and "message" in q and "numero" in q:
             result = self._action_send_whatsapp(question)
             log_entry.update({"action": "whatsapp_send", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        # Rédaction administrative
-        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation", "courrier"]):
+        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
             result = self._action_rediger(question)
             log_entry.update({"action": "redaction", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        # Conseil business
         if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
             result = self._action_conseil(q)
             log_entry.update({"action": "conseil", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        # Nettoie pour recherche data
         q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
-
-        # Recherche dans données ASYMAS
         rep = self._search_asymas(q_clean)
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
             self._log_action(log_entry)
             return rep + "\n\nSource: ASYMAS"
 
-        # Recherche web
         web_rep = self._search_web(question)
         log_entry.update({"source": "WEB", "reponse": web_rep})
         self._log_action(log_entry)
         return web_rep + "\n\nSource: WEB"
 
     def _search_asymas(self, q):
-        # 1. Prix voiture la moins chère
+        # Voiture moins chère
         if "voiture" in q and ("moins cher" in q or "prix" in q):
             return self._get_voiture_moins_cher()
 
-        # 2. Produit
+        # Liste voitures
+        if "voiture" in q and ("liste" in q or "donne" in q):
+            return self._get_voitures_stock()
+
+        # Produit
         rep = self._search_product(q)
         if rep: return rep
 
-        # 3. Pertes commerce
+        # Pertes commerce
         if "perte" in q and "commerce" in q:
             return self._get_pertes_commerce()
 
-        # 4. Stock bas
-        if any(k in q for k in ["stock bas", "rupture", "manque", "presque fini"]):
+        # Stock bas
+        if any(k in q for k in ["stock bas", "rupture", "manque"]):
             return self._stock_bas()
 
-        # 5. CA
+        # CA
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
-
-        # 6. Voitures dispo
-        if "voiture" in q and ("stock" in q or "dispo" in q):
-            return self._get_voitures_stock()
 
         return None
 
     def _get_voiture_moins_cher(self):
         if self.df['voitures'].empty:
             return "Pas de données voitures chef."
-
-        # Cherche la colonne prix, gère plusieurs noms possibles
-        prix_col = None
-        for col in ['prix', 'prix_vente', 'prix_achat', 'montant']:
-            if col in self.df['voitures'].columns:
-                prix_col = col
-                break
-
+        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
         if not prix_col:
-            return "Chef, je ne trouve pas la colonne prix dans la table voitures."
-
-        # Filtre stock > 0 et prend la moins chère
+            return "Chef, je ne trouve pas la colonne prix dans voitures."
         dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
         if dispo.empty:
             return "Aucune voiture en stock chef."
-
         moins_chere = dispo.loc[dispo[prix_col].idxmin()]
         modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
         prix = float(moins_chere[prix_col])
+        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
 
-        return f"Voiture la moins chère en stock: {modele} à {prix:,.0f} FC"
+    def _get_voitures_stock(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
+        return f"Voitures en stock:\n{txt}"
 
     def _get_pertes_commerce(self):
         try:
@@ -2662,21 +2630,11 @@ Règles:
         except Exception as e:
             return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
 
-    def _get_voitures_stock(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités" for _, r in dispo.iterrows()])
-        return f"Voitures en stock:\n{txt}"
-
     def _search_product(self, q):
         if self.df['articles'].empty:
             return None
         articles = self.df['articles'].copy()
-        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower()
-        articles['nom_clean'] = articles['nom_clean'].str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
         q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
         mots_q = [w for w in q_clean.split() if len(w) > 2]
         if mots_q:
@@ -2719,10 +2677,10 @@ Règles:
 
     def _action_rediger(self, question):
         if "relance" in question.lower():
-            return """Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée à ce jour.\nNous vous prions de régulariser votre situation dans les 48h.\n\nCordialement,\nASYMAS BUSINESS\nTel: +243 995 105 623"""
+            return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
         if "convocation" in question.lower():
-            return """Objet: Convocation\nMonsieur/Madame,\n\nVous êtes convoqué(e) à nos bureaux le [DATE] à [HEURE] pour discussion concernant [OBJET].\n\nMerci de confirmer votre présence.\n\nASYMAS BUSINESS"""
-        return "Chef, précise le type: 'redige une relance', 'redige une convocation'."
+            return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
+        return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
 
     def _action_send_whatsapp(self, question):
         nums = re.findall(r'\+?\d{9,15}', question)
@@ -2731,7 +2689,7 @@ Règles:
         numero = nums[0].replace("+", "")
         message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
         url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-        return f"Ordre exécuté chef. Lien WhatsApp prêt: {url}"
+        return f"Lien WhatsApp prêt: {url}"
 
     def notify_internal(self, message):
         try:
@@ -2747,10 +2705,7 @@ Règles:
         if not self.df['articles'].empty and not self.df['compta'].empty:
             stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
             rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-            conseil = f"FAIT: {stock_bas} articles en stock bas. CA actuel: {rev:,.0f} FC.\n"
-            conseil += f"CONSEIL: Réapprovisionne les articles en stock bas.\n"
-            conseil += f"RISQUE: Rupture = perte de vente. Action sous 48h."
-            return conseil
+            return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
         return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
 
     def _log_action(self, log_entry):
@@ -2775,32 +2730,9 @@ with st.sidebar:
     st.caption("Conseiller du PDG - Comprend le système ASYMAS")
 
     q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: trouve notre voiture le moins cher, liste les pertes commerce")
+                      placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
 
-    st.components.v1.html("""
-        <script>
-        function startListening() {
-            if (!('webkitSpeechRecognition' in window)) {
-                alert("Utilise Chrome pour le micro");
-                return;
-            }
-            var recognition = new webkitSpeechRecognition();
-            recognition.lang = 'fr-FR';
-            recognition.onresult = function(event) {
-                var transcript = event.results[0][0].transcript;
-                let input = window.parent.document.querySelector('input[data-testid="stTextInput"][aria-label="Ordre pour FLOKI"]');
-                if(input){
-                    input.value = transcript;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-            };
-            recognition.start();
-        }
-        </script>
-        <button onclick="startListening()" style="width:100%;padding:8px;margin-top:5px;background:#00ff41;border:none;border-radius:5px;font-weight:bold;cursor:pointer;color:black;">
-            🎤 Parler à FLOKI
-        </button>
-    """, height=50)
+    st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
 
     col1, col2 = st.columns(2)
     with col1:
