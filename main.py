@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                             # === FLOKI SOLDAT V4 - PDG ONLY + MICRO + TRANSCRIPTION + COMMERCE EXTERIEUR ===
+                                # === FLOKI SOLDAT V5 - PDG ONLY + MICRO WHISPER + COMMERCE EXTERIEUR ===
 import difflib
 import re
 import urllib.parse
@@ -2514,8 +2514,8 @@ import requests
 import streamlit as st
 import pandas as pd
 import tempfile
-import speech_recognition as sr
 from datetime import datetime, date, timedelta
+from openai import OpenAI
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2574,14 +2574,12 @@ class FLOKI:
         return "Chef, je n’ai pas cette donnée dans ASYMAS. Dis-moi le nom exact de la table ou colonne."
 
     def _search_asymas(self, q):
-        # COMMERCE EXTERIEUR
         if "commerce" in q and "exterieur" in q:
             return self._get_commerce_exterieur()
         if "importation" in q or "importer" in q:
             return self._get_importations()
         if "exportation" in q or "exporter" in q:
             return self._get_exportations()
-
         if "facture" in q and ("genere" in q or "generee" in q or "fait" in q or "par" in q):
             return self._get_facture_par()
         if "qui" in q and "travail" in q and "hier" in q:
@@ -2783,7 +2781,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - PDG ONLY + MICRO AVEC TRANSCRIPTION ===
+# === UI FLOKI - PDG ONLY + MICRO WHISPER ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2795,6 +2793,7 @@ if 'floki' not in st.session_state:
 
 user_role = str(st.session_state.get('user_role', '')).upper()
 user_name = st.session_state.get('user_name', 'Utilisateur')
+client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
 
 with st.sidebar:
     if user_role == 'PDG':
@@ -2802,28 +2801,25 @@ with st.sidebar:
         st.markdown("### 🤖 FLOKI")
         st.caption(f"Conseiller du PDG - {user_name}")
 
-        # MICRO AVEC TRANSCRIPTION
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
         if audio_bytes:
-            with st.spinner("FLOKI écoute..."):
+            with st.spinner("FLOKI écoute avec Whisper..."):
                 try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
                         tmp.write(audio_bytes.getvalue())
                         tmp_path = tmp.name
 
-                    recognizer = sr.Recognizer()
-                    with sr.AudioFile(tmp_path) as source:
-                        audio_data = recognizer.record(source)
-                        texte = recognizer.recognize_google(audio_data, language="fr-FR")
-
+                    with open(tmp_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="fr"
+                        )
+                    texte = transcript.text
                     st.session_state.floki_input_auto = texte
                     st.success(f"Tu as dit : {texte}")
-                except sr.UnknownValueError:
-                    st.error("FLOKI n’a pas compris. Répète plus clairement chef.")
-                except sr.RequestError as e:
-                    st.error(f"Erreur Google Speech : {e}")
                 except Exception as e:
-                    st.error(f"Erreur transcription : {e}")
+                    st.error(f"Erreur Whisper : {e}")
 
         q = st.text_input("Ton ordre",
                           value=st.session_state.get('floki_input_auto', ''),
