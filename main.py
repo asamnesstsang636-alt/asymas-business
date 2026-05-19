@@ -2593,7 +2593,7 @@ class FLOKI:
             # FIX SYNTAXERROR : on utilise une variable séparateur
             sep = ", "
             doc_nom = doc_type.replace("_"," ")
-            return f"Document {doc_type.replace('_', ')} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
+            return f"Document {doc_type.replace("_"," ")} généré pour {data["nom"]}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
             filename = f"{doc_type}_{data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
