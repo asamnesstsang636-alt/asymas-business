@@ -2506,11 +2506,10 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI SOLDAT COMPLET - VERSION PDG ACCES TOTAL ===
+                              # === FLOKI SOLDAT V3 - ACCES TOTAL ASYMAS + COMMERCE EXTERIEUR ===
 import difflib
 import re
 import urllib.parse
-import json
 import requests
 import streamlit as st
 import pandas as pd
@@ -2525,7 +2524,8 @@ class FLOKI:
     def _get_supabase_schema(self):
         schema = {}
         tables = ["articles", "compta", "biens", "voitures", "mouvements_stock",
-                  "devis", "factures", "pointage", "employes", "commandes", "notifications", "floki_logs"]
+                  "devis", "factures", "pointage", "employes", "commandes",
+                  "importations", "exportations", "notifications", "floki_logs"]
         for t in tables:
             try:
                 result = self.supabase.table(t).select("*").limit(1).execute()
@@ -2534,50 +2534,140 @@ class FLOKI:
                 schema[t] = []
         return schema
 
+    def _clean_question(self, q):
+        q = q.lower()
+        q = q.replace("é", "e").replace("è", "e").replace("ê", "e").replace("à", "a").replace("ç", "c")
+        q = re.sub(r'[^\w\s]', ' ', q)
+        q = re.sub(r'\s+', ' ', q).strip()
+        return q
+
     def ask(self, question):
-        q = question.lower().strip()
-        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
+        q_raw = question
+        q = self._clean_question(question)
+        log_entry = {"demande": q_raw, "date": datetime.now().isoformat(), "source": "ASYMAS"}
 
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-        # ORDRE: Envoi message
         if "envoi" in q and "message" in q:
-            result = self._action_send_message(question)
+            result = self._action_send_message(q_raw)
             log_entry.update({"action": "send_message", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        # ORDRE: Commande
         if "commande" in q or "commander" in q:
-            result = self._action_commander(question)
+            result = self._action_commander(q)
             log_entry.update({"action": "commande", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
-            result = self._action_rediger(question)
-            log_entry.update({"action": "redaction", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
-        if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
-            result = self._action_conseil(q)
-            log_entry.update({"action": "conseil", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
-        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien|quelle|quel|qui|la)', '', q).strip()
-        rep = self._search_asymas(q_clean)
+        rep = self._search_asymas(q)
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
             self._log_action(log_entry)
             return rep + "\n\nSource: ASYMAS"
 
-        web_rep = self._search_web(question)
-        log_entry.update({"source": "WEB", "reponse": web_rep})
+        log_entry.update({"source": "ASYMAS", "reponse": "Table manquante"})
         self._log_action(log_entry)
-        return web_rep + "\n\nSource: WEB"
+        return "Chef, je n’ai pas cette donnée dans ASYMAS. Dis-moi le nom exact de la table ou colonne."
+
+    def _search_asymas(self, q):
+        # COMMERCE EXTERIEUR
+        if "commerce" in q and "exterieur" in q:
+            return self._get_commerce_exterieur()
+        if "importation" in q or "importer" in q:
+            return self._get_importations()
+        if "exportation" in q or "exporter" in q:
+            return self._get_exportations()
+
+        if "facture" in q and ("genere" in q or "generee" in q or "fait" in q or "par" in q):
+            return self._get_facture_par()
+        if "qui" in q and "travail" in q and "hier" in q:
+            return self._get_travail_hier()
+        if "facture" in q and "immobili" in q and ("derniere" in q or "dernier" in q):
+            return self._get_derniere_facture_immobilier()
+        if "stock" in q and "de" in q:
+            produit = q.split("de")[-1].strip()
+            return self._search_product(produit)
+        if "commande" in q and ("attente" in q or "en cours" in q or "liste" in q):
+            return self._get_commandes_attente()
+        if "voiture" in q and ("moins cher" in q or "prix" in q):
+            return self._get_voiture_moins_cher()
+        if "voiture" in q and ("liste" in q or "donne" in q):
+            return self._get_voitures_stock()
+        if "perte" in q and "commerce" in q:
+            return self._get_pertes_commerce()
+        if any(k in q for k in ["stock bas", "rupture", "manque"]):
+            return self._stock_bas()
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
+            return self._chiffre_affaires()
+        return None
+
+    def _get_commerce_exterieur(self):
+        imp = self._get_importations()
+        exp = self._get_exportations()
+        return f"RAPPORT COMMERCE EXTERIEUR:\n\n{imp}\n\n{exp}"
+
+    def _get_importations(self):
+        try:
+            result = self.supabase.table("importations").select("*").order("date", desc=True).limit(5).execute()
+            if not result.data:
+                return "Aucune importation enregistrée chef."
+            total = sum(float(r.get('montant', 0)) for r in result.data)
+            txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            return f"Dernières importations - Total: {total:,.0f} FC\n{txt}"
+        except:
+            return "Chef, crée table 'importations' avec: produit, montant, date, fournisseur."
+
+    def _get_exportations(self):
+        try:
+            result = self.supabase.table("exportations").select("*").order("date", desc=True).limit(5).execute()
+            if not result.data:
+                return "Aucune exportation enregistrée chef."
+            total = sum(float(r.get('montant', 0)) for r in result.data)
+            txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            return f"Dernières exportations - Total: {total:,.0f} FC\n{txt}"
+        except:
+            return "Chef, crée table 'exportations' avec: produit, montant, date, client."
+
+    def _get_facture_par(self):
+        try:
+            result = self.supabase.table("factures").select("*").order("date", desc=True).limit(1).execute()
+            if result.data:
+                f = result.data[0]
+                auteur = f.get('genere_par', f.get('created_by', f.get('auteur', 'Inconnu')))
+                return f"Dernière facture N°{f.get('numero', 'N/A')} générée par: {auteur} le {f.get('date', '')[:10]}"
+        except:
+            return "Chef, je ne trouve pas table 'factures' ou colonne 'genere_par'."
+
+    def _get_travail_hier(self):
+        hier = (date.today() - timedelta(days=1)).isoformat()
+        try:
+            result = self.supabase.table("pointage").select("*").eq("date", hier).execute()
+            if result.data:
+                noms = [r.get('nom', r.get('employe', 'N/A')) for r in result.data]
+                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
+        except:
+            return "Chef, je ne trouve pas table 'pointage'."
+
+    def _get_derniere_facture_immobilier(self):
+        try:
+            result = self.supabase.table("factures").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
+            if result.data:
+                f = result.data[0]
+                return f"Dernière facture immobilière: N°{f.get('numero', 'N/A')} - {float(f.get('montant', 0)):,.0f} FC le {f.get('date', '')[:10]}"
+        except:
+            return "Chef, je ne trouve pas table 'factures' avec type='immobilier'."
+
+    def _get_commandes_attente(self):
+        try:
+            result = self.supabase.table("commandes").select("*").eq("statut", "en_attente").order("date", desc=True).limit(10).execute()
+            if not result.data:
+                return "Aucune commande en attente chef."
+            txt = "\n".join([f"- {r['quantite']} x {r['produit']} - {r['date'][:10]}" for r in result.data])
+            return f"Commandes en attente:\n{txt}"
+        except:
+            return "Chef, je ne trouve pas table 'commandes'."
 
     def _action_send_message(self, question):
         nums = re.findall(r'\+?\d{9,15}', question)
@@ -2586,28 +2676,12 @@ class FLOKI:
             message = re.sub(r'envoi.*?message.*?\+?\d{9,15}\s*:?', '', question, flags=re.IGNORECASE).strip()
             url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
             return f"Ordre exécuté chef. Lien WhatsApp: {url}"
+        return "Chef, donne-moi un numéro. Ex: 'envoi message au +243995105623 : texte'"
 
-        nom_match = re.search(r'envoi.*?message.*?à\s+([a-zéèàç\s]+?)\s*:', question, re.IGNORECASE)
-        if nom_match:
-            nom = nom_match.group(1).strip()
-            try:
-                result = self.supabase.table("employes").select("nom,telephone").ilike("nom", f"%{nom}%").limit(1).execute()
-                if result.data:
-                    tel = result.data[0].get('telephone', '').replace("+", "")
-                    message = re.sub(r'envoi.*?message.*?à\s+[a-zéèàç\s]+?\s*:', '', question, flags=re.IGNORECASE).strip()
-                    url = f"https://wa.me/{tel}?text={urllib.parse.quote(message)}"
-                    return f"Message pour {result.data[0]['nom']} prêt: {url}"
-                else:
-                    return f"Chef, je ne trouve pas {nom} dans la table employes."
-            except:
-                return "Chef, erreur lecture table employes."
-        return "Chef, précise: 'envoi message au +243...' ou 'envoi message à [Nom] : [texte]'"
-
-    def _action_commander(self, question):
-        q_clean = question.lower()
-        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q_clean)
+    def _action_commander(self, q):
+        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q)
         if not produit_match:
-            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q_clean)
+            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q)
         if not produit_match:
             return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
         produit = produit_match.group(1).strip()
@@ -2620,70 +2694,16 @@ class FLOKI:
                 "statut": "en_attente",
                 "commande_par": st.session_state.get('user_name', 'PDG')
             }).execute()
-            return f"Commande enregistrée chef: {quantite} x {produit}. Statut: en attente."
+            return f"Commande enregistrée chef: {quantite} x {produit}."
         except Exception as e:
-            return f"Erreur enregistrement commande: {e}. Vérifiez RLS sur table commandes."
-
-    def _search_asymas(self, q):
-        if "qui" in q and "travail" in q and "hier" in q:
-            return self._get_travail_hier()
-        if "facture" in q and "immobili" in q and ("derniere" in q or "dernier" in q):
-            return self._get_derniere_facture_immobilier()
-        if "voiture" in q and ("moins cher" in q or "prix" in q):
-            return self._get_voiture_moins_cher()
-        if "voiture" in q and ("liste" in q or "donne" in q):
-            return self._get_voitures_stock()
-        rep = self._search_product(q)
-        if rep: return rep
-        if "perte" in q and "commerce" in q:
-            return self._get_pertes_commerce()
-        if any(k in q for k in ["stock bas", "rupture", "manque"]):
-            return self._stock_bas()
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
-            return self._chiffre_affaires()
-        return None
-
-    def _get_travail_hier(self):
-        hier = (date.today() - timedelta(days=1)).isoformat()
-        try:
-            result = self.supabase.table("pointage").select("*").eq("date", hier).execute()
-            if result.data:
-                noms = [r.get('nom', r.get('employe', 'N/A')) for r in result.data]
-                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
-        except:
-            pass
-        try:
-            result = self.supabase.table("employes").select("*").eq("last_seen", hier).execute()
-            if result.data:
-                noms = [r.get('nom', 'N/A') for r in result.data]
-                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
-        except:
-            pass
-        return "Chef, je ne trouve pas la table pointage ou employes. Dis-moi le nom exact."
-
-    def _get_derniere_facture_immobilier(self):
-        try:
-            result = self.supabase.table("factures").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
-            if result.data:
-                f = result.data[0]
-                return f"Dernière facture immobilière: N°{f.get('numero', 'N/A')} - {float(f.get('montant', 0)):,.0f} FC le {f.get('date', '')[:10]}"
-        except:
-            pass
-        try:
-            result = self.supabase.table("devis").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
-            if result.data:
-                d = result.data[0]
-                return f"Dernier devis immobilier: N°{d.get('numero', 'N/A')} - {float(d.get('montant', 0)):,.0f} FC le {d.get('date', '')[:10]}"
-        except:
-            pass
-        return "Chef, je ne trouve pas la table factures ou devis avec type='immobilier'. Donne-moi le nom exact."
+            return f"Erreur: {e}. Vérifie RLS sur table commandes."
 
     def _get_voiture_moins_cher(self):
         if self.df['voitures'].empty:
             return "Pas de données voitures chef."
         prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
         if not prix_col:
-            return "Chef, je ne trouve pas la colonne prix dans voitures."
+            return "Chef, je ne trouve pas colonne prix dans voitures."
         dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
         if dispo.empty:
             return "Aucune voiture en stock chef."
@@ -2723,7 +2743,7 @@ class FLOKI:
                 if all(word in r['nom_clean'] for word in mots_q):
                     return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
         noms = articles['nom_clean'].tolist()
-        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
+        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.4)
         if closest:
             r = articles[articles['nom_clean'] == closest[0]].iloc[0]
             return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
@@ -2745,24 +2765,6 @@ class FLOKI:
         dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
         return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
 
-    def _search_web(self, q):
-        try:
-            url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
-            r = requests.get(url, timeout=4)
-            data = r.json()
-            if data.get('AbstractText'):
-                return f"Info vérifiée: {data['AbstractText']}"
-            return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
-        except:
-            return "Le web ne répond pas chef."
-
-    def _action_rediger(self, question):
-        if "relance" in question.lower():
-            return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
-        if "convocation" in question.lower():
-            return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
-        return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
-
     def notify_internal(self, message):
         try:
             self.supabase.table("notifications").insert({
@@ -2772,13 +2774,6 @@ class FLOKI:
             return "Notification envoyée à l’équipe chef."
         except Exception as e:
             return f"Échec notification: {e}"
-
-    def _action_conseil(self, q):
-        if not self.df['articles'].empty and not self.df['compta'].empty:
-            stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
-            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-            return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
-        return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
 
     def _log_action(self, log_entry):
         try:
@@ -2799,10 +2794,10 @@ if 'floki' not in st.session_state:
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Accès total ASYMAS")
+    st.caption("Conseiller du PDG - Accès total ASYMAS + Commerce Extérieur")
 
     q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: commande ciment quantité 50, envoi message à Jean : réunion 14h")
+                      placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
 
     col1, col2 = st.columns(2)
     with col1:
