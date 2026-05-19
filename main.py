@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI SOLDAT COMPLET - VERSION PDG ===
+                         # === FLOKI SOLDAT COMPLET - VERSION PDG ACCES TOTAL ===
 import difflib
 import re
 import urllib.parse
@@ -2514,7 +2514,8 @@ import json
 import requests
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date, timedelta
+import speech_recognition as sr
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2524,7 +2525,8 @@ class FLOKI:
 
     def _get_supabase_schema(self):
         schema = {}
-        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
+        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock",
+                  "devis", "factures", "pointage", "employes", "commandes", "notifications", "floki_logs"]
         for t in tables:
             try:
                 result = self.supabase.table(t).select("*").limit(1).execute()
@@ -2540,9 +2542,17 @@ class FLOKI:
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-        if "envoie" in q and "message" in q and "numero" in q:
-            result = self._action_send_whatsapp(question)
-            log_entry.update({"action": "whatsapp_send", "reponse": result})
+        # ORDRE: Envoi message
+        if "envoi" in q and "message" in q:
+            result = self._action_send_message(question)
+            log_entry.update({"action": "send_message", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
+        # ORDRE: Commande
+        if "commande" in q or "commander" in q:
+            result = self._action_commander(question)
+            log_entry.update({"action": "commande", "reponse": result})
             self._log_action(log_entry)
             return result
 
@@ -2558,7 +2568,7 @@ class FLOKI:
             self._log_action(log_entry)
             return result
 
-        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
+        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien|quelle|quel|qui|la)', '', q).strip()
         rep = self._search_asymas(q_clean)
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
@@ -2570,32 +2580,104 @@ class FLOKI:
         self._log_action(log_entry)
         return web_rep + "\n\nSource: WEB"
 
+    def _action_send_message(self, question):
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if nums:
+            numero = nums[0].replace("+", "")
+            message = re.sub(r'envoi.*?message.*?\+?\d{9,15}\s*:?', '', question, flags=re.IGNORECASE).strip()
+            url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
+            return f"Ordre exécuté chef. Lien WhatsApp: {url}"
+
+        nom_match = re.search(r'envoi.*?message.*?à\s+([a-zéèàç\s]+?)\s*:', question, re.IGNORECASE)
+        if nom_match:
+            nom = nom_match.group(1).strip()
+            try:
+                result = self.supabase.table("employes").select("nom,telephone").ilike("nom", f"%{nom}%").limit(1).execute()
+                if result.data:
+                    tel = result.data[0].get('telephone', '').replace("+", "")
+                    message = re.sub(r'envoi.*?message.*?à\s+[a-zéèàç\s]+?\s*:', '', question, flags=re.IGNORECASE).strip()
+                    url = f"https://wa.me/{tel}?text={urllib.parse.quote(message)}"
+                    return f"Message pour {result.data[0]['nom']} prêt: {url}"
+                else:
+                    return f"Chef, je ne trouve pas {nom} dans la table employes."
+            except:
+                return "Chef, erreur lecture table employes."
+        return "Chef, précise: 'envoi message au +243...' ou 'envoi message à [Nom] : [texte]'"
+
+    def _action_commander(self, question):
+        q_clean = question.lower()
+        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q_clean)
+        if not produit_match:
+            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q_clean)
+        if not produit_match:
+            return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
+        produit = produit_match.group(1).strip()
+        quantite = int(produit_match.group(2))
+        try:
+            self.supabase.table("commandes").insert({
+                "produit": produit,
+                "quantite": quantite,
+                "date": datetime.now().isoformat(),
+                "statut": "en_attente",
+                "commande_par": st.session_state.get('user_name', 'PDG')
+            }).execute()
+            return f"Commande enregistrée chef: {quantite} x {produit}. Statut: en attente."
+        except Exception as e:
+            return f"Erreur enregistrement commande: {e}. Vérifiez RLS sur table commandes."
+
     def _search_asymas(self, q):
-        # Voiture moins chère
+        if "qui" in q and "travail" in q and "hier" in q:
+            return self._get_travail_hier()
+        if "facture" in q and "immobili" in q and ("derniere" in q or "dernier" in q):
+            return self._get_derniere_facture_immobilier()
         if "voiture" in q and ("moins cher" in q or "prix" in q):
             return self._get_voiture_moins_cher()
-
-        # Liste voitures
         if "voiture" in q and ("liste" in q or "donne" in q):
             return self._get_voitures_stock()
-
-        # Produit
         rep = self._search_product(q)
         if rep: return rep
-
-        # Pertes commerce
         if "perte" in q and "commerce" in q:
             return self._get_pertes_commerce()
-
-        # Stock bas
         if any(k in q for k in ["stock bas", "rupture", "manque"]):
             return self._stock_bas()
-
-        # CA
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
-
         return None
+
+    def _get_travail_hier(self):
+        hier = (date.today() - timedelta(days=1)).isoformat()
+        try:
+            result = self.supabase.table("pointage").select("*").eq("date", hier).execute()
+            if result.data:
+                noms = [r.get('nom', r.get('employe', 'N/A')) for r in result.data]
+                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
+        except:
+            pass
+        try:
+            result = self.supabase.table("employes").select("*").eq("last_seen", hier).execute()
+            if result.data:
+                noms = [r.get('nom', 'N/A') for r in result.data]
+                return f"Personnel présent hier {hier}:\n" + "\n".join([f"- {n}" for n in noms])
+        except:
+            pass
+        return "Chef, je ne trouve pas la table pointage ou employes. Dis-moi le nom exact."
+
+    def _get_derniere_facture_immobilier(self):
+        try:
+            result = self.supabase.table("factures").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
+            if result.data:
+                f = result.data[0]
+                return f"Dernière facture immobilière: N°{f.get('numero', 'N/A')} - {float(f.get('montant', 0)):,.0f} FC le {f.get('date', '')[:10]}"
+        except:
+            pass
+        try:
+            result = self.supabase.table("devis").select("*").eq("type", "immobilier").order("date", desc=True).limit(1).execute()
+            if result.data:
+                d = result.data[0]
+                return f"Dernier devis immobilier: N°{d.get('numero', 'N/A')} - {float(d.get('montant', 0)):,.0f} FC le {d.get('date', '')[:10]}"
+        except:
+            pass
+        return "Chef, je ne trouve pas la table factures ou devis avec type='immobilier'. Donne-moi le nom exact."
 
     def _get_voiture_moins_cher(self):
         if self.df['voitures'].empty:
@@ -2628,7 +2710,7 @@ class FLOKI:
             txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
             return f"Dernières pertes commerce:\n{txt}"
         except Exception as e:
-            return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
+            return f"Erreur lecture pertes: {e}."
 
     def _search_product(self, q):
         if self.df['articles'].empty:
@@ -2682,15 +2764,6 @@ class FLOKI:
             return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
         return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
 
-    def _action_send_whatsapp(self, question):
-        nums = re.findall(r'\+?\d{9,15}', question)
-        if not nums:
-            return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
-        numero = nums[0].replace("+", "")
-        message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
-        url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-        return f"Lien WhatsApp prêt: {url}"
-
     def notify_internal(self, message):
         try:
             self.supabase.table("notifications").insert({
@@ -2727,12 +2800,22 @@ if 'floki' not in st.session_state:
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
+    st.caption("Conseiller du PDG - Accès total ASYMAS")
 
-    q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
+    audio = st.audio_input("🎤 Parle à FLOKI")
+    q = st.text_input("Ou tape ton ordre", key="floki_input",
+                      placeholder="Ex: commande ciment quantité 50, envoi message à Jean : réunion 14h")
 
-    st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
+    if audio is not None:
+        with st.spinner("FLOKI écoute..."):
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(audio) as source:
+                audio_data = recognizer.record(source)
+            try:
+                q = recognizer.recognize_google(audio_data, language="fr-FR")
+                st.text_input("Ordre détecté:", q, disabled=True)
+            except:
+                st.warning("Micro: je n’ai pas compris. Réessaie ou tape.")
 
     col1, col2 = st.columns(2)
     with col1:
