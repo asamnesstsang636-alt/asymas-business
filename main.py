@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                         # === FLOKI SOLDAT V15.2 - CODE COMPLET CORRIGÉ ===
+                                 # === FLOKI SOLDAT V15.3 - CODE COMPLET CORRIGÉ ===
 import difflib, re, urllib.parse, streamlit as st, pandas as pd, tempfile, speech_recognition as sr, base64
 from datetime import datetime, date, timedelta
 from fpdf import FPDF
@@ -2590,10 +2590,10 @@ class FLOKI:
         missing = [k for k in required_fields.get(doc_type, ["nom"]) if data.get(k) in ["______", "______ FC"]]
         if missing:
             st.session_state['floki_missing_fields'] = missing
-            # FIX SYNTAXERROR : on utilise une variable séparateur
             sep = ", "
-            doc_nom = doc_type.replace("_"," ")
-            return f"Document {doc_type.replace("_"," ")} généré pour {data["nom"]}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
+            doc_nom = doc_type.replace("_", " ")
+            # FIX: guillemets corrigés dans le f-string
+            return f"Document {doc_nom} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
             filename = f"{doc_type}_{data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
@@ -2627,14 +2627,11 @@ class FLOKI:
         return match.group(1).strip() if match else None
 
     def _signature_block(self):
-      return (
-        "\n\nFait a Kinshasa, le " + date.today().strftime('%d/%m/%Y') + 
-        "\n\nSignature de l employe : __________________" + 
-        "    Signature Direction ASYMAS : __________________"
-    )
-        
-               
-               
+        return (
+            "\n\nFait a Kinshasa, le " + date.today().strftime('%d/%m/%Y') +
+            "\n\nSignature de l employe : __________________" +
+            " Signature Direction ASYMAS : __________________"
+        )
 
     def _template_contrat(self, d):
         header = "AFRICA INNOVATION INDUSTRIAL\nCONTRAT DE TRAVAIL\n"
@@ -2677,27 +2674,28 @@ class FLOKI:
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
         return header + body + self._signature_block()
 
-  def _create_pdf_bytes(self, filename, text, doc_type):
-    pdf = PDF()
-    if doc_type == "contrat":
-        pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
-    pdf.add_page()
-    pdf.set_font("Arial", size=11)
-    page_width = pdf.w - pdf.l_margin - pdf.r_margin
-    for line in text.strip().split('\n'):
-        line = line.strip()
-        if not line:
-            pdf.ln(5)
-            continue
-        safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
-        w = page_width if page_width > 0 else 170
-        pdf.multi_cell(w, 8, safe_line)
-    
-    # FIX pour fpdf2
-    output = pdf.output()
-    if isinstance(output, str):
-        return output.encode('latin-1', errors='replace')
-    return output
+    # FIX: indentation corrigée, maintenant bien dans la classe
+    def _create_pdf_bytes(self, filename, text, doc_type):
+        pdf = PDF()
+        if doc_type == "contrat":
+            pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
+        pdf.add_page()
+        pdf.set_font("Arial", size=11)
+        page_width = pdf.w - pdf.l_margin - pdf.r_margin
+        for line in text.strip().split('\n'):
+            line = line.strip()
+            if not line:
+                pdf.ln(5)
+                continue
+            safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
+            w = page_width if page_width > 0 else 170
+            pdf.multi_cell(w, 8, safe_line)
+
+        output = pdf.output()
+        if isinstance(output, str):
+            return output.encode('latin-1', errors='replace')
+        return output
+
     def _upload_to_supabase(self, pdf_bytes, filename):
         try:
             path = f"documents/{filename}"
