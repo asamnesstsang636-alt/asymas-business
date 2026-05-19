@@ -1424,7 +1424,7 @@ if "🚘 Gestion Parc" in tab_map:
 if "💰 Comptabilité" in tab_map:
     with tab_map["💰 Comptabilité"]:
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
-        colonnes_compta = get_table_columns("compta")
+        colonnes_compta = get_table_columns("comptes")
         with st.expander("➕ Ajouter Opération"):
             with st.form("form_compta", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
