@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                           # === FLOKI SOLDAT V7 - PDG ONLY + MICRO SPEECHRECOGNITION GOOGLE ===
+                             # === FLOKI SOLDAT V8 - AUTO-EXECUTE APRES ENREGISTREMENT ===
 import difflib
 import re
 import urllib.parse
@@ -2781,7 +2781,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - PDG ONLY + MICRO SPEECHRECOGNITION GOOGLE ===
+# === UI FLOKI - AUTO-EXECUTE APRES VOIX ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2801,7 +2801,9 @@ with st.sidebar:
         st.caption(f"Conseiller du PDG - {user_name}")
 
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
-        if audio_bytes:
+
+        # AUTO-EXECUTION QUAND ENREGISTREMENT TERMINE
+        if audio_bytes and not st.session_state.get('floki_done', False):
             with st.spinner("FLOKI écoute avec Google..."):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
@@ -2812,16 +2814,24 @@ with st.sidebar:
                     with sr.AudioFile(tmp_path) as source:
                         audio_data = recognizer.record(source)
 
-                    # Utilise Google Web API gratuit
                     texte = recognizer.recognize_google(audio_data, language="fr-FR")
-                    st.session_state.floki_input_auto = texte
                     st.success(f"Tu as dit : {texte}")
+
+                    # EXECUTION DIRECTE
+                    with st.spinner("FLOKI réfléchit..."):
+                        rep = st.session_state.floki.ask(texte)
+                        st.session_state.floki_rep = rep
+                        st.session_state.floki_done = True
+                        st.rerun()
+
                 except sr.UnknownValueError:
                     st.error("FLOKI n’a pas compris. Répète plus clairement chef.")
-                except sr.RequestError as e:
-                    st.error(f"Erreur Google : {e}")
                 except Exception as e:
-                    st.error(f"Erreur transcription : {e}")
+                    st.error(f"Erreur : {e}")
+
+        # Reset quand on supprime l’audio
+        if audio_bytes is None:
+            st.session_state.floki_done = False
 
         q = st.text_input("Ton ordre",
                           value=st.session_state.get('floki_input_auto', ''),
@@ -2835,7 +2845,6 @@ with st.sidebar:
                     with st.spinner("FLOKI réfléchit..."):
                         rep = st.session_state.floki.ask(q)
                         st.session_state.floki_rep = rep
-                        st.session_state.floki_input_auto = ""
 
         with col2:
             if st.button("Notifier équipe", use_container_width=True, key="floki_notify"):
