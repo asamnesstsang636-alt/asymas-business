@@ -2677,23 +2677,27 @@ class FLOKI:
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
         return header + body + self._signature_block()
 
-    def _create_pdf_bytes(self, filename, text, doc_type):
-        pdf = PDF()
-        if doc_type == "contrat":
-            pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
-        pdf.add_page()
-        pdf.set_font("Arial", size=11)
-        page_width = pdf.w - pdf.l_margin - pdf.r_margin
-        for line in text.strip().split('\n'):
-            line = line.strip()
-            if not line:
-                pdf.ln(5)
-                continue
-            safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
-            w = page_width if page_width > 0 else 170
-            pdf.multi_cell(w, 8, safe_line)
-        return pdf.output(dest='S').encode('latin-1', errors='replace')
-
+  def _create_pdf_bytes(self, filename, text, doc_type):
+    pdf = PDF()
+    if doc_type == "contrat":
+        pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
+    pdf.add_page()
+    pdf.set_font("Arial", size=11)
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin
+    for line in text.strip().split('\n'):
+        line = line.strip()
+        if not line:
+            pdf.ln(5)
+            continue
+        safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
+        w = page_width if page_width > 0 else 170
+        pdf.multi_cell(w, 8, safe_line)
+    
+    # FIX pour fpdf2
+    output = pdf.output()
+    if isinstance(output, str):
+        return output.encode('latin-1', errors='replace')
+    return output
     def _upload_to_supabase(self, pdf_bytes, filename):
         try:
             path = f"documents/{filename}"
