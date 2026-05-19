@@ -2519,15 +2519,41 @@ from datetime import datetime, date, timedelta
 from fpdf import FPDF
 
 class PDF(FPDF):
+    def __init__(self):
+        super().__init__(orientation='P', unit='mm', format='A4')
+        self.set_auto_page_break(auto=True, margin=15)
+        self.set_left_margin(15)
+        self.set_right_margin(15)
+        self.set_top_margin(20)
+
     def header(self):
         self.set_font('Arial', 'B', 14)
         self.cell(0, 10, 'ASYMAS SARL', 0, 1, 'C')
         self.ln(5)
+    
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
+def _create_pdf_bytes(self, filename, text):
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin  # largeur utile réelle
+    
+    for line in text.strip().split('\n'):
+        line = line.strip()
+        if not line:
+            pdf.ln(5)
+            continue
+        safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
+        # sécurité : si largeur <= 0 on force 170mm
+        w = page_width if page_width > 0 else 170
+        pdf.multi_cell(w, 10, safe_line)
+
+    return pdf.output(dest='S').encode('latin-1', errors='replace')
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
