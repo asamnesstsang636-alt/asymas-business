@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                                 # === FLOKI SOLDAT V15.3 - CODE COMPLET CORRIGÉ ===
+                               # === FLOKI SOLDAT V15.4 - COMPLET AVEC MICRO + DOUANE ===
 import difflib, re, urllib.parse, streamlit as st, pandas as pd, tempfile, speech_recognition as sr, base64
 from datetime import datetime, date, timedelta
 from fpdf import FPDF
@@ -2531,6 +2531,7 @@ class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
+        self.recognizer = sr.Recognizer()
 
     def _clean_question(self, q):
         q = q.lower()
@@ -2542,7 +2543,7 @@ class FLOKI:
         q_raw, q = question, self._clean_question(question)
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. Floki à l’écoute. Donnez-moi l’ordre."
-        if any(m in q for m in ["genere", "redige", "ecris", "fais", "prepare", "lettre", "contrat", "conge"]):
+        if any(m in q for m in ["genere", "redige", "ecris", "fais", "prepare", "lettre", "contrat", "conge", "douane"]):
             return self._generate_document_illimite(q_raw)
         if "envoi" in q and "message" in q:
             return self._action_send_message(q_raw)
@@ -2557,7 +2558,7 @@ class FLOKI:
             "mise en garde": "mise_en_garde", "conge de maternite": "conge_maternite",
             "conge": "conge", "rupture": "rupture", "contrat": "contrat",
             "pret": "pret", "attestation": "attestation", "licenciement": "licenciement",
-            "avertissement": "avertissement"
+            "avertissement": "avertissement", "douane": "douane"
         }
         doc_type = "lettre"
         for key, val in doc_type_map.items():
@@ -2575,6 +2576,7 @@ class FLOKI:
             "pret": ["nom", "poste", "montant", "motif"],
             "attestation": ["nom", "poste", "date_debut"],
             "rupture": ["nom", "poste", "motif", "date_debut"],
+            "douane": ["nom", "poste", "objet", "corps"],
             "lettre": ["nom", "poste", "objet", "corps"]
         }
 
@@ -2592,7 +2594,6 @@ class FLOKI:
             st.session_state['floki_missing_fields'] = missing
             sep = ", "
             doc_nom = doc_type.replace("_", " ")
-            # FIX: guillemets corrigés dans le f-string
             return f"Document {doc_nom} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
@@ -2669,12 +2670,15 @@ class FLOKI:
         header = "ASYMAS COMPANY\nRUPTURE DE CONTRAT\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\n"
         return header + body + self._signature_block()
+    def _template_douane(self, d):
+        header = "ASYMAS COMPANY\nDOCUMENT DE DOUANE\n"
+        body = f"Entreprise : {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
+        return header + body + self._signature_block()
     def _template_lettre(self, d):
         header = "ASYMAS COMPANY\nLETTRE ADMINISTRATIVE\n"
         body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
         return header + body + self._signature_block()
 
-    # FIX: indentation corrigée, maintenant bien dans la classe
     def _create_pdf_bytes(self, filename, text, doc_type):
         pdf = PDF()
         if doc_type == "contrat":
@@ -2690,7 +2694,6 @@ class FLOKI:
             safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
             w = page_width if page_width > 0 else 170
             pdf.multi_cell(w, 8, safe_line)
-
         output = pdf.output()
         if isinstance(output, str):
             return output.encode('latin-1', errors='replace')
@@ -2829,11 +2832,27 @@ with st.sidebar:
     if user_role == 'PDG':
         st.divider()
         st.markdown("### 🤖 FLOKI")
-        q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: fais un contrat pour Paul")
+
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: fais un contrat pour Paul")
+        with col2:
+            if st.button("🎤", key="floki_mic"):
+                with st.spinner("Parle chef..."):
+                    try:
+                        with sr.Microphone() as source:
+                            audio = st.session_state.floki.recognizer.listen(source, timeout=5)
+                        q = st.session_state.floki.recognizer.recognize_google(audio, language="fr-FR")
+                        st.session_state.floki_input = q
+                        st.rerun()
+                    except:
+                        st.error("Micro pas détecté chef")
+
         if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
                 with st.spinner("Floki réfléchit..."):
                     st.session_state.floki_rep = st.session_state.floki.ask(q)
+
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
             if 'floki_missing_fields' in st.session_state:
