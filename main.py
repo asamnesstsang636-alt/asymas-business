@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                              # === FLOKI SOLDAT V3 - ACCES TOTAL ASYMAS + COMMERCE EXTERIEUR ===
+                            # === FLOKI SOLDAT V3 - PDG ONLY + MICRO + COMMERCE EXTERIEUR ===
 import difflib
 import re
 import urllib.parse
@@ -2617,7 +2617,7 @@ class FLOKI:
             txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
             return f"Dernières importations - Total: {total:,.0f} FC\n{txt}"
         except:
-            return "Chef, crée table 'importations' avec: produit, montant, date, fournisseur."
+            return "Chef, table 'importations' vide ou manquante."
 
     def _get_exportations(self):
         try:
@@ -2628,7 +2628,7 @@ class FLOKI:
             txt = "\n".join([f"- {r.get('produit', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
             return f"Dernières exportations - Total: {total:,.0f} FC\n{txt}"
         except:
-            return "Chef, crée table 'exportations' avec: produit, montant, date, client."
+            return "Chef, table 'exportations' vide ou manquante."
 
     def _get_facture_par(self):
         try:
@@ -2781,7 +2781,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI ===
+# === UI FLOKI - PDG ONLY + MICRO ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2791,39 +2791,59 @@ if 'floki' not in st.session_state:
     }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
+if 'floki_unlocked' not in st.session_state:
+    st.session_state.floki_unlocked = False
+
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Accès total ASYMAS + Commerce Extérieur")
+    st.caption("Conseiller du PDG - Accès total ASYMAS")
 
-    q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
+    if not st.session_state.floki_unlocked:
+        pwd = st.text_input("Mot de passe PDG", type="password", key="floki_pwd")
+        if st.button("Déverrouiller", key="floki_unlock"):
+            if pwd == "ASYMAS2025": # CHANGE CE MOT DE PASSE
+                st.session_state.floki_unlocked = True
+                st.rerun()
+            else:
+                st.error("Mot de passe incorrect")
+    else:
+        st.success("FLOKI déverrouillé")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Exécuter", type="primary", use_container_width=True):
-            if q:
-                with st.spinner("FLOKI réfléchit..."):
-                    rep = st.session_state.floki.ask(q)
-                    st.session_state.floki_rep = rep
+        # MICRO : enregistrement vocal
+        audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
+        if audio_bytes:
+            st.audio(audio_bytes)
+            st.info("Transcription vocale à activer avec Whisper API si besoin.")
 
-    with col2:
-        if st.button("Notifier équipe", use_container_width=True):
-            if q:
-                msg = st.session_state.floki.notify_internal(q)
-                st.toast(msg)
+        q = st.text_input("Ou tape ton ordre", key="floki_input",
+                          placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
 
-    if 'floki_rep' in st.session_state:
-        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-        st.components.v1.html(f"""
-            <script>
-            if ('speechSynthesis' in window) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                msg.lang = 'fr-FR';
-                msg.rate = 1;
-                window.speechSynthesis.speak(msg);
-            }}
-            </script>
-        """, height=0)
-        st.success(st.session_state.floki_rep)
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Exécuter", type="primary", use_container_width=True, key="floki_exec"):
+                if q:
+                    with st.spinner("FLOKI réfléchit..."):
+                        rep = st.session_state.floki.ask(q)
+                        st.session_state.floki_rep = rep
+
+        with col2:
+            if st.button("Notifier équipe", use_container_width=True, key="floki_notify"):
+                if q:
+                    msg = st.session_state.floki.notify_internal(q)
+                    st.toast(msg)
+
+        if 'floki_rep' in st.session_state:
+            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+            st.components.v1.html(f"""
+                <script>
+                if ('speechSynthesis' in window) {{
+                    window.speechSynthesis.cancel();
+                    var msg = new SpeechSynthesisUtterance("{rep_clean}");
+                    msg.lang = 'fr-FR';
+                    msg.rate = 1;
+                    window.speechSynthesis.speak(msg);
+                }}
+                </script>
+            """, height=0)
+            st.success(st.session_state.floki_rep)
