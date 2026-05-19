@@ -2592,6 +2592,7 @@ class FLOKI:
             st.session_state['floki_missing_fields'] = missing
             # FIX SYNTAXERROR : on utilise une variable séparateur
             sep = ", "
+            doc_nom = doc_type.replace("_"," ")
             return f"Document {doc_type.replace('_', ')} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
         else:
             pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
