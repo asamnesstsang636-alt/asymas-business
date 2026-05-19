@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                           # === FLOKI SOLDAT V6 - PDG ONLY + MICRO GOOGLE SPEECH + COMMERCE EXTERIEUR ===
+                           # === FLOKI SOLDAT V7 - PDG ONLY + MICRO SPEECHRECOGNITION GOOGLE ===
 import difflib
 import re
 import urllib.parse
@@ -2514,9 +2514,8 @@ import requests
 import streamlit as st
 import pandas as pd
 import tempfile
+import speech_recognition as sr
 from datetime import datetime, date, timedelta
-from google.cloud import speech
-from google.oauth2 import service_account
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2782,7 +2781,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - PDG ONLY + MICRO GOOGLE SPEECH ===
+# === UI FLOKI - PDG ONLY + MICRO SPEECHRECOGNITION GOOGLE ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2803,25 +2802,26 @@ with st.sidebar:
 
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
         if audio_bytes:
-            with st.spinner("FLOKI écoute avec Google Speech..."):
+            with st.spinner("FLOKI écoute avec Google..."):
                 try:
-                    client = speech.SpeechClient.from_service_account_info({
-                        "type": "service_account",
-                        "api_key": st.secrets.get("GOOGLE_API_KEY")
-                    })
-                    audio = speech.RecognitionAudio(content=audio_bytes.getvalue())
-                    config = speech.RecognitionConfig(
-                        encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-                        sample_rate_hertz=48000,
-                        language_code="fr-FR",
-                        enable_automatic_punctuation=True
-                    )
-                    response = client.recognize(config=config, audio=audio)
-                    texte = " ".join([result.alternatives[0].transcript for result in response.results])
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                        tmp.write(audio_bytes.getvalue())
+                        tmp_path = tmp.name
+
+                    recognizer = sr.Recognizer()
+                    with sr.AudioFile(tmp_path) as source:
+                        audio_data = recognizer.record(source)
+
+                    # Utilise Google Web API gratuit
+                    texte = recognizer.recognize_google(audio_data, language="fr-FR")
                     st.session_state.floki_input_auto = texte
                     st.success(f"Tu as dit : {texte}")
+                except sr.UnknownValueError:
+                    st.error("FLOKI n’a pas compris. Répète plus clairement chef.")
+                except sr.RequestError as e:
+                    st.error(f"Erreur Google : {e}")
                 except Exception as e:
-                    st.error(f"Erreur Google Speech : {e}")
+                    st.error(f"Erreur transcription : {e}")
 
         q = st.text_input("Ton ordre",
                           value=st.session_state.get('floki_input_auto', ''),
