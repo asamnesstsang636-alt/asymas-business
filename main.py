@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                              # === FLOKI SOLDAT V13 - VERSION COMPLETE ASYMAS + REDACTION ===
+                          # === FLOKI SOLDAT V13.1 - VERSION COMPLETE + FIX PDF ===
 import difflib
 import re
 import urllib.parse
@@ -2562,14 +2562,12 @@ class FLOKI:
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-        # === MODULE REDACTION ===
         if "genere" in q or "redige" in q or "ecris" in q or "lettre" in q:
             result = self._generate_document_illimite(q_raw)
             log_entry.update({"action": "generate_document", "reponse": result})
             self._log_action(log_entry)
             return result
 
-        # === MODULE ACTIONS ===
         if "envoi" in q and "message" in q:
             result = self._action_send_message(q_raw)
             log_entry.update({"action": "send_message", "reponse": result})
@@ -2582,7 +2580,6 @@ class FLOKI:
             self._log_action(log_entry)
             return result
 
-        # === MODULE ASYMAS ===
         rep = self._search_asymas(q)
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
@@ -2591,7 +2588,7 @@ class FLOKI:
 
         log_entry.update({"source": "ASYMAS", "reponse": "Table manquante"})
         self._log_action(log_entry)
-        return "Chef, je n’ai pas cette donnée dans ASYMAS. Dis-moi le nom exact de la table ou colonne."
+        return "Chef, je n’ai pas cette donnée dans ASYMAS."
 
     # === REDACTION AVEC MEMOIRE ===
     def _generate_document_illimite(self, q):
@@ -2646,6 +2643,7 @@ class FLOKI:
         match = re.search(rf'{keyword}\s*:\s*(.+)', q, re.IGNORECASE)
         return match.group(1).strip() if match else None
 
+    # === TEMPLATES ===
     def _template_mise_en_garde(self, d):
         return f"""MISE EN GARDE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nNous avons constaté un manquement le {d['date_debut']}.\nCette lettre constitue une mise en garde formelle.\n\nDirection ASYMAS"""
     def _template_conge(self, d):
@@ -2665,13 +2663,22 @@ class FLOKI:
     def _template_lettre(self, d):
         return f"""LETTRE ADMINISTRATIVE\nKinshasa, le {d['date']}\nMonsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n\nDirection ASYMAS"""
 
+    # === FIX PDF CRASH ===
     def _create_pdf_bytes(self, filename, text):
         pdf = PDF()
         pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", size=12)
+
         for line in text.strip().split('\n'):
-            pdf.multi_cell(0, 10, line)
-        return pdf.output(dest='S').encode('latin-1')
+            line = line.strip()
+            if not line:
+                pdf.ln(5)
+                continue
+            safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
+            pdf.multi_cell(0, 10, safe_line)
+
+        return pdf.output(dest='S').encode('latin-1', errors='replace')
 
     # === ACTIONS ===
     def _action_send_message(self, question):
@@ -2883,7 +2890,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI V13 ===
+# === UI FLOKI V13.1 ===
 if 'floki' not in st.session_state:
     dataframes = {"articles": df_articles, "compta": df_compta, "biens": df_biens, "voitures": df_voitures}
     st.session_state.floki = FLOKI(supabase, dataframes)
@@ -2934,7 +2941,6 @@ with st.sidebar:
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
 
-            # Formulaire correction champs vides
             if 'floki_missing_fields' in st.session_state:
                 st.warning("Chef, remplis les champs vides avant téléchargement :")
                 with st.form("correction_form"):
@@ -2954,7 +2960,6 @@ with st.sidebar:
                         del st.session_state['floki_missing_fields']
                         st.rerun()
 
-            # Bouton téléchargement
             for key in list(st.session_state.keys()):
                 if key.startswith('pdf_bytes_'):
                     filename_key = key.replace('pdf_bytes_', '')
