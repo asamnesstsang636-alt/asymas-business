@@ -2506,7 +2506,7 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                             # === FLOKI SOLDAT V8 - AUTO-EXECUTE APRES ENREGISTREMENT ===
+                            # === FLOKI SOLDAT V9 - REDACTEUR ADMINISTRATIF + AUTO-EXECUTE ===
 import difflib
 import re
 import urllib.parse
@@ -2516,6 +2516,18 @@ import pandas as pd
 import tempfile
 import speech_recognition as sr
 from datetime import datetime, date, timedelta
+from fpdf import FPDF
+
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'ASYMAS SARL', 0, 1, 'C')
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
@@ -2551,6 +2563,13 @@ class FLOKI:
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
             return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
+        # === GENERATION DE DOCUMENTS ===
+        if "genere" in q or "redige" in q or "ecris" in q:
+            result = self._generate_document(q_raw)
+            log_entry.update({"action": "generate_document", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
         if "envoi" in q and "message" in q:
             result = self._action_send_message(q_raw)
             log_entry.update({"action": "send_message", "reponse": result})
@@ -2572,6 +2591,151 @@ class FLOKI:
         log_entry.update({"source": "ASYMAS", "reponse": "Table manquante"})
         self._log_action(log_entry)
         return "Chef, je n’ai pas cette donnée dans ASYMAS. Dis-moi le nom exact de la table ou colonne."
+
+    def _generate_document(self, q):
+        q_clean = self._clean_question(q)
+
+        # Détection type de document
+        if "mise en garde" in q_clean or "avertissement" in q_clean:
+            nom = self._extract_name(q)
+            return self._doc_mise_en_garde(nom)
+
+        if "conge" in q_clean:
+            nom = self._extract_name(q)
+            return self._doc_conge(nom)
+
+        if "rupture" in q_clean and "contrat" in q_clean:
+            nom = self._extract_name(q)
+            return self._doc_rupture_contrat(nom)
+
+        if "contrat" in q_clean and ("embauche" in q_clean or "travail" in q_clean):
+            nom = self._extract_name(q)
+            return self._doc_contrat_travail(nom)
+
+        if "pret" in q_clean or "prets" in q_clean:
+            nom = self._extract_name(q)
+            montant = self._extract_amount(q)
+            return self._doc_demande_pret(nom, montant)
+
+        if "lettre" in q_clean:
+            return "Chef, précise le type de lettre : mise en garde, congé, rupture, contrat, prêt..."
+
+        return "Chef, je peux générer : mise en garde, congé, rupture de contrat, contrat de travail, demande de prêt. Donne-moi le nom de la personne."
+
+    def _extract_name(self, q):
+        mots = q.split()
+        for i, mot in enumerate(mots):
+            if mot.lower() in ["pour", "a", "de", "nomme", "appele"]:
+                if i+1 < len(mots):
+                    return mots[i+1].capitalize()
+        return "EMPLOYE"
+
+    def _extract_amount(self, q):
+        nums = re.findall(r'\d+', q)
+        return nums[0] if nums else "XXXXX"
+
+    def _doc_mise_en_garde(self, nom):
+        contenu = f"""
+MISE EN GARDE
+
+Kinshasa, le {date.today().strftime('%d/%m/%Y')}
+
+Monsieur/Madame {nom}
+
+Objet : Mise en garde pour manquement au règlement intérieur
+
+Nous avons constaté que vous avez manqué à vos obligations professionnelles.
+Cette lettre constitue une mise en garde formelle.
+
+Nous vous demandons de vous conformer strictement aux règles de l’entreprise.
+
+Direction ASYMAS
+"""
+        pdf_path = self._create_pdf(f"Mise_en_Garde_{nom}", contenu)
+        return f"Mise en garde générée pour {nom}. Télécharge le PDF ci-dessous."
+
+    def _doc_conge(self, nom):
+        contenu = f"""
+DEMANDE DE CONGE
+
+Kinshasa, le {date.today().strftime('%d/%m/%Y')}
+
+Je soussigné(e) {nom}, employé(e) chez ASYMAS,
+demande un congé annuel à partir du {date.today().strftime('%d/%m/%Y')}.
+
+Merci de bien vouloir accepter ma demande.
+
+Signature
+"""
+        pdf_path = self._create_pdf(f"Demande_Conge_{nom}", contenu)
+        return f"Demande de congé générée pour {nom}. Télécharge le PDF ci-dessous."
+
+    def _doc_rupture_contrat(self, nom):
+        contenu = f"""
+NOTIFICATION DE RUPTURE DE CONTRAT
+
+Kinshasa, le {date.today().strftime('%d/%m/%Y')}
+
+Monsieur/Madame {nom}
+
+Nous sommes au regret de vous notifier la rupture de votre contrat de travail
+conformément aux dispositions du code du travail.
+
+Votre préavis court à partir de la date de réception de la présente.
+
+Direction ASYMAS
+"""
+        pdf_path = self._create_pdf(f"Rupture_Contrat_{nom}", contenu)
+        return f"Rupture de contrat générée pour {nom}. Télécharge le PDF ci-dessous."
+
+    def _doc_contrat_travail(self, nom):
+        contenu = f"""
+CONTRAT DE TRAVAIL
+
+Entre ASYMAS SARL, ci-après dénommé l’Employeur,
+Et Monsieur/Madame {nom}, ci-après dénommé l’Employé.
+
+Article 1 : Objet
+L’Employé est engagé au poste défini par l’Employeur.
+
+Article 2 : Durée
+Contrat à durée indéterminée à compter du {date.today().strftime('%d/%m/%Y')}.
+
+Article 3 : Rémunération
+Salaire mensuel défini selon grille ASYMAS.
+
+Fait à Kinshasa, en deux exemplaires.
+"""
+        pdf_path = self._create_pdf(f"Contrat_Travail_{nom}", contenu)
+        return f"Contrat de travail généré pour {nom}. Télécharge le PDF ci-dessous."
+
+    def _doc_demande_pret(self, nom, montant):
+        contenu = f"""
+DEMANDE DE PRET
+
+Kinshasa, le {date.today().strftime('%d/%m/%Y')}
+
+Je soussigné(e) {nom}, employé(e) chez ASYMAS,
+sollicite un prêt d’un montant de {montant} FC,
+remboursable selon les modalités définies par la direction.
+
+Merci de l’étude de ma demande.
+
+Signature
+"""
+        pdf_path = self._create_pdf(f"Demande_Pret_{nom}", contenu)
+        return f"Demande de prêt générée pour {nom} - {montant} FC. Télécharge le PDF ci-dessous."
+
+    def _create_pdf(self, filename, text):
+        pdf = PDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        for line in text.strip().split('\n'):
+            pdf.multi_cell(0, 10, line)
+        pdf_path = f"/tmp/{filename}.pdf"
+        pdf.output(pdf_path)
+        st.session_state[f'pdf_{filename}'] = pdf_path
+        return pdf_path
 
     def _search_asymas(self, q):
         if "commerce" in q and "exterieur" in q:
@@ -2781,7 +2945,7 @@ class FLOKI:
         except:
             pass
 
-# === UI FLOKI - AUTO-EXECUTE APRES VOIX ===
+# === UI FLOKI - AUTO-EXECUTE + TELECHARGEMENT PDF ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles,
@@ -2802,7 +2966,6 @@ with st.sidebar:
 
         audio_bytes = st.audio_input("Parle à FLOKI", key="floki_mic")
 
-        # AUTO-EXECUTION QUAND ENREGISTREMENT TERMINE
         if audio_bytes and not st.session_state.get('floki_done', False):
             with st.spinner("FLOKI écoute avec Google..."):
                 try:
@@ -2817,8 +2980,7 @@ with st.sidebar:
                     texte = recognizer.recognize_google(audio_data, language="fr-FR")
                     st.success(f"Tu as dit : {texte}")
 
-                    # EXECUTION DIRECTE
-                    with st.spinner("FLOKI réfléchit..."):
+                    with st.spinner("FLOKI rédige..."):
                         rep = st.session_state.floki.ask(texte)
                         st.session_state.floki_rep = rep
                         st.session_state.floki_done = True
@@ -2829,20 +2991,19 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Erreur : {e}")
 
-        # Reset quand on supprime l’audio
         if audio_bytes is None:
             st.session_state.floki_done = False
 
         q = st.text_input("Ton ordre",
                           value=st.session_state.get('floki_input_auto', ''),
                           key="floki_input",
-                          placeholder="Ex: commerce exterieur, la derniere facture a ete genere par")
+                          placeholder="Ex: genere mise en garde pour Paul")
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Exécuter", type="primary", use_container_width=True, key="floki_exec"):
                 if q:
-                    with st.spinner("FLOKI réfléchit..."):
+                    with st.spinner("FLOKI rédige..."):
                         rep = st.session_state.floki.ask(q)
                         st.session_state.floki_rep = rep
 
@@ -2866,3 +3027,15 @@ with st.sidebar:
                 </script>
             """, height=0)
             st.success(st.session_state.floki_rep)
+
+            # Bouton de téléchargement PDF si généré
+            for key in st.session_state.keys():
+                if key.startswith('pdf_'):
+                    pdf_path = st.session_state[key]
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label="Télécharger le document PDF",
+                            data=f,
+                            file_name=key.replace('pdf_', '') + ".pdf",
+                            mime="application/pdf"
+                        )
