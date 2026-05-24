@@ -2337,22 +2337,48 @@ if "👥 Utilisateurs" in tab_map:
                 perm_supprimer = col1.checkbox("🗑️ Peut Supprimer")
                 perm_users = col2.checkbox("👥 Gérer Utilisateurs")
 
-                st.markdown("**📋 Autorisations Devis :**")
-                col_d1, col_d2, col_d3 = st.columns(3)
-                with col_d1:
-                    st.markdown("*Devis Industriel*")
-                    perm_devis_ind = st.checkbox("Créer", key="perm_ind_creer")
-                    perm_devis_ind_dl = st.checkbox("Télécharger", key="perm_ind_dl")
-                    perm_devis_ind_pr = st.checkbox("Imprimer", key="perm_ind_pr")
-                with col_d2:
-                    st.markdown("*Devis Bâtiment*")
-                    perm_devis_bat = st.checkbox("Créer", key="perm_bat_creer")
-                    perm_devis_bat_dl = st.checkbox("Télécharger", key="perm_bat_dl")
-                    perm_devis_bat_pr = st.checkbox("Imprimer", key="perm_bat_pr")
-                with col_d3:
-                    st.markdown("*Historique*")
-                    perm_devis_hist = st.checkbox("Voir Historique", key="perm_hist")
+                st.markdown("**🔑 Accès Onglet Devis :**")
+col_a1, col_a2 = st.columns(2)
+perm_acces_bat = col_a1.checkbox("Accès Devis Bâtiment", value=user.get('acces_devis_batiment', False), key=f"edit_acc_bat_{user['id']}")
+perm_acces_ind = col_a2.checkbox("Accès Devis Industriel", value=user.get('acces_devis_industriel', False), key=f"edit_acc_ind_{user['id']}")
 
+st.markdown("**📋 Devis Industriel :**")
+col_i1, col_i2, col_i3 = st.columns(3)
+perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
+perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
+perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
+
+st.markdown("**📋 Devis Bâtiment :**")
+col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
+perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
+perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
+perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
+
+col_btn1, col_btn2 = st.columns(2)
+if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+    new_perms = {
+        "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+        "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
+        "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
+        "users": perm_users, "devis_industriel": perm_devis_ind,
+        "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
+        "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
+        "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist,
+        "devis_batiment": perm_acces_bat, "devis_industriel": perm_acces_ind
+    }
+    try:
+        supabase.table("utilisateurs").update({
+            "permissions": new_perms,
+            "acces_devis_batiment": perm_acces_bat,
+            "acces_devis_industriel": perm_acces_ind
+        }).eq("id", int(user['id'])).execute()
+        st.success(f"Permissions de {user['nom']} mises à jour")
+        st.cache_data.clear()
+        st.rerun()
+    except Exception as e:
+        st.error("Erreur modification")
+        st.code(repr(e))
                 st.markdown("**📂 Catégories de Factures Visibles :**")
                 cats_dispo = sorted(df_compta['categorie'].dropna().unique().tolist()) if 'categorie' in df_compta.columns else []
                 cats_autorisees = st.multiselect("Sélectionne les catégories que cet utilisateur peut voir dans Factures", 
@@ -2895,4 +2921,5 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
