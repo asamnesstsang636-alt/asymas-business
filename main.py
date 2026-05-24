@@ -29,8 +29,8 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 import os
 from supabase import create_client
 
-SUPABASE_URL = os.getenv("https://qqemmupedxmgtxuoslyp.supabase.co")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_SERVICE_ROLE_KEY = st.secrets["SUPABASE_SERVICE_ROLE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 # === FONCTIONS ===
@@ -2918,6 +2918,7 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
 
