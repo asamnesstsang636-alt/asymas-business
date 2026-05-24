@@ -2430,6 +2430,14 @@ if "👥 Utilisateurs" in tab_map:
                     if st.session_state.user_role == "PDG":
                         st.markdown("**✏️ Modifier les autorisations :**")
                         with st.form(f"edit_user_{user['id']}"):
+                            # Nouveau : modification du rôle
+                            new_role = st.selectbox(
+                                "Rôle",
+                                ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "IR"],
+                                index=["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "IR"].index(user['role']),
+                                key=f"edit_role_{user['id']}"
+                            )
+                            
                             col1, col2, col3, col4 = st.columns(4)
                             perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
                             perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
@@ -2468,8 +2476,7 @@ if "👥 Utilisateurs" in tab_map:
                             cats_autorisees = st.multiselect("Sélectionne les catégories visibles", 
                                                              ["Toutes"] + cats_dispo, default=cats_actuelles, key=f"edit_cats_{user['id']}")
 
-                            col_btn1, col_btn2 = st.columns(2)
-                            if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+                            if st.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
                                 new_perms = {
                                     "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
                                     "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
@@ -2481,12 +2488,13 @@ if "👥 Utilisateurs" in tab_map:
                                 }
                                 try:
                                     supabase.table("utilisateurs").update({
+                                        "role": new_role,
                                         "permissions": new_perms,
                                         "acces_devis_batiment": perm_acces_bat,
                                         "acces_devis_industriel": perm_acces_ind,
                                         "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
-                                    }).eq("id", user['id']).execute()  # <- PAS de int()
-                                    st.success(f"Permissions de {user['nom']} mises à jour")
+                                    }).eq("id", user['id']).execute()
+                                    st.success(f"Utilisateur {user['nom']} mis à jour")
                                     st.cache_data.clear()
                                     st.rerun()
                                 except Exception as e:
@@ -2496,10 +2504,15 @@ if "👥 Utilisateurs" in tab_map:
                         if user['nom'] != st.session_state.user_name:
                             if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
                                 try:
-                                    supabase.table("utilisateurs").delete().eq("id", user['id']).execute()  # <- PAS de int()
-                                    st.success(f"Utilisateur {user['nom']} supprimé")
-                                    st.cache_data.clear()
-                                    st.rerun()
+                                    result = supabase.table("utilisateurs").delete().eq("id", user['id']).execute()
+                                    
+                                    if result.data:
+                                        st.success(f"Utilisateur {user['nom']} supprimé")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    else:
+                                        st.error("Échec : Supabase n'a supprimé aucune ligne. Vérifie tes politiques RLS et que tu utilises la service_role key.")
+                                        
                                 except Exception as e:
                                     st.error("Erreur suppression")
                                     st.code(repr(e))
@@ -2900,6 +2913,7 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
 
