@@ -26,7 +26,8 @@ from streamlit_qrcode_scanner import qrcode_scanner
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+import os
+supabase = create_client(SUPABASE_URL, os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
 # === FONCTIONS ===
 @st.cache_data(ttl=60)
@@ -2913,6 +2914,7 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
 
