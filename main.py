@@ -2337,7 +2337,7 @@ if "👥 Utilisateurs" in tab_map:
                 perm_supprimer = col1.checkbox("🗑️ Peut Supprimer")
                 perm_users = col2.checkbox("👥 Gérer Utilisateurs")
 
-                st.markdown("**🔑 Accès Onglet Devis :**")
+                  st.markdown("**🔑 Accès Onglet Devis :**")
 col_a1, col_a2 = st.columns(2)
 perm_acces_bat = col_a1.checkbox("Accès Devis Bâtiment", value=user.get('acces_devis_batiment', False), key=f"edit_acc_bat_{user['id']}")
 perm_acces_ind = col_a2.checkbox("Accès Devis Industriel", value=user.get('acces_devis_industriel', False), key=f"edit_acc_ind_{user['id']}")
@@ -2921,5 +2921,6 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
