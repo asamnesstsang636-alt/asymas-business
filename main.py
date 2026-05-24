@@ -2317,7 +2317,7 @@ if "👥 Utilisateurs" in tab_map:
             with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
-                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "Ir"])
                 pwd_user = c3.text_input("Mot de passe *", type="password")
                 
                 st.markdown("**🔐 Autorisations d'onglets :**")
@@ -2900,6 +2900,7 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
 
