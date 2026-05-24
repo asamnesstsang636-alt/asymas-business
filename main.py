@@ -500,31 +500,27 @@ if st.session_state.user_role is None:
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if profil!= "-- Sélectionner --":
                 nom_connect = profil.split(" - ")[0]
-                role_connect = profil.split(" - ")[1] if " - " in profil else profil
-                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
-                df_users_login = pd.DataFrame(df_users_login)
-                st.write(df_users_login) # supprime ça après
-                user_data = df_users_login[df_users_login['nom'] == nom_connect]
-                if not user_data.empty and password == user_data.iloc[0]['password']:
-                    st.session_state.user_role = user_data.iloc[0]['role']
-                    st.session_state.user_name = user_data.iloc[0]['nom']
-                    st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
-                    st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
+                # charge toutes les colonnes dont les nouvelles
+                user_query = supabase.table("utilisateurs").select(
+                    "id, nom, role, password, acces_devis_batiment, acces_devis_industriel, permissions, categories_autorisees"
+                ).eq("nom", nom_connect).execute().data
+
+                if user_query and password == user_query[0]['password']:
+                    user_data = user_query[0]
+                    st.session_state.user_role = user_data['role']
+                    st.session_state.user_name = user_data['nom']
+                    st.session_state.user_cats = user_data.get('categories_autorisees', [])
+
+                    # fusionne permissions JSON + nouvelles colonnes
+                    perms = user_data.get('permissions', {}) or {}
+                    perms['devis_batiment'] = user_data.get('acces_devis_batiment', False)
+                    perms['devis_industriel'] = user_data.get('acces_devis_industriel', False)
+                    st.session_state.user_perms = perms
+
                     st.rerun()
                 else:
                     st.error("Profil ou mot de passe incorrect")
     st.stop()
-
-if 'user_role' in st.session_state and st.session_state.user_role is not None:
-    with st.sidebar:
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True):
-            st.session_state.user_role=None
-            st.session_state.user_name=None
-            st.session_state.user_perms={}
-            st.session_state.user_cats=[]
-            st.rerun()
 
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
     elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
@@ -2899,3 +2895,4 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
