@@ -30,7 +30,7 @@ import os
 from supabase import create_client
 
 supabase = create_client(
-    "https://fvhwyirrw15vciB.supabase.co", 
+    "https://qqemmupedxmgtxuoslyp.supabase.co", 
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 )
 
@@ -2920,6 +2920,7 @@ with st.sidebar:
                                 st.success("Lien copié. Partage-le chef.")
                             else:
                                 st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+
 
 
 
