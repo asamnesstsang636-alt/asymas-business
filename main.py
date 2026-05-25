@@ -2210,13 +2210,7 @@ if "📋 Devis" in tab_map:
                                         st.write("🔒")
                             
                                 
-                                
-                    
-                        
-                        
-                        
-
-                        
+                                                    
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
@@ -2229,37 +2223,41 @@ if "👥 Utilisateurs" in tab_map:
                 
                 st.markdown("**🔐 Autorisations d'onglets :**")
                 col1, col2, col3, col4 = st.columns(4)
-                perm_dashboard = col1.checkbox("Dashboard", value=True)
-                perm_commerce = col2.checkbox("Commerce", value=True)
-                perm_stock = col3.checkbox("Gestion Stock")
-                perm_immobilier = col4.checkbox("Immobilier")
-                perm_automobile = col1.checkbox("Automobile")
-                perm_parc = col2.checkbox("Gestion Parc")
-                perm_comptabilite = col3.checkbox("Comptabilité")
-                perm_factures = col4.checkbox("Factures")
-                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer")
-                perm_users = col2.checkbox("👥 Gérer Utilisateurs")
+                perm_dashboard = col1.checkbox("Dashboard", value=False)
+                perm_commerce = col2.checkbox("Commerce", value=False)
+                perm_stock = col3.checkbox("Gestion Stock", value=False)
+                perm_immobilier = col4.checkbox("Immobilier", value=False)
+                perm_automobile = col1.checkbox("Automobile", value=False)
+                perm_parc = col2.checkbox("Gestion Parc", value=False)
+                perm_comptabilite = col3.checkbox("Comptabilité", value=False)
+                perm_factures = col4.checkbox("Factures", value=False)
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=False)
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=False)
 
                 st.markdown("**📋 Autorisations Devis :**")
                 col_d1, col_d2, col_d3 = st.columns(3)
                 with col_d1:
                     st.markdown("*Devis Industriel*")
-                    perm_devis_ind = st.checkbox("Créer", key="perm_ind_creer")
-                    perm_devis_ind_dl = st.checkbox("Télécharger", key="perm_ind_dl")
-                    perm_devis_ind_pr = st.checkbox("Imprimer", key="perm_ind_pr")
+                    perm_devis_ind = st.checkbox("Créer", key="perm_ind_creer", value=False)
+                    perm_devis_ind_dl = st.checkbox("Télécharger", key="perm_ind_dl", value=False)
+                    perm_devis_ind_pr = st.checkbox("Imprimer", key="perm_ind_pr", value=False)
                 with col_d2:
                     st.markdown("*Devis Bâtiment*")
-                    perm_devis_bat = st.checkbox("Créer", key="perm_bat_creer")
-                    perm_devis_bat_dl = st.checkbox("Télécharger", key="perm_bat_dl")
-                    perm_devis_bat_pr = st.checkbox("Imprimer", key="perm_bat_pr")
+                    perm_devis_bat = st.checkbox("Créer", key="perm_bat_creer", value=False)
+                    perm_devis_bat_dl = st.checkbox("Télécharger", key="perm_bat_dl", value=False)
+                    perm_devis_bat_pr = st.checkbox("Imprimer", key="perm_bat_pr", value=False)
                 with col_d3:
                     st.markdown("*Historique*")
-                    perm_devis_hist = st.checkbox("Voir Historique", key="perm_hist")
+                    perm_devis_hist = st.checkbox("Voir Historique", key="perm_hist", value=False)
 
                 st.markdown("**📂 Catégories de Factures Visibles :**")
                 cats_dispo = sorted(df_compta['categorie'].dropna().unique().tolist()) if 'categorie' in df_compta.columns else []
-                cats_autorisees = st.multiselect("Sélectionne les catégories que cet utilisateur peut voir dans Factures", 
-                                                 ["Toutes"] + cats_dispo, default=["Toutes"], key="cats_factures")
+                cats_autorisees = st.multiselect(
+                    "Sélectionne les catégories que cet utilisateur peut voir dans Factures", 
+                    ["Toutes"] + cats_dispo, 
+                    default=[], 
+                    key="cats_factures"
+                )
 
                 if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
                     if nom_user and pwd_user:
@@ -2288,7 +2286,7 @@ if "👥 Utilisateurs" in tab_map:
                                 "role": role_user,
                                 "password": pwd_user,
                                 "permissions": perms_dict,
-                                "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
+                                "categories_autorisees": [] if "Toutes" in cats_autorisees else cats_autorisees
                             }).execute()
                             st.success(f"Utilisateur {nom_user} ajouté")
                             st.cache_data.clear()
@@ -2327,17 +2325,23 @@ if "👥 Utilisateurs" in tab_map:
                         if current_perms.get('factures'): st.write("✅ Factures")
                         if current_perms.get('users'): st.write("✅ Utilisateurs")
                         if current_perms.get('supprimer'): st.write("✅ Supprimer")
+                        if not any([current_perms.get(k) for k in ['dashboard','commerce','stock','immobilier','automobile','parc','comptabilite','factures','users','supprimer']]):
+                            st.write("❌ Aucun onglet")
                     with c2:
                         st.write("**Devis Industriel :**")
                         if current_perms.get('devis_industriel'): st.write("✅ Créer")
                         if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
                         if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
+                        if not any([current_perms.get(k) for k in ['devis_industriel','devis_industriel_download','devis_industriel_print']]):
+                            st.write("❌ Aucun droit")
                     with c3:
                         st.write("**Devis Bâtiment :**")
                         if current_perms.get('devis_batiment'): st.write("✅ Créer")
                         if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
                         if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
                         if current_perms.get('devis_historique'): st.write("✅ Historique")
+                        if not any([current_perms.get(k) for k in ['devis_batiment','devis_batiment_download','devis_batiment_print','devis_historique']]):
+                            st.write("❌ Aucun droit")
 
                     st.divider()
                     
@@ -2391,7 +2395,7 @@ if "👥 Utilisateurs" in tab_map:
                                     st.code(repr(e))
 
                         # SUPPRIMER UTILISATEUR - SAUF SOI-MEME
-                        if user['nom']!= st.session_state.user_name:
+                        if user['nom'] != st.session_state.user_name:
                             if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
                                 try:
                                     supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
