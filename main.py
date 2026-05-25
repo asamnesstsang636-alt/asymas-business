@@ -557,6 +557,11 @@ if st.session_state.user_role == "PDG" or perms.get('users', False):
 
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
+    # Charge les données pour le Dashboard
+df_biens = load_table("biens")
+df_articles = load_table("articles") 
+df_voitures = load_table("voitures")
+df_compta = load_table("compta")
 
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
