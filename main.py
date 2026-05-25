@@ -2313,11 +2313,7 @@ if "📋 Devis" in tab_map:
                             else:
                                 st.write("🔒")
                     
-                        
-                        
-                        
-
-                        
+            
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
@@ -2444,57 +2440,55 @@ if "👥 Utilisateurs" in tab_map:
                     
                     # SEUL LE PDG PEUT MODIFIER
                     if st.session_state.user_role == "PDG":
-                       if c1.button("✏️ Modifier", ...):
-                        
-                        with st.form(f"edit_user_{user['id']}"):
-                            col1, col2, col3, col4 = st.columns(4)
-                            perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
-                            perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
-                            perm_stock = col3.checkbox("Gestion Stock", value=current_perms.get('stock', False), key=f"edit_stock_{user['id']}")
-                            perm_immobilier = col4.checkbox("Immobilier", value=current_perms.get('immobilier', False), key=f"edit_immo_{user['id']}")
-                            perm_automobile = col1.checkbox("Automobile", value=current_perms.get('automobile', False), key=f"edit_auto_{user['id']}")
-                            perm_parc = col2.checkbox("Gestion Parc", value=current_perms.get('parc', False), key=f"edit_parc_{user['id']}")
-                            perm_comptabilite = col3.checkbox("Comptabilité", value=current_perms.get('comptabilite', False), key=f"edit_comp_{user['id']}")
-                            perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
-                            perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
-                            perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
+                        if c1.button("✏️ Modifier", key=f"btn_mod_user_{user['id']}", width="stretch"):
+                            with st.form(f"edit_user_form_{user['id']}"):
+                                col1, col2, col3, col4 = st.columns(4)
+                                perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
+                                perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
+                                perm_stock = col3.checkbox("Gestion Stock", value=current_perms.get('stock', False), key=f"edit_stock_{user['id']}")
+                                perm_immobilier = col4.checkbox("Immobilier", value=current_perms.get('immobilier', False), key=f"edit_immo_{user['id']}")
+                                perm_automobile = col1.checkbox("Automobile", value=current_perms.get('automobile', False), key=f"edit_auto_{user['id']}")
+                                perm_parc = col2.checkbox("Gestion Parc", value=current_perms.get('parc', False), key=f"edit_parc_{user['id']}")
+                                perm_comptabilite = col3.checkbox("Comptabilité", value=current_perms.get('comptabilite', False), key=f"edit_comp_{user['id']}")
+                                perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
+                                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
+                                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
 
-                            st.markdown("**📋 Devis Industriel :**")
-                            col_i1, col_i2, col_i3 = st.columns(3)
-                            perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
-                            perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
-                            perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
+                                st.markdown("**📋 Devis Industriel :**")
+                                col_i1, col_i2, col_i3 = st.columns(3)
+                                perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
+                                perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
+                                perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
 
-                            st.markdown("**📋 Devis Bâtiment :**")
-                            col_b1, col_b2, col_b3, col_b4 = st.columns(4)
-                            perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
-                            perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
-                            perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
-                            perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
+                                st.markdown("**📋 Devis Bâtiment :**")
+                                col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+                                perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
+                                perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
+                                perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
+                                perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
 
-                            col_btn1, col_btn2 = st.columns(2)
-                            if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
-                                new_perms = {
-                                    "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
-                                    "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
-                                    "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
-                                    "users": perm_users, "devis_industriel": perm_devis_ind,
-                                    "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
-                                    "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
-                                    "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
-                                }
-                                try:
-                                    supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
-                                    st.success(f"Permissions de {user['nom']} mises à jour")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error("Erreur modification")
-                                    st.code(repr(e))
+                                if st.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+                                    new_perms = {
+                                        "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                        "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
+                                        "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
+                                        "users": perm_users, "devis_industriel": perm_devis_ind,
+                                        "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
+                                        "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
+                                        "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
+                                    }
+                                    try:
+                                        supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
+                                        st.success(f"Permissions de {user['nom']} mises à jour")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur modification")
+                                        st.code(repr(e))
 
                         # SUPPRIMER UTILISATEUR - SAUF SOI-MEME
-                        if user['nom']!= st.session_state.user_name:
-                            if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
+                        if user['nom'] != st.session_state.user_name:
+                            if st.button("🗑️ Supprimer cet utilisateur", key=f"btn_del_user_{user['id']}", type="secondary", width="stretch"):
                                 try:
                                     supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
                                     st.success(f"Utilisateur {user['nom']} supprimé")
