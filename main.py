@@ -2121,7 +2121,7 @@ if "📋 Devis" in tab_map:
                                 st.download_button(label="📥 Télécharger PDF", data=st.session_state.pdf_devis_bat,
                                                    file_name=f"{st.session_state.num_devis_bat}.pdf", mime="application/pdf",
                                                    width="stretch", key="dl_devis_bat")
-                          with col_btn3:
+                           with col_btn3:
                             if st.button("🔄 Réinitialiser", key="reset_devis_bat", width="stretch"):
                                 st.session_state.devis_bat_sections = []
                                 if 'pdf_devis_bat' in st.session_state:
