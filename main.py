@@ -511,8 +511,22 @@ if st.button("SE CONNECTER", width="stretch", type="primary"):
             st.rerun()
         else:
             st.error("Profil ou mot de passe incorrect")
-                else:
-                    st.error("Profil ou mot de passe incorrect")
+                if not user_data.empty and password == user_data.iloc[0]['password']:
+            st.session_state.user_role = user_data.iloc[0]['role']
+            st.session_state.user_name = user_data.iloc[0]['nom']
+            perms = user_data.iloc[0].get('permissions', {})
+            if isinstance(perms, str):
+                try:
+                    perms = json.loads(perms)
+                except:
+                    perms = {}
+            st.session_state.user_perms = perms
+            st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
+            st.rerun()
+        else: # ← doit être aligné avec "if", pas avec "st.session_state"
+            st.error("Profil ou mot de passe incorrect")
+            
+                    
     st.stop()
 
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
