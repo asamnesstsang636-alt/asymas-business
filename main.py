@@ -570,6 +570,12 @@ if "📊 Dashboard" in tab_map:
         if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
             revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
             col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+        
+        
+        
+        
+            
+            
         elif not df_compta.empty:
             col4.metric("💰 Écritures", len(df_compta))
         else:
