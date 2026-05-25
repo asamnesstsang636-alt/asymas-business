@@ -2444,7 +2444,8 @@ if "👥 Utilisateurs" in tab_map:
                     
                     # SEUL LE PDG PEUT MODIFIER
                     if st.session_state.user_role == "PDG":
-                        st.markdown("**✏️ Modifier les autorisations :**")
+                       if c1.button("✏️ Modifier", ...):
+                        
                         with st.form(f"edit_user_{user['id']}"):
                             col1, col2, col3, col4 = st.columns(4)
                             perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
