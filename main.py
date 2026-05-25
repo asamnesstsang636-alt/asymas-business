@@ -2324,7 +2324,7 @@ if "👥 Utilisateurs" in tab_map:
                 with st.form("form_user", clear_on_submit=True):
                     c1, c2, c3 = st.columns(3)
                     nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
-                    role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
+                    role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "Ir", "CAISSIER", "COMMERCIAL"])
                     pwd_user = c3.text_input("Mot de passe *", type="password")
                     
                     st.markdown("**🔐 Autorisations d'onglets :**")
