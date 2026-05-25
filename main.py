@@ -25,12 +25,8 @@ from streamlit_qrcode_scanner import qrcode_scanner
 
 # === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
-import os
-from supabase import create_client
-
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_SERVICE_ROLE_KEY = st.secrets["SUPABASE_SERVICE_ROLE_KEY"]
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # === FONCTIONS ===
 @st.cache_data(ttl=60)
@@ -504,27 +500,31 @@ if st.session_state.user_role is None:
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if profil!= "-- Sélectionner --":
                 nom_connect = profil.split(" - ")[0]
-                # charge toutes les colonnes dont les nouvelles
-                user_query = supabase.table("utilisateurs").select(
-                    "id, nom, role, password, acces_devis_batiment, acces_devis_industriel, permissions, categories_autorisees"
-                ).eq("nom", nom_connect).execute().data
-
-                if user_query and password == user_query[0]['password']:
-                    user_data = user_query[0]
-                    st.session_state.user_role = user_data['role']
-                    st.session_state.user_name = user_data['nom']
-                    st.session_state.user_cats = user_data.get('categories_autorisees', [])
-
-                    # fusionne permissions JSON + nouvelles colonnes
-                    perms = user_data.get('permissions', {}) or {}
-                    perms['devis_batiment'] = user_data.get('acces_devis_batiment', False)
-                    perms['devis_industriel'] = user_data.get('acces_devis_industriel', False)
-                    st.session_state.user_perms = perms
-
+                role_connect = profil.split(" - ")[1] if " - " in profil else profil
+                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
+                df_users_login = pd.DataFrame(df_users_login)
+                st.write(df_users_login) # supprime ça après
+                user_data = df_users_login[df_users_login['nom'] == nom_connect]
+                if not user_data.empty and password == user_data.iloc[0]['password']:
+                    st.session_state.user_role = user_data.iloc[0]['role']
+                    st.session_state.user_name = user_data.iloc[0]['nom']
+                    st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
+                    st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
                     st.rerun()
                 else:
                     st.error("Profil ou mot de passe incorrect")
     st.stop()
+
+if 'user_role' in st.session_state and st.session_state.user_role is not None:
+    with st.sidebar:
+        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
+        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
+        if st.button("🚪 Déconnexion", use_container_width=True):
+            st.session_state.user_role=None
+            st.session_state.user_name=None
+            st.session_state.user_perms={}
+            st.session_state.user_cats=[]
+            st.rerun()
 
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
     elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
@@ -2312,73 +2312,83 @@ if "📋 Devis" in tab_map:
                                 """, height=40)
                             else:
                                 st.write("🔒")
-                                         
+                    
+                        
+                        
+                        
+
+                        
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
-        
         with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
             with st.form("form_user", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 nom_user = c1.text_input("Nom *", placeholder="Ex: Jean KABAMBA")
-                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "IR"])
+                role_user = c2.selectbox("Rôle *", ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL"])
                 pwd_user = c3.text_input("Mot de passe *", type="password")
                 
                 st.markdown("**🔐 Autorisations d'onglets :**")
                 col1, col2, col3, col4 = st.columns(4)
-                perm_dashboard = col1.checkbox("Dashboard", value=True, key="add_dashboard")
-                perm_commerce = col2.checkbox("Commerce", value=True, key="add_commerce")
-                perm_stock = col3.checkbox("Gestion Stock", key="add_stock")
-                perm_immobilier = col4.checkbox("Immobilier", key="add_immobilier")
-                perm_automobile = col1.checkbox("Automobile", key="add_automobile")
-                perm_parc = col2.checkbox("Gestion Parc", key="add_parc")
-                perm_comptabilite = col3.checkbox("Comptabilité", key="add_comptabilite")
-                perm_factures = col4.checkbox("Factures", key="add_factures")
-                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", key="add_supprimer")
-                perm_users = col2.checkbox("👥 Gérer Utilisateurs", key="add_users")
+                perm_dashboard = col1.checkbox("Dashboard", value=True)
+                perm_commerce = col2.checkbox("Commerce", value=True)
+                perm_stock = col3.checkbox("Gestion Stock")
+                perm_immobilier = col4.checkbox("Immobilier")
+                perm_automobile = col1.checkbox("Automobile")
+                perm_parc = col2.checkbox("Gestion Parc")
+                perm_comptabilite = col3.checkbox("Comptabilité")
+                perm_factures = col4.checkbox("Factures")
+                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer")
+                perm_users = col2.checkbox("👥 Gérer Utilisateurs")
 
-                st.markdown("**🔑 Accès Onglet Devis :**")
-                col_a1, col_a2 = st.columns(2)
-                perm_acces_bat = col_a1.checkbox("Accès Devis Bâtiment", key="add_acc_bat")
-                perm_acces_ind = col_a2.checkbox("Accès Devis Industriel", key="add_acc_ind")
-
-                st.markdown("**📋 Devis Industriel :**")
-                col_i1, col_i2, col_i3 = st.columns(3)
-                perm_devis_ind = col_i1.checkbox("Créer", key="add_ind")
-                perm_devis_ind_dl = col_i2.checkbox("Télécharger", key="add_ind_dl")
-                perm_devis_ind_pr = col_i3.checkbox("Imprimer", key="add_ind_pr")
-
-                st.markdown("**📋 Devis Bâtiment :**")
-                col_b1, col_b2, col_b3, col_b4 = st.columns(4)
-                perm_devis_bat = col_b1.checkbox("Créer", key="add_bat")
-                perm_devis_bat_dl = col_b2.checkbox("Télécharger", key="add_bat_dl")
-                perm_devis_bat_pr = col_b3.checkbox("Imprimer", key="add_bat_pr")
-                perm_devis_hist = col_b4.checkbox("Historique", key="add_hist")
+                st.markdown("**📋 Autorisations Devis :**")
+                col_d1, col_d2, col_d3 = st.columns(3)
+                with col_d1:
+                    st.markdown("*Devis Industriel*")
+                    perm_devis_ind = st.checkbox("Créer", key="perm_ind_creer")
+                    perm_devis_ind_dl = st.checkbox("Télécharger", key="perm_ind_dl")
+                    perm_devis_ind_pr = st.checkbox("Imprimer", key="perm_ind_pr")
+                with col_d2:
+                    st.markdown("*Devis Bâtiment*")
+                    perm_devis_bat = st.checkbox("Créer", key="perm_bat_creer")
+                    perm_devis_bat_dl = st.checkbox("Télécharger", key="perm_bat_dl")
+                    perm_devis_bat_pr = st.checkbox("Imprimer", key="perm_bat_pr")
+                with col_d3:
+                    st.markdown("*Historique*")
+                    perm_devis_hist = st.checkbox("Voir Historique", key="perm_hist")
 
                 st.markdown("**📂 Catégories de Factures Visibles :**")
                 cats_dispo = sorted(df_compta['categorie'].dropna().unique().tolist()) if 'categorie' in df_compta.columns else []
-                cats_autorisees = st.multiselect("Sélectionne les catégories que cet utilisateur peut voir", 
-                                                 ["Toutes"] + cats_dispo, default=["Toutes"], key="add_cats_factures")
+                cats_autorisees = st.multiselect("Sélectionne les catégories que cet utilisateur peut voir dans Factures", 
+                                                 ["Toutes"] + cats_dispo, default=["Toutes"], key="cats_factures")
 
                 if st.form_submit_button("💾 Ajouter Utilisateur", type="primary"):
                     if nom_user and pwd_user:
                         try:
                             perms_dict = {
-                                "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
-                                "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
-                                "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
-                                "users": perm_users, "devis_industriel": perm_devis_ind,
-                                "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
-                                "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
-                                "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
+                                "dashboard": perm_dashboard,
+                                "commerce": perm_commerce,
+                                "stock": perm_stock,
+                                "immobilier": perm_immobilier,
+                                "automobile": perm_automobile,
+                                "parc": perm_parc,
+                                "comptabilite": perm_comptabilite,
+                                "factures": perm_factures,
+                                "supprimer": perm_supprimer,
+                                "users": perm_users,
+                                "devis_industriel": perm_devis_ind,
+                                "devis_industriel_download": perm_devis_ind_dl,
+                                "devis_industriel_print": perm_devis_ind_pr,
+                                "devis_batiment": perm_devis_bat,
+                                "devis_batiment_download": perm_devis_bat_dl,
+                                "devis_batiment_print": perm_devis_bat_pr,
+                                "devis_historique": perm_devis_hist
                             }
                             supabase.table("utilisateurs").insert({
                                 "nom": nom_user,
                                 "role": role_user,
                                 "password": pwd_user,
                                 "permissions": perms_dict,
-                                "acces_devis_batiment": perm_acces_bat,
-                                "acces_devis_industriel": perm_acces_ind,
                                 "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
                             }).execute()
                             st.success(f"Utilisateur {nom_user} ajouté")
@@ -2404,6 +2414,7 @@ if "👥 Utilisateurs" in tab_map:
                         current_perms = {}
 
                 with st.expander(f"{user['nom']} - {user['role']}"):
+                    # AFFICHAGE ACTUEL
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         st.write("**Onglets :**")
@@ -2431,17 +2442,10 @@ if "👥 Utilisateurs" in tab_map:
 
                     st.divider()
                     
+                    # SEUL LE PDG PEUT MODIFIER
                     if st.session_state.user_role == "PDG":
                         st.markdown("**✏️ Modifier les autorisations :**")
                         with st.form(f"edit_user_{user['id']}"):
-                            # Nouveau : modification du rôle
-                            new_role = st.selectbox(
-                                "Rôle",
-                                ["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "IR"],
-                                index=["PDG", "GERANTE", "UTILISATEUR", "CAISSIER", "COMMERCIAL", "IR"].index(user['role']),
-                                key=f"edit_role_{user['id']}"
-                            )
-                            
                             col1, col2, col3, col4 = st.columns(4)
                             perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
                             perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
@@ -2453,11 +2457,6 @@ if "👥 Utilisateurs" in tab_map:
                             perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
                             perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
                             perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
-
-                            st.markdown("**🔑 Accès Onglet Devis :**")
-                            col_a1, col_a2 = st.columns(2)
-                            perm_acces_bat = col_a1.checkbox("Accès Devis Bâtiment", value=user.get('acces_devis_batiment', False), key=f"edit_acc_bat_{user['id']}")
-                            perm_acces_ind = col_a2.checkbox("Accès Devis Industriel", value=user.get('acces_devis_industriel', False), key=f"edit_acc_ind_{user['id']}")
 
                             st.markdown("**📋 Devis Industriel :**")
                             col_i1, col_i2, col_i3 = st.columns(3)
@@ -2472,15 +2471,8 @@ if "👥 Utilisateurs" in tab_map:
                             perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
                             perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
 
-                            st.markdown("**📂 Catégories de Factures Visibles :**")
-                            cats_dispo = sorted(df_compta['categorie'].dropna().unique().tolist()) if 'categorie' in df_compta.columns else []
-                            cats_actuelles = user.get('categories_autorisees', [])
-                            if not cats_actuelles:
-                                cats_actuelles = ["Toutes"]
-                            cats_autorisees = st.multiselect("Sélectionne les catégories visibles", 
-                                                             ["Toutes"] + cats_dispo, default=cats_actuelles, key=f"edit_cats_{user['id']}")
-
-                            if st.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+                            col_btn1, col_btn2 = st.columns(2)
+                            if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
                                 new_perms = {
                                     "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
                                     "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
@@ -2491,32 +2483,22 @@ if "👥 Utilisateurs" in tab_map:
                                     "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
                                 }
                                 try:
-                                    supabase.table("utilisateurs").update({
-                                        "role": new_role,
-                                        "permissions": new_perms,
-                                        "acces_devis_batiment": perm_acces_bat,
-                                        "acces_devis_industriel": perm_acces_ind,
-                                        "categories_autorisees": cats_autorisees if "Toutes" not in cats_autorisees else []
-                                    }).eq("id", user['id']).execute()
-                                    st.success(f"Utilisateur {user['nom']} mis à jour")
+                                    supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
+                                    st.success(f"Permissions de {user['nom']} mises à jour")
                                     st.cache_data.clear()
                                     st.rerun()
                                 except Exception as e:
                                     st.error("Erreur modification")
                                     st.code(repr(e))
 
-                        if user['nom'] != st.session_state.user_name:
+                        # SUPPRIMER UTILISATEUR - SAUF SOI-MEME
+                        if user['nom']!= st.session_state.user_name:
                             if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
                                 try:
-                                    result = supabase.table("utilisateurs").delete().eq("id", user['id']).execute()
-                                    
-                                    if result.data:
-                                        st.success(f"Utilisateur {user['nom']} supprimé")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    else:
-                                        st.error("Échec : Supabase n'a supprimé aucune ligne. Vérifie tes politiques RLS et que tu utilises la service_role key.")
-                                        
+                                    supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
+                                    st.success(f"Utilisateur {user['nom']} supprimé")
+                                    st.cache_data.clear()
+                                    st.rerun()
                                 except Exception as e:
                                     st.error("Erreur suppression")
                                     st.code(repr(e))
@@ -2524,410 +2506,259 @@ if "👥 Utilisateurs" in tab_map:
                             st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
                     else:
                         st.info("🔒 Seul le PDG peut modifier les autorisations")
-                               # === FLOKI SOLDAT V15.4 - COMPLET AVEC MICRO + DOUANE ===
-import difflib, re, urllib.parse, streamlit as st, pandas as pd, tempfile, speech_recognition as sr, base64
-from datetime import datetime, date, timedelta
-from fpdf import FPDF
-
-class PDF(FPDF):
-    def __init__(self):
-        super().__init__(orientation='P', unit='mm', format='A4')
-        self.set_auto_page_break(auto=True, margin=20)
-        self.set_left_margin(20)
-        self.set_right_margin(20)
-        self.set_top_margin(25)
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 8, 'ASYMAS COMPANY', 0, 1, 'C')
-        self.ln(2)
-    def footer(self):
-        self.set_y(-20)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 8, f'Page {self.page_no()}', 0, 0, 'C')
+                         # === FLOKI SOLDAT COMPLET - VERSION PDG ===
+import difflib
+import re
+import urllib.parse
+import json
+import requests
+import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
         self.df = dataframes
-        self.recognizer = sr.Recognizer()
+        self.system_knowledge = self._get_supabase_schema()
 
-    def _clean_question(self, q):
-        q = q.lower()
-        q = q.replace("é", "e").replace("è", "e").replace("ê", "e").replace("à", "a").replace("ç", "c")
-        q = re.sub(r'[^\w\s]', ' ', q)
-        return re.sub(r'\s+', ' ', q).strip()
+    def _get_supabase_schema(self):
+        schema = {}
+        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
+        for t in tables:
+            try:
+                result = self.supabase.table(t).select("*").limit(1).execute()
+                schema[t] = list(result.data[0].keys()) if result.data else []
+            except:
+                schema[t] = []
+        return schema
 
     def ask(self, question):
-        q_raw, q = question, self._clean_question(question)
+        q = question.lower().strip()
+        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
+
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. Floki à l’écoute. Donnez-moi l’ordre."
-        if any(m in q for m in ["genere", "redige", "ecris", "fais", "prepare", "lettre", "contrat", "conge", "douane"]):
-            return self._generate_document_illimite(q_raw)
-        if "envoi" in q and "message" in q:
-            return self._action_send_message(q_raw)
-        if "commande" in q or "commander" in q:
-            return self._action_commander(q)
-        rep = self._search_asymas(q)
-        return rep + "\n\nSource: ASYMAS" if rep else "Chef, je n’ai pas cette donnée dans ASYMAS."
+            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
 
-    def _generate_document_illimite(self, q):
-        q_clean = self._clean_question(q)
-        doc_type_map = {
-            "mise en garde": "mise_en_garde", "conge de maternite": "conge_maternite",
-            "conge": "conge", "rupture": "rupture", "contrat": "contrat",
-            "pret": "pret", "attestation": "attestation", "licenciement": "licenciement",
-            "avertissement": "avertissement", "douane": "douane"
-        }
-        doc_type = "lettre"
-        for key, val in doc_type_map.items():
-            if key in q_clean:
-                doc_type = val
-                break
+        if "envoie" in q and "message" in q and "numero" in q:
+            result = self._action_send_whatsapp(question)
+            log_entry.update({"action": "whatsapp_send", "reponse": result})
+            self._log_action(log_entry)
+            return result
 
-        required_fields = {
-            "contrat": ["nom", "poste", "salaire", "date_debut", "date_fin"],
-            "conge": ["nom", "poste", "date_debut", "date_fin", "motif"],
-            "conge_maternite": ["nom", "poste", "date_debut", "date_fin"],
-            "mise_en_garde": ["nom", "poste", "motif", "date_debut"],
-            "licenciement": ["nom", "poste", "motif", "date_debut"],
-            "avertissement": ["nom", "poste", "motif", "date_debut"],
-            "pret": ["nom", "poste", "montant", "motif"],
-            "attestation": ["nom", "poste", "date_debut"],
-            "rupture": ["nom", "poste", "motif", "date_debut"],
-            "douane": ["nom", "poste", "objet", "corps"],
-            "lettre": ["nom", "poste", "objet", "corps"]
-        }
+        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
+            result = self._action_rediger(question)
+            log_entry.update({"action": "redaction", "reponse": result})
+            self._log_action(log_entry)
+            return result
 
-        data = self._extract_all_fields(q)
-        template_func = getattr(self, f"_template_{doc_type}", self._template_lettre)
-        text = template_func(data)
+        if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
+            result = self._action_conseil(q)
+            log_entry.update({"action": "conseil", "reponse": result})
+            self._log_action(log_entry)
+            return result
 
-        st.session_state['floki_doc_data'] = data
-        st.session_state['floki_doc_text'] = text
-        st.session_state['floki_doc_type'] = doc_type
-        st.session_state['floki_required_fields'] = required_fields.get(doc_type, ["nom"])
+        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
+        rep = self._search_asymas(q_clean)
+        if rep:
+            log_entry.update({"source": "ASYMAS", "reponse": rep})
+            self._log_action(log_entry)
+            return rep + "\n\nSource: ASYMAS"
 
-        missing = [k for k in required_fields.get(doc_type, ["nom"]) if data.get(k) in ["______", "______ FC"]]
-        if missing:
-            st.session_state['floki_missing_fields'] = missing
-            sep = ", "
-            doc_nom = doc_type.replace("_", " ")
-            return f"Document {doc_nom} généré pour {data['nom']}, mais il manque : {sep.join(missing)}. Corrige ci-dessous."
-        else:
-            pdf_bytes = self._create_pdf_bytes(f"{doc_type}_{data['nom']}", text, doc_type)
-            filename = f"{doc_type}_{data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-            st.session_state['pdf_ready'] = pdf_bytes
-            st.session_state['pdf_name'] = filename
-            return f"{doc_type.replace('_', ' ').capitalize()} complet généré pour {data['nom']}. Choisis comment le transférer ci-dessous."
-
-    def _extract_all_fields(self, q):
-        return {
-            "nom": self._extract_value(q, ["pour", "a", "de", "nomme", "appele"]) or "______",
-            "poste": self._extract_value(q, ["poste", "fonction"]) or "______",
-            "salaire": self._extract_value(q, ["salaire", "remuneration"]) or "______ FC",
-            "montant": self._extract_value(q, ["montant", "somme"]) or "______ FC",
-            "date_debut": self._extract_value(q, ["du", "debut"]) or "______",
-            "date_fin": self._extract_value(q, ["au", "fin"]) or "______",
-            "motif": self._extract_value(q, ["motif", "raison"]) or "______",
-            "objet": self._extract_after(q, "objet") or "______",
-            "corps": self._extract_after(q, "texte") or "______",
-            "date": date.today().strftime('%d/%m/%Y')
-        }
-
-    def _extract_value(self, q, keywords):
-        for kw in keywords:
-            match = re.search(rf'{kw}\s+([a-z0-9\s\-]+)', q, re.IGNORECASE)
-            if match:
-                return match.group(1).strip().capitalize()
-        return None
-
-    def _extract_after(self, q, keyword):
-        match = re.search(rf'{keyword}\s*:\s*(.+)', q, re.IGNORECASE)
-        return match.group(1).strip() if match else None
-
-    def _signature_block(self):
-        return (
-            "\n\nFait a Kinshasa, le " + date.today().strftime('%d/%m/%Y') +
-            "\n\nSignature de l employe : __________________" +
-            " Signature Direction ASYMAS : __________________"
-        )
-
-    def _template_contrat(self, d):
-        header = "AFRICA INNOVATION INDUSTRIAL\nCONTRAT DE TRAVAIL\n"
-        body = f"Entre AFRICA INNOVATION INDUSTRIAL et {d['nom']}\nPoste : {d['poste']}\nDurée : {d['date_debut']} au {d['date_fin']}\nSalaire : {d['salaire']}\n"
-        return header + body + self._signature_block()
-    def _template_conge(self, d):
-        header = "ASYMAS COMPANY\nDEMANDE DE CONGE\n"
-        body = f"Je soussigné(e) {d['nom']}, {d['poste']}, demande congé du {d['date_debut']} au {d['date_fin']}.\nMotif : {d['motif']}\n"
-        return header + body + self._signature_block()
-    def _template_conge_maternite(self, d):
-        header = "ASYMAS COMPANY\nDEMANDE DE CONGE DE MATERNITE\n"
-        body = f"Je soussignée {d['nom']}, {d['poste']}, sollicite un congé de maternité du {d['date_debut']} au {d['date_fin']}, conformément au code du travail.\n"
-        return header + body + self._signature_block()
-    def _template_mise_en_garde(self, d):
-        header = "ASYMAS COMPANY\nMISE EN GARDE\n"
-        body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : Manquement - {d['motif']}\n\nFaits constatés le {d['date_debut']}.\n"
-        return header + body + "\n\nSignature Direction ASYMAS : __________________"
-    def _template_licenciement(self, d):
-        header = "ASYMAS COMPANY\nLICENCIEMENT\n"
-        body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\n"
-        return header + body + self._signature_block()
-    def _template_avertissement(self, d):
-        header = "ASYMAS COMPANY\nAVERTISSEMENT\n"
-        body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nDate : {d['date_debut']}\n"
-        return header + body + "\n\nSignature Direction ASYMAS : __________________"
-    def _template_pret(self, d):
-        header = "ASYMAS COMPANY\nDEMANDE DE PRET\n"
-        body = f"Je soussigné(e) {d['nom']}, {d['poste']}, sollicite {d['montant']}.\nMotif : {d['motif']}\n"
-        return header + body + self._signature_block()
-    def _template_attestation(self, d):
-        header = "ASYMAS COMPANY\nATTESTATION DE TRAVAIL\n"
-        body = f"Nous certifions que {d['nom']}, {d['poste']}, travaille chez ASYMAS depuis {d['date_debut']}.\n"
-        return header + body + "\n\nSignature Direction ASYMAS : __________________"
-    def _template_rupture(self, d):
-        header = "ASYMAS COMPANY\nRUPTURE DE CONTRAT\n"
-        body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nMotif : {d['motif']}\nPréavis à partir du {d['date_debut']}.\n"
-        return header + body + self._signature_block()
-    def _template_douane(self, d):
-        header = "ASYMAS COMPANY\nDOCUMENT DE DOUANE\n"
-        body = f"Entreprise : {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
-        return header + body + self._signature_block()
-    def _template_lettre(self, d):
-        header = "ASYMAS COMPANY\nLETTRE ADMINISTRATIVE\n"
-        body = f"Monsieur/Madame {d['nom']}\nPoste : {d['poste']}\nObjet : {d['objet']}\n\n{d['corps']}\n"
-        return header + body + self._signature_block()
-
-    def _create_pdf_bytes(self, filename, text, doc_type):
-        pdf = PDF()
-        if doc_type == "contrat":
-            pdf.header = lambda: (pdf.set_font('Arial', 'B', 12), pdf.cell(0, 8, 'AFRICA INNOVATION INDUSTRIAL', 0, 1, 'C'), pdf.ln(2))
-        pdf.add_page()
-        pdf.set_font("Arial", size=11)
-        page_width = pdf.w - pdf.l_margin - pdf.r_margin
-        for line in text.strip().split('\n'):
-            line = line.strip()
-            if not line:
-                pdf.ln(5)
-                continue
-            safe_line = line.encode('latin-1', errors='replace').decode('latin-1')
-            w = page_width if page_width > 0 else 170
-            pdf.multi_cell(w, 8, safe_line)
-        output = pdf.output()
-        if isinstance(output, str):
-            return output.encode('latin-1', errors='replace')
-        return output
-
-    def _upload_to_supabase(self, pdf_bytes, filename):
-        try:
-            path = f"documents/{filename}"
-            self.supabase.storage.from_("floki-docs").upload(path, pdf_bytes, {"upsert": "true"})
-            url = self.supabase.storage.from_("floki-docs").get_public_url(path)
-            return url
-        except Exception as e:
-            return None
-
-    def _action_send_message(self, question):
-        nums = re.findall(r'\+?\d{9,15}', question)
-        if nums:
-            numero = nums[0].replace("+", "")
-            message = re.sub(r'envoi.*?message.*?\+?\d{9,15}\s*:?', '', question, flags=re.IGNORECASE).strip()
-            url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-            return f"Ordre exécuté chef. Lien WhatsApp: {url}"
-        return "Chef, donne-moi un numéro."
-
-    def _action_commander(self, q):
-        produit_match = re.search(r'commande\s+([a-z0-9\s]+?)\s+quantite\s+(\d+)', q)
-        if not produit_match:
-            produit_match = re.search(r'commander\s+([a-z0-9\s]+?)\s+(\d+)', q)
-        if not produit_match:
-            return "Chef, dis-moi: 'commande [produit] quantité [nombre]'"
-        produit, quantite = produit_match.group(1).strip(), int(produit_match.group(2))
-        try:
-            self.supabase.table("commandes").insert({
-                "produit": produit, "quantite": quantite, "date": datetime.now().isoformat(),
-                "statut": "en_attente", "commande_par": st.session_state.get('user_name', 'PDG')
-            }).execute()
-            return f"Commande enregistrée chef: {quantite} x {produit}."
-        except Exception as e:
-            return f"Erreur: {e}."
+        web_rep = self._search_web(question)
+        log_entry.update({"source": "WEB", "reponse": web_rep})
+        self._log_action(log_entry)
+        return web_rep + "\n\nSource: WEB"
 
     def _search_asymas(self, q):
-        if "commerce" in q and "exterieur" in q:
-            return self._get_commerce_exterieur(q)
-        if "importation" in q or "importer" in q:
-            return self._get_importations(q)
-        if "exportation" in q or "exporter" in q:
-            return self._get_exportations(q)
-        if "stock" in q and "de" in q:
-            produit = q.split("de")[-1].strip()
-            return self._search_product(produit)
-        if "commande" in q and ("attente" in q or "en cours" in q or "liste" in q):
-            return self._get_commandes_attente()
+        # Voiture moins chère
         if "voiture" in q and ("moins cher" in q or "prix" in q):
             return self._get_voiture_moins_cher()
-        if "chiffre" in q or "ca" in q or "revenu" in q:
+
+        # Liste voitures
+        if "voiture" in q and ("liste" in q or "donne" in q):
+            return self._get_voitures_stock()
+
+        # Produit
+        rep = self._search_product(q)
+        if rep: return rep
+
+        # Pertes commerce
+        if "perte" in q and "commerce" in q:
+            return self._get_pertes_commerce()
+
+        # Stock bas
+        if any(k in q for k in ["stock bas", "rupture", "manque"]):
+            return self._stock_bas()
+
+        # CA
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
             return self._chiffre_affaires()
+
         return None
 
-    def _get_commerce_exterieur(self, q):
-        imp = self._get_importations(q)
-        exp = self._get_exportations(q)
-        return f"RAPPORT COMMERCE EXTERIEUR:\n\n{imp}\n\n{exp}"
+    def _get_voiture_moins_cher(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
+        if not prix_col:
+            return "Chef, je ne trouve pas la colonne prix dans voitures."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
+        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
+        prix = float(moins_chere[prix_col])
+        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
 
-    def _get_importations(self, q=""):
-        try:
-            result = self.supabase.table("importations").select("*").order("date", desc=True).limit(20).execute()
-            if not result.data: return "Aucune importation enregistrée chef."
-            data = result.data
-            pays_mots = ["dubaï", "dubai", "chine", "kampala", "europe", "usa", "etats unis"]
-            for mot in pays_mots:
-                if mot in q:
-                    data = [r for r in data if mot in str(r.get('pays', r.get('destination', ''))).lower()]
-                    break
-            if not data: return f"Aucune importation trouvée pour {mot} chef."
-            total = sum(float(r.get('montant', 0)) for r in data[:5])
-            txt = "\n".join([f"- {r.get('produit', 'N/A')} de {r.get('pays', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC" for r in data[:5]])
-            return f"Dernières importations - Total: {total:,.0f} FC\n{txt}"
-        except: return "Chef, table 'importations' vide."
+    def _get_voitures_stock(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
+        return f"Voitures en stock:\n{txt}"
 
-    def _get_exportations(self, q=""):
+    def _get_pertes_commerce(self):
         try:
-            result = self.supabase.table("exportations").select("*").order("date", desc=True).limit(20).execute()
-            if not result.data: return "Aucune exportation enregistrée chef."
-            data = result.data
-            pays_mots = ["dubaï", "dubai", "chine", "kampala", "europe", "usa", "etats unis"]
-            for mot in pays_mots:
-                if mot in q:
-                    data = [r for r in data if mot in str(r.get('pays', r.get('destination', ''))).lower()]
-                    break
-            if not data: return f"Aucune exportation trouvée pour {mot} chef."
-            total = sum(float(r.get('montant', 0)) for r in data[:5])
-            txt = "\n".join([f"- {r.get('produit', 'N/A')} vers {r.get('pays', 'N/A')}: {float(r.get('montant', 0)):,.0f} FC" for r in data[:5]])
-            return f"Dernières exportations - Total: {total:,.0f} FC\n{txt}"
-        except: return "Chef, table 'exportations' vide."
+            result = self.supabase.table("mouvements_stock").select("*").eq("type", "perte").eq("categorie", "commerce").order("date", desc=True).limit(10).execute()
+            if not result.data:
+                return "Aucune perte commerce enregistrée chef."
+            txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            return f"Dernières pertes commerce:\n{txt}"
+        except Exception as e:
+            return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
 
     def _search_product(self, q):
-        if self.df['articles'].empty: return None
+        if self.df['articles'].empty:
+            return None
         articles = self.df['articles'].copy()
         articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
         q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-        for _, r in articles.iterrows():
-            if q_clean in r['nom_clean']:
-                return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        mots_q = [w for w in q_clean.split() if len(w) > 2]
+        if mots_q:
+            for _, r in articles.iterrows():
+                if all(word in r['nom_clean'] for word in mots_q):
+                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        noms = articles['nom_clean'].tolist()
+        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
+        if closest:
+            r = articles[articles['nom_clean'] == closest[0]].iloc[0]
+            return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
         return None
 
-    def _get_commandes_attente(self):
-        try:
-            result = self.supabase.table("commandes").select("*").eq("statut", "en_attente").order("date", desc=True).limit(10).execute()
-            if not result.data: return "Aucune commande en attente chef."
-            txt = "\n".join([f"- {r['quantite']} x {r['produit']}" for r in result.data])
-            return f"Commandes en attente:\n{txt}"
-        except: return "Chef, table 'commandes' manquante."
-
-    def _get_voiture_moins_cher(self):
-        if self.df['voitures'].empty: return "Pas de données voitures chef."
-        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
-        if not prix_col: return "Chef, pas de colonne prix."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
-        if dispo.empty: return "Aucune voiture en stock chef."
-        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
-        return f"Voiture la moins chère: {moins_chere.get('modele', 'N/A')} à {float(moins_chere[prix_col]):,.0f} FC"
+    def _stock_bas(self):
+        if self.df['articles'].empty:
+            return "Pas d'articles chef."
+        low = self.df['articles'][self.df['articles']['stock'] < 5]
+        if low.empty:
+            return "Stock OK chef. Rien en dessous de 5 unités."
+        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
+        return f"Attention chef, stock bas:\n{txt}"
 
     def _chiffre_affaires(self):
-        if self.df['compta'].empty: return "Pas de données compta chef."
+        if self.df['compta'].empty:
+            return "Pas de données compta chef."
         rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
         dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
         return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
 
-# === UI ===
+    def _search_web(self, q):
+        try:
+            url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
+            r = requests.get(url, timeout=4)
+            data = r.json()
+            if data.get('AbstractText'):
+                return f"Info vérifiée: {data['AbstractText']}"
+            return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
+        except:
+            return "Le web ne répond pas chef."
+
+    def _action_rediger(self, question):
+        if "relance" in question.lower():
+            return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
+        if "convocation" in question.lower():
+            return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
+        return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
+
+    def _action_send_whatsapp(self, question):
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if not nums:
+            return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
+        numero = nums[0].replace("+", "")
+        message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
+        url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
+        return f"Lien WhatsApp prêt: {url}"
+
+    def notify_internal(self, message):
+        try:
+            self.supabase.table("notifications").insert({
+                "message": f"[{st.session_state.get('user_name', 'PDG')}]: {message}",
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            return "Notification envoyée à l’équipe chef."
+        except Exception as e:
+            return f"Échec notification: {e}"
+
+    def _action_conseil(self, q):
+        if not self.df['articles'].empty and not self.df['compta'].empty:
+            stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
+            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
+            return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
+        return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
+
+    def _log_action(self, log_entry):
+        try:
+            self.supabase.table("floki_logs").insert(log_entry).execute()
+        except:
+            pass
+
+# === UI FLOKI ===
 if 'floki' not in st.session_state:
-    dataframes = {"articles": df_articles, "compta": df_compta, "biens": df_biens, "voitures": df_voitures}
+    dataframes = {
+        "articles": df_articles,
+        "compta": df_compta,
+        "biens": df_biens,
+        "voitures": df_voitures
+    }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
-user_role = str(st.session_state.get('user_role', '')).upper()
-
 with st.sidebar:
-    if user_role == 'PDG':
-        st.divider()
-        st.markdown("### 🤖 FLOKI")
+    st.divider()
+    st.markdown("### 🤖 FLOKI")
+    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
 
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            q = st.text_input("Ton ordre", key="floki_input", placeholder="Ex: fais un contrat pour Paul")
-        with col2:
-            if st.button("🎤", key="floki_mic"):
-                with st.spinner("Parle chef..."):
-                    try:
-                        with sr.Microphone() as source:
-                            audio = st.session_state.floki.recognizer.listen(source, timeout=5)
-                        q = st.session_state.floki.recognizer.recognize_google(audio, language="fr-FR")
-                        st.session_state.floki_input = q
-                        st.rerun()
-                    except:
-                        st.error("Micro pas détecté chef")
+    q = st.text_input("Ordre pour FLOKI", key="floki_input",
+                      placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
 
+    st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
+
+    col1, col2 = st.columns(2)
+    with col1:
         if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
-                with st.spinner("Floki réfléchit..."):
-                    st.session_state.floki_rep = st.session_state.floki.ask(q)
+                with st.spinner("FLOKI réfléchit..."):
+                    rep = st.session_state.floki.ask(q)
+                    st.session_state.floki_rep = rep
 
-        if 'floki_rep' in st.session_state:
-            st.success(st.session_state.floki_rep)
-            if 'floki_missing_fields' in st.session_state:
-                st.warning("Chef, remplis les champs vides :")
-                with st.form("correction_form"):
-                    data = st.session_state['floki_doc_data']
-                    new_data = data.copy()
-                    for field in st.session_state['floki_missing_fields']:
-                        new_data[field] = st.text_input(field, value="", placeholder=f"Renseigne {field}")
-                    submitted = st.form_submit_button("Valider et générer PDF")
-                    if submitted:
-                        st.session_state['floki_doc_data'].update(new_data)
-                        doc_type = st.session_state['floki_doc_type']
-                        template_func = getattr(st.session_state.floki, f"_template_{doc_type}", st.session_state.floki._template_lettre)
-                        new_text = template_func(st.session_state['floki_doc_data'])
-                        pdf_bytes = st.session_state.floki._create_pdf_bytes(f"{doc_type}_{new_data['nom']}", new_text, doc_type)
-                        st.session_state['pdf_ready'] = pdf_bytes
-                        st.session_state['pdf_name'] = f"{doc_type}_{new_data['nom']}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-                        del st.session_state['floki_missing_fields']
-                        st.rerun()
-            if 'pdf_ready' in st.session_state:
-                st.markdown("#### Transfert du document")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.download_button("Télécharger", data=st.session_state['pdf_ready'],
-                                       file_name=st.session_state['pdf_name'], mime="application/pdf",
-                                       use_container_width=True)
-                with col2:
-                    numero = st.text_input("N° WhatsApp", placeholder="+243...", key="whatsapp_num")
-                    if st.button("Envoyer WhatsApp", use_container_width=True):
-                        if numero:
-                            msg = f"Document ASYMAS: {st.session_state['pdf_name']}"
-                            wa_url = f"https://wa.me/{numero.replace('+','')}?text={urllib.parse.quote(msg)}"
-                            st.markdown(f"[Clique ici pour envoyer]({wa_url})")
-                            st.caption("Ouvre sur ton téléphone, puis joins le PDF téléchargé.")
-                        else:
-                            st.error("Renseigne un numéro chef.")
-                with col3:
-                    if st.button("Générer lien de partage", use_container_width=True):
-                        with st.spinner("Upload en cours..."):
-                            url = st.session_state.floki._upload_to_supabase(st.session_state['pdf_ready'], st.session_state['pdf_name'])
-                            if url:
-                                st.code(url, language=None)
-                                st.success("Lien copié. Partage-le chef.")
-                            else:
-                                st.error("Upload échoué. Vérifie bucket 'floki-docs' public sur Supabase.")
+    with col2:
+        if st.button("Notifier équipe", use_container_width=True):
+            if q:
+                msg = st.session_state.floki.notify_internal(q)
+                st.toast(msg)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if 'floki_rep' in st.session_state:
+        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+        st.components.v1.html(f"""
+            <script>
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("{rep_clean}");
+                msg.lang = 'fr-FR';
+                msg.rate = 1;
+                window.speechSynthesis.speak(msg);
+            }}
+            </script>
+        """, height=0)
+        st.success(st.session_state.floki_rep)
