@@ -511,23 +511,8 @@ if st.button("SE CONNECTER", width="stretch", type="primary"):
             st.rerun()
         else:
             st.error("Profil ou mot de passe incorrect")
-                if not user_data.empty and password == user_data.iloc[0]['password']:
-            st.session_state.user_role = user_data.iloc[0]['role']
-            st.session_state.user_name = user_data.iloc[0]['nom']
-            perms = user_data.iloc[0].get('permissions', {})
-            if isinstance(perms, str):
-                try:
-                    perms = json.loads(perms)
-                except:
-                    perms = {}
-            st.session_state.user_perms = perms
-            st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
-            st.rerun()
-        else: # ← doit être aligné avec "if", pas avec "st.session_state"
-            st.error("Profil ou mot de passe incorrect")
-            
-                    
-    st.stop()
+
+st.stop()
 
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
@@ -539,7 +524,6 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
             st.session_state.user_perms={}
             st.session_state.user_cats=[]
             st.rerun()
-
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
     elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
     elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
