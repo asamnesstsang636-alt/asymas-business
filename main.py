@@ -525,10 +525,13 @@ if st.session_state.user_role is None:
                 else:
                     st.error("Profil ou mot de passe incorrect")
     st.stop()
+
 perms = st.session_state.user_perms
 if isinstance(perms, str):
-    try: perms = json.loads(perms)
-    except: perms = {}
+    try:
+        perms = json.loads(perms)
+    except:
+        perms = {}
 
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
