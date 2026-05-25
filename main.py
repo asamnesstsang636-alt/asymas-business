@@ -485,92 +485,46 @@ if 'user_role' not in st.session_state:
     st.session_state.user_perms = {}
     st.session_state.user_cats = []
 
-if st.button("SE CONNECTER", width="stretch", type="primary"):
-    if profil!= "-- Sélectionner --":
-        nom_connect = profil.split(" - ")[0]
-
-        # Charge l'utilisateur + permissions + catégories
-        df_users_login = supabase.table("utilisateurs").select("id, nom, role, password, permissions, categories_autorisees").execute().data
-        df_users_login = pd.DataFrame(df_users_login)
-
-        user_data = df_users_login[df_users_login['nom'] == nom_connect]
-
-        if not user_data.empty and password == user_data.iloc[0]['password']:
-            st.session_state.user_role = user_data.iloc[0]['role']
-            st.session_state.user_name = user_data.iloc[0]['nom']
-
-            # Récupère les permissions de cet utilisateur précis
-            perms = user_data.iloc[0].get('permissions', {})
-            if isinstance(perms, str):
-                try:
-                    perms = json.loads(perms)
-                except:
-                    perms = {}
-            st.session_state.user_perms = perms
-            st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
-            st.rerun()
+if st.session_state.user_role is None:
+    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("### Choisissez votre profil :")
+        df_users_login = load_table("utilisateurs")
+        if not df_users_login.empty:
+            options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
         else:
-            st.error("Profil ou mot de passe incorrect")
+            options_login = ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"]
+        profil = st.selectbox("Utilisateur", options_login)
+        password = st.text_input("Mot de passe", type="password", key="pwd")
 
-st.stop()
+        if st.button("SE CONNECTER", width="stretch", type="primary"):
+            if profil!= "-- Sélectionner --":
+                nom_connect = profil.split(" - ")[0]
 
-if 'user_role' in st.session_state and st.session_state.user_role is not None:
-    with st.sidebar:
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True):
-            st.session_state.user_role=None
-            st.session_state.user_name=None
-            st.session_state.user_perms={}
-            st.session_state.user_cats=[]
-            st.rerun()
-    if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+                # Charge l'utilisateur + permissions + catégories
+                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password, permissions, categories_autorisees").execute().data
+                df_users_login = pd.DataFrame(df_users_login)
 
-st.markdown("""
-<style>
-h1, h2, h3 {
-    color: #00ff41!important;
-    font-size: 2.2rem!important;
-    font-weight: 900!important;
-    padding: 10px 0!important;
-    border-bottom: 3px solid #00ff41!important;
-    margin-bottom: 20px!important;
-}
-div[data-testid="stMetricValue"] {color: #00ff41!important;}
-.stButton>button {background-color: #00ff41!important; color: black!important; font-weight: bold; border: none;}
-</style>
-""", unsafe_allow_html=True)
+                user_data = df_users_login[df_users_login['nom'] == nom_connect]
 
-df_biens = load_table("biens")
-df_articles = load_table("articles")
-df_voitures = load_table("voitures")
-df_compta = load_table("compta")
-df_factures = load_table("factures_proforma")
-df_devis = load_table("devis")
-df_utilisateurs = load_table("utilisateurs")
+                if not user_data.empty and password == user_data.iloc[0]['password']:
+                    st.session_state.user_role = user_data.iloc[0]['role']
+                    st.session_state.user_name = user_data.iloc[0]['nom']
 
-if 'montant' not in df_compta.columns:
-    df_compta['montant'] = 0
-if 'type' not in df_compta.columns:
-    df_compta['type'] = 'Inconnu'
-if 'date' in df_compta.columns:
-    df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
-    df_compta = df_compta.sort_values('date', ascending=False)
-
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
-
-with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.6")
-    if st.button("🔄 Actualiser", key="btn_save"):
-        st.cache_data.clear()
-        st.rerun()
-
+                    # Récupère les permissions de cet utilisateur précis
+                    perms = user_data.iloc[0].get('permissions', {})
+                    if isinstance(perms, str):
+                        try:
+                            perms = json.loads(perms)
+                        except:
+                            perms = {}
+                    st.session_state.user_perms = perms
+                    st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
+                    st.rerun()
+                else:
+                    st.error("Profil ou mot de passe incorrect")
+    st.stop()
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
