@@ -581,49 +581,49 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
         try: perms = json.loads(perms)
         except: perms = {}
 
-    # === SIDEBAR ICÔNES ===
-    with st.sidebar:
-        st.markdown("## ⚡")
+    # === SIDEBAR ICÔNES MOBILE ===
+with st.sidebar:
+    st.markdown("## ⚡", unsafe_allow_html=True)
 
-        tabs_dispo = []
-        if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
-            tabs_dispo.append(("📊", "📊 Dashboard"))
-        if st.session_state.user_role == "PDG" or perms.get('commerce', True):
-            tabs_dispo.append(("🛍️", "🛍️ Commerce"))
-        if st.session_state.user_role == "PDG" or perms.get('stock', False):
-            tabs_dispo.append(("📦", "📦 Gestion Stock"))
-        if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
-            tabs_dispo.append(("🏠", "🏠 Immobilier"))
-        if st.session_state.user_role == "PDG" or perms.get('automobile', False):
-            tabs_dispo.append(("🚗", "🚗 Automobile"))
-        if st.session_state.user_role == "PDG" or perms.get('parc', False):
-            tabs_dispo.append(("🚘", "🚘 Gestion Parc"))
-        if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
-            tabs_dispo.append(("💰", "💰 Comptabilité"))
-        if st.session_state.user_role == "PDG" or perms.get('factures', False):
-            tabs_dispo.append(("📄", "📄 Factures"))
-        if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
-            tabs_dispo.append(("📋", "📋 Devis"))
-        if st.session_state.user_role == "PDG" or perms.get('users', False):
-            tabs_dispo.append(("👥", "👥 Utilisateurs"))
+    # Construction du menu selon permissions
+    tabs_dispo = []
+    if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
+        tabs_dispo.append(("📊", "📊 Dashboard"))
+    if st.session_state.user_role == "PDG" or perms.get('commerce', True):
+        tabs_dispo.append(("🛍️", "🛍️ Commerce"))
+    if st.session_state.user_role == "PDG" or perms.get('stock', False):
+        tabs_dispo.append(("📦", "📦 Gestion Stock"))
+    if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
+        tabs_dispo.append(("🏠", "🏠 Immobilier"))
+    if st.session_state.user_role == "PDG" or perms.get('automobile', False):
+        tabs_dispo.append(("🚗", "🚗 Automobile"))
+    if st.session_state.user_role == "PDG" or perms.get('parc', False):
+        tabs_dispo.append(("🚘", "🚘 Gestion Parc"))
+    if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
+        tabs_dispo.append(("💰", "💰 Comptabilité"))
+    if st.session_state.user_role == "PDG" or perms.get('factures', False):
+        tabs_dispo.append(("📄", "📄 Factures"))
+    if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
+        tabs_dispo.append(("📋", "📋 Devis"))
+    if st.session_state.user_role == "PDG" or perms.get('users', False):
+        tabs_dispo.append(("👥", "👥 Utilisateurs"))
 
-        if not tabs_dispo:
-            tabs_dispo = [("📊", "📊 Dashboard"), ("🛍️", "🛍️ Commerce")]
+    if not tabs_dispo:
+        tabs_dispo = [("📊", "📊 Dashboard"), ("🛍️", "🛍️ Commerce")]
 
-        icones = [t[0] for t in tabs_dispo]
-        menu_map = {t[0]: t[1] for t in tabs_dispo}
+    icones = [t[0] for t in tabs_dispo]
+    menu_map = {t[0]: t[1] for t in tabs_dispo}
 
-        choix_icone = st.radio("", icones, label_visibility="collapsed", key="nav")
-        menu = menu_map[choix_icone]
+    choix_icone = st.radio("", icones, label_visibility="collapsed", key="nav")
+    menu = menu_map[choix_icone]
 
-        st.markdown("---")
-        if st.button("🚪"):
-            st.session_state.user_role = None
-            st.session_state.user_name = None
-            st.session_state.user_perms = {}
-            st.session_state.user_cats = []
-            st.rerun()
-
+    st.markdown("---")
+    if st.button("🚪", use_container_width=True):
+        st.session_state.user_role = None
+        st.session_state.user_name = None
+        st.session_state.user_perms = {}
+        st.session_state.user_cats = []
+        st.rerun()
     # === LOAD DATA ===
     df_biens = load_table("biens")
     df_articles = load_table("articles")
