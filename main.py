@@ -602,7 +602,7 @@ elif menu == "Commerce":
             if not df_articles_filtre.empty:
                 st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
             else:
-                    st.error(f"❌ QR {qr_code} : Produit introuvable")
+                st.error(f"❌ QR {qr_code} : Produit introuvable")
             elif recherche_manuelle:
                 mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
                 df_articles_filtre = df_articles_filtre[mask]
