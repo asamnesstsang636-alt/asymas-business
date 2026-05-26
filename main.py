@@ -532,8 +532,10 @@ if 'date' in df_compta.columns:
     df_compta = df_compta.sort_values('date', ascending=False)
 
 with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
+    nom = st.session_state.get("user_name", "Invité")
+    role = st.session_state.get("user_role", "Invité")
+    st.markdown(f"## 👤 {nom}")
+    st.markdown(f"**Rôle : {role}**")
     st.info("ASYMAS BUSINESS v2.6")
     if st.button("🔄 Actualiser", key="btn_save"):
         st.cache_data.clear()
@@ -567,7 +569,8 @@ h1 {color: #00ff41!important; font-weight: 900; border-bottom: 3px solid #00ff41
 """, unsafe_allow_html=True)
 
 # === HEADER GLOBAL UNE SEULE FOIS ===
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+nom = st.session_state.get("user_name", "Invité")
+st.markdown(f"# ASYMAS BUSINESS - {nom}")
 st.caption("Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 st.divider()
 
@@ -599,7 +602,7 @@ with col_droite:
         st.metric("💰 Revenus FC", f"{revenus:,.0f}")
 
 # === TABS SELON AUTORISATIONS - COMMERCE EN PREMIER ===
-perms = st.session_state.user_perms
+perms = st.session_state.get("user_perms", {})
 if isinstance(perms, str):
     try: 
         perms = json.loads(perms)
@@ -608,21 +611,21 @@ if isinstance(perms, str):
 
 tabs_dispo = ["🛍️ Commerce"]  # Commerce toujours premier
 
-if st.session_state.user_role == "PDG" or perms.get('stock', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('stock', False):
     tabs_dispo.append("📦 Gestion Stock")
-if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('immobilier', False):
     tabs_dispo.append("🏠 Immobilier")
-if st.session_state.user_role == "PDG" or perms.get('automobile', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('automobile', False):
     tabs_dispo.append("🚗 Automobile")
-if st.session_state.user_role == "PDG" or perms.get('parc', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('parc', False):
     tabs_dispo.append("🚘 Gestion Parc")
-if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('comptabilite', False):
     tabs_dispo.append("💰 Comptabilité")
-if st.session_state.user_role == "PDG" or perms.get('factures', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('factures', False):
     tabs_dispo.append("📄 Factures")
-if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
     tabs_dispo.append("📋 Devis")
-if st.session_state.user_role == "PDG" or perms.get('users', False):
+if st.session_state.get("user_role") == "PDG" or perms.get('users', False):
     tabs_dispo.append("👥 Utilisateurs")
 
 if not tabs_dispo:
@@ -692,7 +695,7 @@ if "📦 Gestion Stock" in tab_map:
                             except Exception as e:
                                 st.error("Erreur modif")
                                 st.code(repr(e))
-                        if st.session_state.user_role == "PDG" or perms.get('supprimer', False):
+                        if st.session_state.get("user_role") == "PDG" or perms.get('supprimer', False):
                             if c2.button("🗑️ Supprimer", key=f"del_art_{row['id']}", width="stretch"):
                                 try:
                                     supabase.table("articles").delete().eq("id", int(row['id'])).execute()
