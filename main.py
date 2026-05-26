@@ -517,7 +517,8 @@ if st.session_state.user_role is None:
 
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
+        if 'theme_choisi' not in st.session_state: 
+            st.session_state.theme_choisi = "Sombre ASYMAS"
         theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
         if st.button("🚪 Déconnexion", use_container_width=True):
             st.session_state.user_role=None
@@ -526,10 +527,14 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
             st.session_state.user_cats=[]
             st.rerun()
 
-    if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+    if theme=="Sombre ASYMAS": 
+        st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Bleu Pro": 
+        st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Vert Agri": 
+        st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Noir Luxe": 
+        st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
 
 st.markdown("""
 <style>
@@ -561,9 +566,6 @@ if 'type' not in df_compta.columns:
 if 'date' in df_compta.columns:
     df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
     df_compta = df_compta.sort_values('date', ascending=False)
-
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
@@ -635,8 +637,10 @@ with col_droite:
 # === TABS SELON AUTORISATIONS - COMMERCE EN PREMIER ===
 perms = st.session_state.user_perms
 if isinstance(perms, str):
-    try: perms = json.loads(perms)
-    except: perms = {}
+    try: 
+        perms = json.loads(perms)
+    except: 
+        perms = {}
 
 tabs_dispo = ["🛍️ Commerce"]  # Commerce toujours premier
 
@@ -667,17 +671,15 @@ tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("#### Point de Vente")
-        if 'panier_commerce' not in st.session_state: st.session_state.panier_commerce = []
-        # Colle ici ton code Commerce existant mais enveloppé dans st.container(border=True)
+        if 'panier_commerce' not in st.session_state: 
+            st.session_state.panier_commerce = []
 
 if "📦 Gestion Stock" in tab_map:
     with tab_map["📦 Gestion Stock"]:
         st.markdown("#### Gestion Stock")
-        # Colle ici ton code Stock existant mais enveloppé dans st.container(border=True)
-
-# Répète pour les autres tabs...
-            else:
-                for _, row in df_articles.iterrows():
+        if not df_articles.empty:
+            for _, row in df_articles.iterrows():
+                with st.container(border=True):
                     col1, col2, col3, col4 = st.columns([3,1,1,1])
                     with col1:
                         st.write(f"**{row['nom_article']}** - {row.get('categorie','')} - QR:{row.get('code_qr','N/A')}")
@@ -736,7 +738,6 @@ if "📦 Gestion Stock" in tab_map:
                                 except Exception as e:
                                     st.error("Erreur suppression")
                                     st.code(repr(e))
-
         with tab_ajout:
             st.subheader("➕ Ajouter Nouvel Article Commerce")
             qr_scan_ajout = qrcode_scanner(key='qr_add_article_com')
