@@ -907,10 +907,10 @@ elif menu == "🛍️ Commerce":
                             st.error("Erreur finalisation vente")
                             st.code(repr(e))
 
-if "📦 Gestion Stock" in tab_map:
-    with tab_map["📦 Gestion Stock"]:
+elif menu == "📦 Gestion Stock":
+    with st.container():
         st.markdown("## 📦 Gestion Stock Commerce - Articles & Pertes")
-        
+
         tab_stock, tab_ajout, tab_mvt, tab_pertes = st.tabs(["📊 Stock Actuel", "➕ Ajouter Article", "📈 Mouvements", "⚠️ Pertes & Casses"])
 
         with tab_stock:
@@ -932,7 +932,7 @@ if "📦 Gestion Stock" in tab_map:
                         st.write(f"PA: {row.get('prix_achat',0):,.0f}")
                     with col4:
                         st.write(f"PV: {row.get('prix_vente',0):,.0f} FC")
-                    
+
                     with st.expander(f"Modifier/Supprimer {row['nom_article']}"):
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -945,7 +945,7 @@ if "📦 Gestion Stock" in tab_map:
                             new_prix_usd = st.number_input("Prix Vente $", value=float(row.get('prix_vente_usd',0)), key=f"pusd_art_{row['id']}")
                         with c3:
                             new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_art_{row['id']}")
-                        
+
                         c1, c2 = st.columns(2)
                         if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                             try:
@@ -1024,7 +1024,7 @@ if "📦 Gestion Stock" in tab_map:
                 mvts = supabase.table('mouvements_stock').select("*").order("created_at", desc=True).limit(50).execute().data
             except:
                 mvts = []
-            
+
             if not mvts:
                 st.info("Aucun mouvement enregistré")
             else:
@@ -1033,9 +1033,9 @@ if "📦 Gestion Stock" in tab_map:
 
         with tab_pertes:
             st.subheader("⚠️ Déclarer Perte/Casse Article Commerce")
-            
+
             articles_dispo = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
-            
+
             if articles_dispo.empty:
                 st.warning("Aucun article en stock pour déclarer une perte")
             else:
@@ -1048,21 +1048,19 @@ if "📦 Gestion Stock" in tab_map:
                     motif_perte = st.selectbox("Motif", ["Casse", "Vol", "Péremption", "Défaut fabrication", "Accident", "Autre"])
                     detail_perte = st.text_area("Détails", placeholder="Ex: Carton mouillé lors livraison")
                     responsable = st.text_input("Déclaré par", value=st.session_state.user_name)
-                
+
                 if article_choisi:
                     article_data = article_dict[article_choisi]
                     valeur_perte = qte_perte * float(article_data.get('prix_achat', 0))
                     st.error(f"💸 Valeur de la perte : {valeur_perte:,.0f} FC")
-                
+
                 if st.button("🚨 ENREGISTRER LA PERTE", type="primary", width="stretch"):
                     if article_choisi and qte_perte > 0:
                         article_data = article_dict[article_choisi]
                         try:
-                            # 1. Déduire du stock
                             nouveau_stock = int(article_data['stock']) - qte_perte
                             supabase.table('articles').update({"stock": nouveau_stock}).eq("id", int(article_data['id'])).execute()
-                            
-                            # 2. Enregistrer mouvement
+
                             supabase.table('mouvements_stock').insert({
                                 "article_id": int(article_data['id']),
                                 "article_nom": str(article_data['nom_article']),
@@ -1073,27 +1071,27 @@ if "📦 Gestion Stock" in tab_map:
                                 "created_by": responsable,
                                 "created_at": datetime.now().isoformat()
                             }).execute()
-                            
+
                             st.success(f"✅ Perte enregistrée. Nouveau stock {article_data['nom_article']}: {nouveau_stock}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur enregistrement perte")
                             st.code(repr(e))
-            
+
             st.divider()
             st.subheader("📋 Historique Pertes Commerce")
             try:
                 pertes = supabase.table('mouvements_stock').select("*").eq("type", "PERTE").order("created_at", desc=True).limit(20).execute().data
             except:
                 pertes = []
-            
+
             if not pertes:
                 st.info("Aucune perte enregistrée")
             else:
                 total_pertes = sum(p.get('valeur', 0) for p in pertes)
                 st.metric("💸 TOTAL PERTES COMMERCE", f"{total_pertes:,.0f} FC")
-                
+
                 for p in pertes:
                     with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
                         col1, col2, col3 = st.columns(3)
@@ -1108,8 +1106,9 @@ if "📦 Gestion Stock" in tab_map:
                                 if st.button("🗑️ Supprimer", key=f"del_perte_com_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
-if "🏠 Immobilier" in tab_map:
-    with tab_map["🏠 Immobilier"]:
+
+elif menu == "🏠 Immobilier":
+    with st.container():
         st.markdown("## 🏠 Immobilier - Générer Facture")
         nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
         tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
@@ -1163,8 +1162,8 @@ if "🏠 Immobilier" in tab_map:
             else:
                 st.error("Nom client + Adresse obligatoires")
 
-if "🚗 Automobile" in tab_map:
-    with tab_map["🚗 Automobile"]:
+elif menu == "🚗 Automobile":
+    with st.container():
         st.markdown("## 🚗 Automobile - Point de Vente")
         if 'panier_voiture' not in st.session_state:
             st.session_state.panier_voiture = []
@@ -1312,14 +1311,14 @@ if "🚗 Automobile" in tab_map:
                         else:
                             st.error("Nom client obligatoire - Remplis à gauche")
 
-if "🚘 Gestion Parc" in tab_map:
-    with tab_map["🚘 Gestion Parc"]:
+elif menu == "🚘 Gestion Parc":
+    with st.container():
         st.markdown("## 🚘 Gestion Parc Automobile & Pertes")
-        
+
         tab_ajout_v, tab_liste_v, tab_pertes_v = st.tabs(["➕ Ajouter Voiture", "📋 Liste Voitures", "⚠️ Pertes/Dégâts Voitures"])
-        
+
         colonnes_voitures = get_table_columns("voitures")
-        
+
         with tab_ajout_v:
             st.subheader("➕ Ajouter Nouvelle Voiture au Parc")
             with st.form("form_voiture_parc", clear_on_submit=True):
@@ -1446,7 +1445,6 @@ if "🚘 Gestion Parc" in tab_map:
                                 except Exception as e:
                                     st.error("Erreur suppression")
                                     st.code(repr(e))
-
         with tab_pertes_v:
             st.subheader("⚠️ Déclarer Dégât/Perte Voiture")
             
