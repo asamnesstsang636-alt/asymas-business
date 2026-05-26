@@ -617,18 +617,64 @@ if 'date' in df_compta.columns:
 st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
 st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
-with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.6")
-    if st.button("🔄 Actualiser", key="btn_save"):
-        st.cache_data.clear()
-        st.rerun()
-
 perms = st.session_state.user_perms
 if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
+
+# --- SIDEBAR ICÔNES STYLE MOBILE ---
+with st.sidebar:
+    st.markdown("## ⚡") # Logo
+
+    # Filtre les tabs selon les permissions
+    tabs_dispo = []
+    if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
+        tabs_dispo.append(("📊", "📊 Dashboard"))
+    if st.session_state.user_role == "PDG" or perms.get('commerce', True):
+        tabs_dispo.append(("🛍️", "🛍️ Commerce"))
+    if st.session_state.user_role == "PDG" or perms.get('stock', False):
+        tabs_dispo.append(("📦", "📦 Gestion Stock"))
+    if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
+        tabs_dispo.append(("🏠", "🏠 Immobilier"))
+    if st.session_state.user_role == "PDG" or perms.get('automobile', False):
+        tabs_dispo.append(("🚗", "🚗 Automobile"))
+    if st.session_state.user_role == "PDG" or perms.get('parc', False):
+        tabs_dispo.append(("🚘", "🚘 Gestion Parc"))
+    if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
+        tabs_dispo.append(("💰", "💰 Comptabilité"))
+    if st.session_state.user_role == "PDG" or perms.get('factures', False):
+        tabs_dispo.append(("📄", "📄 Factures"))
+    if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
+        tabs_dispo.append(("📋", "📋 Devis"))
+    if st.session_state.user_role == "PDG" or perms.get('users', False):
+        tabs_dispo.append(("👥", "👥 Utilisateurs"))
+
+    if not tabs_dispo:
+        tabs_dispo = [("📊", "📊 Dashboard"), ("🛍️", "🛍️ Commerce")]
+
+    icones = [t[0] for t in tabs_dispo]
+    menu_map = {t[0]: t[1] for t in tabs_dispo}
+
+    choix_icone = st.radio("", icones, label_visibility="collapsed", key="nav")
+    menu = menu_map[choix_icone]
+
+    st.markdown("---")
+    if st.button("🚪"):
+        st.session_state.user_role = None
+        st.session_state.user_name = None
+        st.session_state.user_perms = {}
+        st.session_state.user_cats = []
+        st.rerun()
+
+# --- FIN SIDEBAR ---
+
+# Ensuite vient ton code des pages
+if menu == "📊 Dashboard":
+    with st.container():
+       ...
+
+    
+    
 
 # --- Remplace tout ton bloc tabs_dispo + st.tabs par ça ---
 
