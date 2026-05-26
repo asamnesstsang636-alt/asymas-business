@@ -7,7 +7,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="auto"
 )
-# --- CSS Dashboard Style Sombre ---
 st.markdown("""
 <style>
 .stApp {
@@ -17,6 +16,22 @@ st.markdown("""
 section[data-testid="stSidebar"] {
     background: #161b22;
     border-right: 1px solid #30363d;
+    padding-top: 20px;
+}
+section[data-testid="stSidebar"] button {
+    background: transparent;
+    color: #8b949e;
+    text-align: left;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 4px 8px;
+    font-weight: 600;
+}
+section[data-testid="stSidebar"] button[kind="primary"] {
+    background: rgba(0,255,65,0.15);
+    color: #00ff41;
+    border-left: 3px solid #00ff41;
 }
 h1, h2, h3 {
     color: #00ff41 !important;
@@ -28,27 +43,18 @@ div[data-testid="metric-container"] {
     background: #161b22;
     border: 1px solid #30363d;
     border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 0 10px rgba(0,255,65,0.1);
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0,255,65,0.08);
 }
 div[data-testid="metric-container"] label {
     color: #8b949e !important;
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
 }
 div[data-testid="metric-container"] div {
     color: #00ff41 !important;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
-}
-.stButton>button {
-    background: #00ff41;
-    color: #000;
-    font-weight: bold;
-    border-radius: 8px;
-    border: none;
-}
-.stButton>button:hover {
-    background: #00cc33;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -624,6 +630,8 @@ if isinstance(perms, str):
     try: perms = json.loads(perms)
     except: perms = {}
 
+# --- Remplace tout ton bloc tabs_dispo + st.tabs par ça ---
+
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
     tabs_dispo.append("📊 Dashboard")
@@ -649,12 +657,29 @@ if st.session_state.user_role == "PDG" or perms.get('users', False):
 if not tabs_dispo:
     tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
 
-tabs = st.tabs(tabs_dispo)
-tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+# Sidebar au lieu des tabs en haut
+st.sidebar.title("ASYMAS")
+st.sidebar.markdown("---")
+menu = st.sidebar.radio("Navigation", tabs_dispo, label_visibility="collapsed")
 
-if "📊 Dashboard" in tab_map:
-    with tab_map["📊 Dashboard"]:
+# --- Remplace tout ton bloc if "📊 Dashboard" in tab_map: par ça ---
+
+if menu == "📊 Dashboard":
+    with st.container():
         st.markdown("# 📊 Dashboard")
+        # colle ici le code du dashboard avec les métriques + graphiques
+        
+elif menu == "🛍️ Commerce":
+    with st.container():
+        st.markdown("# 🛍️ Commerce")
+        # ton code commerce ici
+        
+elif menu == "📦 Gestion Stock":
+    with st.container():
+        st.markdown("# 📦 Gestion Stock")
+        # ton code stock ici
+        
+# ... et tu continues pareil pour chaque menu
         
         # Calcule revenus si possible
         revenus = 0
