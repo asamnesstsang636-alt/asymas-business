@@ -667,19 +667,6 @@ menu = st.sidebar.radio("Navigation", tabs_dispo, label_visibility="collapsed")
 if menu == "📊 Dashboard":
     with st.container():
         st.markdown("# 📊 Dashboard")
-        # colle ici le code du dashboard avec les métriques + graphiques
-        
-elif menu == "🛍️ Commerce":
-    with st.container():
-        st.markdown("# 🛍️ Commerce")
-        # ton code commerce ici
-        
-elif menu == "📦 Gestion Stock":
-    with st.container():
-        st.markdown("# 📦 Gestion Stock")
-        # ton code stock ici
-        
-# ... et tu continues pareil pour chaque menu
         
         # Calcule revenus si possible
         revenus = 0
@@ -714,7 +701,7 @@ elif menu == "📦 Gestion Stock":
                 fig = px.line(x=['Jan','Fev','Mar'], y=[0,0,0], color_discrete_sequence=['#00ff41'])
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                               font_color='#e6edf3', height=300)
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)
         
         with col2:
             st.markdown("### 📊 Stock par Catégorie")
@@ -726,7 +713,52 @@ elif menu == "📦 Gestion Stock":
                 fig2 = px.bar(x=['A','B'], y=[0,0], color_continuous_scale=['#161b22', '#00ff41'])
             fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                                font_color='#e6edf3', height=300, showlegend=False)
-            st.plotly_chart(fig2, width="stretch")
+            st.plotly_chart(fig2, use_container_width=True)
+
+elif menu == "🛍️ Commerce":
+    with st.container():
+        st.markdown("# 🛍️ Commerce")
+        # ton code commerce ici
+        
+elif menu == "📦 Gestion Stock":
+    with st.container():
+        st.markdown("# 📦 Gestion Stock")
+        # ton code stock ici
+        
+elif menu == "🏠 Immobilier":
+    with st.container():
+        st.markdown("# 🏠 Immobilier")
+        # ton code immobilier ici
+        
+elif menu == "🚗 Automobile":
+    with st.container():
+        st.markdown("# 🚗 Automobile")
+        # ton code automobile ici
+        
+elif menu == "🚘 Gestion Parc":
+    with st.container():
+        st.markdown("# 🚘 Gestion Parc")
+        # ton code parc ici
+        
+elif menu == "💰 Comptabilité":
+    with st.container():
+        st.markdown("# 💰 Comptabilité")
+        # ton code compta ici
+        
+elif menu == "📄 Factures":
+    with st.container():
+        st.markdown("# 📄 Factures")
+        # ton code factures ici
+        
+elif menu == "📋 Devis":
+    with st.container():
+        st.markdown("# 📋 Devis")
+        # ton code devis ici
+        
+elif menu == "👥 Utilisateurs":
+    with st.container():
+        st.markdown("# 👥 Utilisateurs")
+        # ton code users ici
 elif menu == "🛍️ Commerce":
     with st.container():
         st.markdown("## 🛍️ Commerce - Point de Vente")
