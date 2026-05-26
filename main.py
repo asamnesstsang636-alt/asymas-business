@@ -1526,8 +1526,8 @@ elif menu == "🚘 Gestion Parc":
                                 if st.button("🗑️ Supprimer", key=f"del_perte_v_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
-if "💰 Comptabilité" in tab_map:
-    with tab_map["💰 Comptabilité"]:
+elif =="💰 Comptabilité":
+    with st.container()
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
         colonnes_compta = get_table_columns("comptes")
         with st.expander("➕ Ajouter Opération"):
@@ -1683,8 +1683,8 @@ if "💰 Comptabilité" in tab_map:
                             </script>
                         """, height=60)
 
-if "📄 Factures" in tab_map:
-    with tab_map["📄 Factures"]:
+elif menu == "📄 Factures":
+    with st.cntainer():
         st.markdown("## 📄 Factures - Relevé par Catégorie")
         if df_compta.empty:
             st.info("Aucune opération")
@@ -1798,8 +1798,8 @@ if "📄 Factures" in tab_map:
                             except Exception as e:
                                 col_f.write("❌")
                                 col_g.write("❌")
-if "📋 Devis" in tab_map:
-    with tab_map["📋 Devis"]:
+elif menu == "📋 Devis":
+    with st.container():
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
 
         if 'devis_sections' not in st.session_state:
@@ -2423,8 +2423,8 @@ if "📋 Devis" in tab_map:
                         
 
                         
-if "👥 Utilisateurs" in tab_map:
-    with tab_map["👥 Utilisateurs"]:
+elif menu == "👥 Utilisateurs":
+    with st.container():
         st.markdown("## 👥 Gestion Utilisateurs - Droits d'Accès")
         with st.expander("➕ Ajouter Nouvel Utilisateur", expanded=True):
             with st.form("form_user", clear_on_submit=True):
