@@ -1526,7 +1526,7 @@ elif menu == "🚘 Gestion Parc":
                                 if st.button("🗑️ Supprimer", key=f"del_perte_v_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
-elif =="💰 Comptabilité":
+elif menu =="💰 Comptabilité":
     with st.container()
         st.markdown("## 💰 Comptabilité - Relevé par Catégorie")
         colonnes_compta = get_table_columns("comptes")
