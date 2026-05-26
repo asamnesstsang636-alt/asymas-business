@@ -727,8 +727,8 @@ elif menu == "📦 Gestion Stock":
             fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                                font_color='#e6edf3', height=300, showlegend=False)
             st.plotly_chart(fig2, width="stretch")
-if "🛍️ Commerce" in tab_map:
-    with tab_map["🛍️ Commerce"]:
+elif menu == "🛍️ Commerce":
+    with st.container():
         st.markdown("## 🛍️ Commerce - Point de Vente")
         if 'panier_commerce' not in st.session_state:
             st.session_state.panier_commerce = []
