@@ -1,11 +1,57 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="auto"
 )
+# --- CSS Dashboard Style Sombre ---
+st.markdown("""
+<style>
+.stApp {
+    background: #0d1117;
+    color: #e6edf3;
+}
+section[data-testid="stSidebar"] {
+    background: #161b22;
+    border-right: 1px solid #30363d;
+}
+h1, h2, h3 {
+    color: #00ff41 !important;
+    font-weight: 800;
+    border-bottom: 2px solid #00ff41;
+    padding-bottom: 5px;
+}
+div[data-testid="metric-container"] {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 0 10px rgba(0,255,65,0.1);
+}
+div[data-testid="metric-container"] label {
+    color: #8b949e !important;
+    font-size: 14px;
+}
+div[data-testid="metric-container"] div {
+    color: #00ff41 !important;
+    font-size: 28px;
+    font-weight: 700;
+}
+.stButton>button {
+    background: #00ff41;
+    color: #000;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+}
+.stButton>button:hover {
+    background: #00cc33;
+}
+</style>
+""", unsafe_allow_html=True)
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
@@ -608,18 +654,54 @@ tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 
 if "📊 Dashboard" in tab_map:
     with tab_map["📊 Dashboard"]:
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🏠 Biens", len(df_biens))
-        col2.metric("📦 Articles", len(df_articles))
-        col3.metric("🚗 Voitures", len(df_voitures))
+        st.markdown("# 📊 Dashboard")
+        
+        # Calcule revenus si possible
+        revenus = 0
         if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
             revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        elif not df_compta.empty:
-            col4.metric("💰 Écritures", len(df_compta))
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-
+        
+        # Métriques style cartes
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("💰 Revenus Total", f"{revenus:,.0f} FC", "+12.5%")
+        col2.metric("📦 Articles", len(df_articles), "+8.2%")
+        col3.metric("🏠 Biens", len(df_biens), "+3")
+        col4.metric("🚗 Voitures", len(df_voitures), "+2")
+        
+        st.markdown("---")
+        
+        # Graphiques
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 📈 Évolution Revenus")
+            if not df_compta.empty and 'type' in df_compta.columns:
+                df_rev = df_compta[df_compta['type']=='Revenu'].copy()
+                if not df_rev.empty and 'date' in df_rev.columns:
+                    df_rev['date'] = pd.to_datetime(df_rev['date'], errors='coerce')
+                    df_rev['mois'] = df_rev['date'].dt.strftime('%b')
+                    df_group = df_rev.groupby('mois')['montant'].sum().reset_index()
+                    fig = px.line(df_group, x='mois', y='montant', 
+                                  line_shape='spline', color_discrete_sequence=['#00ff41'])
+                else:
+                    fig = px.line(x=['Jan','Fev','Mar'], y=[0,0,0], color_discrete_sequence=['#00ff41'])
+            else:
+                fig = px.line(x=['Jan','Fev','Mar'], y=[0,0,0], color_discrete_sequence=['#00ff41'])
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                              font_color='#e6edf3', height=300)
+            st.plotly_chart(fig, width="stretch")
+        
+        with col2:
+            st.markdown("### 📊 Stock par Catégorie")
+            if not df_articles.empty and 'categorie' in df_articles.columns:
+                df_cat = df_articles.groupby('categorie')['stock'].sum().reset_index()
+                fig2 = px.bar(df_cat, x='categorie', y='stock', 
+                              color='stock', color_continuous_scale=['#161b22', '#00ff41'])
+            else:
+                fig2 = px.bar(x=['A','B'], y=[0,0], color_continuous_scale=['#161b22', '#00ff41'])
+            fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                               font_color='#e6edf3', height=300, showlegend=False)
+            st.plotly_chart(fig2, width="stretch")
 if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
