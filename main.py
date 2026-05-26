@@ -479,42 +479,6 @@ a[href*="share.streamlit.io"] {display: none!important;}
 
 passwords_db = load_passwords()
 
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-    st.session_state.user_name = None
-    st.session_state.user_perms = {}
-    st.session_state.user_cats = []
-
-if st.session_state.user_role is None:
-    st.markdown("# 🔐 ASYMAS BUSINESS - CONNEXION")
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown("### Choisissez votre profil :")
-        df_users_login = load_table("utilisateurs")
-        if not df_users_login.empty:
-            options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
-        else:
-            options_login = ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"]
-        profil = st.selectbox("Utilisateur", options_login)
-        password = st.text_input("Mot de passe", type="password", key="pwd")
-        if st.button("SE CONNECTER", width="stretch", type="primary"):
-            if profil!= "-- Sélectionner --":
-                nom_connect = profil.split(" - ")[0]
-                role_connect = profil.split(" - ")[1] if " - " in profil else profil
-                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
-                df_users_login = pd.DataFrame(df_users_login)
-                st.write(df_users_login) # supprime ça après
-                user_data = df_users_login[df_users_login['nom'] == nom_connect]
-                if not user_data.empty and password == user_data.iloc[0]['password']:
-                    st.session_state.user_role = user_data.iloc[0]['role']
-                    st.session_state.user_name = user_data.iloc[0]['nom']
-                    st.session_state.user_perms = user_data.iloc[0].get('permissions', {})
-                    st.session_state.user_cats = user_data.iloc[0].get('categories_autorisees', [])
-                    st.rerun()
-                else:
-                    st.error("Profil ou mot de passe incorrect")
-    st.stop()
-
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
         if 'theme_choisi' not in st.session_state: 
@@ -738,46 +702,6 @@ if "📦 Gestion Stock" in tab_map:
                                 except Exception as e:
                                     st.error("Erreur suppression")
                                     st.code(repr(e))
-        with tab_ajout:
-            st.subheader("➕ Ajouter Nouvel Article Commerce")
-            qr_scan_ajout = qrcode_scanner(key='qr_add_article_com')
-            if qr_scan_ajout:
-                st.success(f"QR scanné : {qr_scan_ajout}")
-                st.session_state.qr_code_temp = qr_scan_ajout
-
-            with st.form("form_article_com", clear_on_submit=True):
-                c1, c2, c3 = st.columns(3)
-                nom = c1.text_input("Nom Article")
-                cat = c2.text_input("Catégorie")
-                code_qr = c3.text_input("Code QR", value=st.session_state.get('qr_code_temp', ''))
-                c1, c2, c3 = st.columns(3)
-                prix_achat_fc = c1.number_input("Prix Achat FC", min_value=0.0)
-                prix_vente_fc = c2.number_input("Prix Vente FC", min_value=0.0)
-                prix_vente_usd = c3.number_input("Prix Vente $", min_value=0.0)
-                stock = c1.number_input("Stock Initial", min_value=0)
-                if st.form_submit_button("💾 Ajouter Article"):
-                    try:
-                        data_insert = {
-                            "nom_article": str(nom),
-                            "categorie": str(cat),
-                            "prix_achat": float(prix_achat_fc),
-                            "prix_vente": float(prix_vente_fc),
-                            "stock": int(stock),
-                            "code_qr": str(code_qr) if code_qr else None
-                        }
-                        colonnes_articles = get_table_columns("articles")
-                        if "prix_vente_usd" in colonnes_articles:
-                            data_insert["prix_vente_usd"] = float(prix_vente_usd)
-                        supabase.table("articles").insert(data_insert).execute()
-                        st.success(f"Article {nom} ajouté")
-                        if 'qr_code_temp' in st.session_state:
-                            del st.session_state.qr_code_temp
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur ajout")
-                        st.code(repr(e))
-
         with tab_mvt:
             st.subheader("📈 Mouvements de Stock Commerce")
             try:
