@@ -477,7 +477,33 @@ a[href*="share.streamlit.io"] {display: none!important;}
 </style>
 """, unsafe_allow_html=True)
 
+# === BLOC LOGIN ===
 passwords_db = load_passwords()
+
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = None
+    st.session_state.user_name = None
+    st.session_state.user_perms = {}
+    st.session_state.user_cats = []
+
+if st.session_state.user_role is None:
+    st.title("🔐 Connexion ASYMAS BUSINESS")
+
+    with st.form("login_form"):
+        role = st.selectbox("Rôle", list(passwords_db.keys()))
+        pwd = st.text_input("Mot de passe", type="password")
+        submitted = st.form_submit_button("Se connecter")
+
+        if submitted:
+            if pwd == passwords_db[role]:
+                st.session_state.user_role = role
+                st.session_state.user_name = role
+                st.session_state.user_perms = st.session_state.permissions_db.get(role, {})
+                st.session_state.user_cats = st.session_state.user_perms.get('categories_autorisees', [])
+                st.rerun()
+            else:
+                st.error("Mot de passe incorrect")
+    st.stop()
 
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
