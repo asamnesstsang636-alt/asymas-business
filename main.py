@@ -2,38 +2,32 @@ import streamlit as st
 
 st.set_page_config(layout="wide", page_title="ASYMAS Business")
 
-# CSS : champ positionné dans le petit cercle blanc
+# CSS pour monter le champ dans le rectangle
 st.markdown("""
 <style>
 .block-container{padding:0 !important;max-width:100% !important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-
 div[data-testid="stTextInput"]{
     position:absolute !important;
-    bottom:36% !important;  /* monté dans le petit cercle */
+    bottom:23% !important;
     left:50% !important;
     transform:translateX(-50%) !important;
-    width:120px !important;
-    height:32px !important;
+    width:160px !important;
     z-index:100 !important;
 }
-
 div[data-testid="stTextInput"] input{
-    width:120px !important;
-    height:32px !important;
-    background:#ffffff !important;  /* fond blanc */
+    background:rgba(0,0,0,0.9) !important;
     border:2px solid #FFD700 !important;
-    border-radius:20px !important;  /* rond comme le cercle */
-    color:#000 !important;       /* texte noir */
+    border-radius:10px !important;
+    color:#FFD700 !important;
     text-align:center !important;
-    font-size:12px !important;
-    padding:0 !important;
+    padding:10px !important;
 }
 div[data-testid="stTextInput"] label{display:none !important;}
 </style>
 """, unsafe_allow_html=True)
 
-# HOLOGRAMME
+# HOLOGRAMME - regarde la fin de cette ligne !
 st.markdown("""
 <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.6) 0%, rgba(15,15,15,1) 80%);overflow:hidden;">
     <div style="position:absolute;bottom:12%;left:50%;transform:translateX(-50%);width:320px;height:160px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:40px;box-shadow:0 30px 60px rgba(0,0,0,0.9);border:3px solid #444;"></div>
@@ -60,10 +54,9 @@ st.markdown("""
 @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
 </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)  # <- CETTE VIRGULE + PARAMÈTRE EST OBLIGATOIRE
 
-# CHAMP MOT DE PASSE
-pwd = st.text_input("", type="password", placeholder="Mot de passe")
+pwd = st.text_input("", type="password", placeholder="Entrez le mot de passe")
 if pwd == "asymas2025":
     st.success("Accès autorisé ✅")
 elif pwd:
