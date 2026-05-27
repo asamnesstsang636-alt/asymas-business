@@ -400,8 +400,12 @@ with tab_map["📦 Gestion Stock"]:
                     st.cache_data.clear(); st.rerun()
 
 # === IMMOBILIER ===
-st.markdown("## 🏠 Immobilier")
+# === IMMOBILIER ===
+with tab_map["🏠 Immobilier"]:
+    if st.session_state.active_tab == "🏠 Immobilier":
+        st.markdown("## 🏠 Immobilier")
         st.dataframe(df_biens, use_container_width=True)
+        
 
 # === AUTOMOBILE ===
 with tab_map["🚗 Automobile"]:
