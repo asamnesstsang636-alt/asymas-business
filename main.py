@@ -567,20 +567,22 @@ if st.session_state.user_role is None:
     with col2:
         st.markdown('<div class="login-circle">', unsafe_allow_html=True)
         st.markdown("### CONNEXION")
-        # Silhouette homme encodée en base64 - plus besoin d'URL externe
+        # Silhouette homme encodée en base64
         silhouette_svg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEyIiBjeT0iOCIgcj0iNCIgZmlsbD0iIzAwZmY0MSIgb3BhY2l0eT0iMC44Ii8+PHBhdGggZD0iTTQgMjB2LTJhNiA2IDAgMCAxIDEyIDB2MiIgc3Ryb2tlPSIjMDBmZjQxIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC44Ii8+PC9zdmc+"
         st.image(silhouette_svg, width=150)
+
         df_users_login = load_table("utilisateurs")
         if not df_users_login.empty:
             options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
         else:
             options_login = ["-- Sélectionner --", "PDG TSANG", "Gérante ASIYA", "BASAM"]
+
         profil = st.selectbox("Utilisateur", options_login, label_visibility="collapsed")
         password = st.text_input("Mot de passe", type="password", key="pwd", label_visibility="collapsed", placeholder="Mot de passe")
+
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if profil!= "-- Sélectionner --":
                 nom_connect = profil.split(" - ")[0]
-                role_connect = profil.split(" - ")[1] if " - " in profil else profil
                 df_users_login = supabase.table("utilisateurs").select("id, nom, role, password, permissions, categories_autorisees").execute().data
                 df_users_login = pd.DataFrame(df_users_login)
                 user_data = df_users_login[df_users_login['nom'] == nom_connect]
@@ -595,10 +597,11 @@ if st.session_state.user_role is None:
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# === RESTE DU CODE IDENTIQUE ===
+# === RESTE DU CODE ===
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
+        if 'theme_choisi' not in st.session_state:
+            st.session_state.theme_choisi = "Sombre ASYMAS"
         theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
         if st.button("🚪 Déconnexion", use_container_width=True):
             st.session_state.user_role=None
@@ -606,6 +609,42 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
             st.session_state.user_perms={}
             st.session_state.user_cats=[]
             st.rerun()
+else:
+    st.stop()
+
+# Chargement des données
+df_biens = load_table("biens")
+df_articles = load_table("articles")
+df_voitures = load_table("voitures")
+df_compta = load_table("compta")
+df_factures = load_table("factures_proforma")
+df_devis = load_table("devis")
+df_utilisateurs = load_table("utilisateurs")
+
+if 'montant' not in df_compta.columns:
+    df_compta['montant'] = 0
+if 'type' not in df_compta.columns:
+    df_compta['type'] = 'Inconnu'
+if 'date' in df_compta.columns:
+    df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
+    df_compta = df_compta.sort_values('date', ascending=False)
+
+# Création des tabs APRÈS le chargement des données
+perms = st.session_state.user_perms
+if isinstance(perms, str):
+    try:
+        perms = json.loads(perms)
+    except:
+        perms = {}
+
+def check_perm(perm_key):
+    if st.session_state.user_role == "PDG":
+        return True
+    return perms.get(perm_key, False)
+
+tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
+tabs = st.tabs(tabs_dispo)
+
 # Commerce
 with tabs[1]:
     if check_perm('commerce'):
@@ -624,7 +663,8 @@ with tabs[1]:
             st.session_state.client_com_tel = "+243..."
         if 'last_qr' not in st.session_state:
             st.session_state.last_qr = ""
-
+    else:
+        st.info("🔒 Accès Commerce restreint - Contacte le PDG")
         col_gauche, col_droite = st.columns([2,1])
         with col_gauche:
             st.subheader("👤 Client")
