@@ -34,4 +34,4 @@ st.markdown("""
 @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
 </style>
-""", unsafe_allow_html=True)  # <- CETTE LIGNE EST CRITIQUE
+""", unsafe_allow_html=True)  # <- CETTE LIGNE EST OBLIGATOIRE
