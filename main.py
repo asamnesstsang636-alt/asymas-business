@@ -831,7 +831,7 @@ with tabs[1]:
                         except Exception as e:
                             st.error("Erreur finalisation vente")
                             st.code(repr(e))
-    else:
+      else:
         st.info("🔒 Accès Commerce restreint - Contacte le PDG")
 # Gestion Stock
 with tabs[2]:
