@@ -358,7 +358,7 @@ if "📦 Gestion Stock" in tab_map:
             with st.form("form_article_com",clear_on_submit=True):
                 c1,c2,c3=st.columns(3); nom=c1.text_input("Nom Article"); cat=c2.text_input("Catégorie"); code_qr=c3.text_input("Code QR")
                 c1,c2,c3=st.columns(3); prix_achat_fc=c1.number_input("Prix Achat FC",min_value=0.0); prix_vente_fc=c2.number_input("Prix Vente FC",min_value=0.0)
-                                prix_vente_usd=c3.number_input("Prix Vente $",min_value=0.0)
+                prix_vente_usd=c3.number_input("Prix Vente $",min_value=0.0)
                 stock=c1.number_input("Stock Initial",min_value=0)
                 if st.form_submit_button("💾 Ajouter Article"):
                     try:
