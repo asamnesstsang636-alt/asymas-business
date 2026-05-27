@@ -12,7 +12,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === HOLOGRAMME LOGIN AVEC 6 MODULES ASYMAS ===
+# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
@@ -34,47 +34,19 @@ st.markdown("""
             <div style="font-size:50px;">🛒</div>
             <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
         </div>
-
-        <!-- 6 CERCLES MODULES ASYMAS -->
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;">
-            <!-- Haut: Commerce -->
-            <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>🏪</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Commerce</div>
-            </div>
-            <!-- Haut-Droite: Auto -->
-            <div style="position:absolute;top:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>🚚</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Auto</div>
-            </div>
-            <!-- Bas-Droite: Factures -->
-            <div style="position:absolute;bottom:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>🧾</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Factures</div>
-            </div>
-            <!-- Bas: Immobilier -->
-            <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>🏠</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Immo</div>
-            </div>
-            <!-- Bas-Gauche: Stock -->
-            <div style="position:absolute;bottom:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>📦</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Stock</div>
-            </div>
-            <!-- Haut-Gauche: Compta -->
-            <div style="position:absolute;top:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
-                <div>📊</div>
-                <div style="font-size:8px;color:#000;font-weight:bold;">Compta</div>
-            </div>
+            <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏪</div><div style="font-size:8px;color:#000;font-weight:bold;">Commerce</div></div>
+            <div style="position:absolute;top:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🚚</div><div style="font-size:8px;color:#000;font-weight:bold;">Auto</div></div>
+            <div style="position:absolute;bottom:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🧾</div><div style="font-size:8px;color:#000;font-weight:bold;">Factures</div></div>
+            <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏠</div><div style="font-size:8px;color:#000;font-weight:bold;">Immo</div></div>
+            <div style="position:absolute;bottom:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📦</div><div style="font-size:8px;color:#000;font-weight:bold;">Stock</div></div>
+            <div style="position:absolute;top:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📊</div><div style="font-size:8px;color:#000;font-weight:bold;">Compta</div></div>
         </div>
     </div>
 </div>
-<style>
-@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+<style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
 @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
-</style>
+@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
 pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
@@ -85,21 +57,18 @@ st.success("Accès autorisé ✅")
 st.session_state.user_role = "PDG"
 st.session_state.user_name = "PDG"
 
-# === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === FONCTIONS COMPLETES ASYMAS ===
+# === TOUTES TES FONCTIONS DE L'ANCIEN CODE ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
-        with st.spinner(f"Chargement {table_name}..."):
-            data = supabase.table(table_name).select("*").order("id", desc=True).execute()
+        data = supabase.table(table_name).select("*").order("id", desc=True).execute()
         return pd.DataFrame(data.data)
     except Exception as e:
-        st.error(f"Erreur chargement {table_name}")
-        st.code(repr(e))
+        st.error(f"Erreur {table_name}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=300)
@@ -119,11 +88,8 @@ def generer_qrcode(data_text):
 
 def safe_pdf_txt(txt):
     if txt is None or pd.isna(txt): return ""
-    txt = str(txt)
-    txt = txt.replace('—', '-').replace('–', '-').replace('’', "'").replace('“', '"').replace('”', '"')
-    txt = txt.replace('•', '-').replace('…', '...')
-    txt = ''.join(c if ord(c) < 128 else '?' for c in txt)
-    return txt.replace('\n', ' ').replace('\r', '').strip()
+    txt = str(txt).replace('—','-').replace('’',"'").replace('“','"').replace('”','"')
+    return ''.join(c if ord(c) < 128 else '?' for c in txt)
 
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode="", type_facture="Simple"):
     pdf = FPDF(); pdf.add_page(); pdf.set_auto_page_break(auto=False, margin=10)
@@ -170,56 +136,6 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     qr_path = generer_qrcode(qr_data); pdf.image(qr_path, x=155, y=y_pos-25, w=25); os.unlink(qr_path)
     return bytes(pdf.output(dest='S'))
 
-def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
-    pdf = FPDF(); pdf.add_page(); pdf.set_auto_page_break(auto=False, margin=10)
-    pdf.set_fill_color(20, 50, 40); pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255, 255); pdf.set_font("Arial", "B", 20); pdf.set_xy(10, 8); pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
-    pdf.set_font("Arial", "", 9); pdf.set_xy(10, 16); pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-    pdf.set_xy(10, 21); pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-    pdf.set_font("Arial", "B", 10); pdf.set_xy(150, 8); pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
-    pdf.set_font("Arial", "", 10); pdf.set_xy(150, 14); pdf.cell(50, 6, safe_pdf_txt(numero), ln=True, align="R")
-    pdf.set_font("Arial", "", 9); pdf.set_xy(150, 20); pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-    y_pos = 45; pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "B", 12); pdf.set_xy(10, y_pos)
-    pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C"); y_pos = pdf.get_y() + 3
-    pdf.set_font("Arial", "B", 10); pdf.set_xy(10, y_pos)
-    if parcelle: pdf.cell(0, 6, f"PARCELLE N {safe_pdf_txt(parcelle)}", ln=True); y_pos += 6
-    pdf.set_xy(10, y_pos)
-    if localisation: pdf.cell(0, 6, f"LOCALISATION: {safe_pdf_txt(localisation)}", ln=True); y_pos += 6
-    pdf.set_xy(10, y_pos); pdf.cell(0, 6, f"CLIENT: {safe_pdf_txt(client)}", ln=True); y_pos += 6
-    if tel_client: pdf.set_xy(10, y_pos); pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True); y_pos += 6
-    y_pos += 5; pdf.set_font("Arial", "B", 9); pdf.set_fill_color(220, 220, 220); pdf.set_xy(10, y_pos)
-    pdf.cell(10, 7, "N", 1, 0, 'C', True); pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
-    pdf.cell(15, 7, "Unité", 1, 0, 'C', True); pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
-    pdf.cell(25, 7, "Prix U", 1, 0, 'C', True); pdf.cell(30, 7, "Prix total", 1, 1, 'C', True); y_pos += 7
-    pdf.set_font("Arial", "", 8); grand_total = 0
-    for section in details_sections:
-        if y_pos > 240: pdf.add_page(); y_pos = 30
-        pdf.set_font("Arial", "B", 9); pdf.set_fill_color(200, 200, 200); pdf.set_xy(10, y_pos)
-        pdf.cell(10, 6, section['numero'], 1, 0, 'L', True); pdf.cell(180, 6, safe_pdf_txt(section['titre']), 1, 1, 'L', True); y_pos += 6
-        pdf.set_font("Arial", "", 8); sous_total = 0
-        for item in section['items']:
-            if y_pos > 250: pdf.add_page(); y_pos = 30
-            qte = item.get('qte', 0); pu = item.get('pu', 0); total_item = qte * pu; sous_total += total_item
-            pdf.set_xy(10, y_pos); pdf.cell(10, 5, item.get('num', ''), 1, 0, 'C'); pdf.cell(90, 5, safe_pdf_txt(item.get('designation', '')), 1, 0, 'L')
-            pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C'); pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
-            pdf.cell(25, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R'); pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R'); y_pos += 5
-        pdf.set_font("Arial", "B", 8); pdf.set_xy(10, y_pos); pdf.cell(160, 6, "Sous Total", 1, 0, 'R', True); pdf.cell(30, 6, f"{sous_total:,.0f}", 1, 1, 'R', True); y_pos += 6; grand_total += sous_total
-    if main_oeuvre > 0:
-        if y_pos > 250: pdf.add_page(); y_pos = 30
-        pdf.set_xy(10, y_pos); pdf.cell(160, 6, "MAIN D'OEUVRE", 1, 0, 'R'); pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 1, 'R'); y_pos += 6; grand_total += main_oeuvre
-    pdf.set_fill_color(255, 204, 0); pdf.set_font("Arial", "B", 10); pdf.set_xy(10, y_pos)
-    pdf.cell(160, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True); pdf.cell(30, 8, f"{grand_total:,.0f}", 1, 1, 'R', True); y_pos += 15
-    if y_pos > 220: pdf.add_page(); y_pos = 30
-    pdf.set_xy(10, y_pos); pdf.set_font("Arial", "B", 10)
-    if type_devis == "Industriel": ingenieur, tel_ing, adresse_ing = "SAMY TSANGYA", "+243 995 105 623", "Beni, Nord-Kivu, RDC"
-    else: ingenieur, tel_ing, adresse_ing = "ESDRAS TSANGYA", "+243 972 888 690", "Beni, Nord-Kivu, RDC | esdrastsangya@gmail.com"
-    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True); y_pos += 11
-    pdf.set_draw_color(0, 0, 0); pdf.line(10, y_pos, 100, y_pos); y_pos += 1; pdf.set_font("Arial", "", 9); pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Ing. {ingenieur}", ln=True); y_pos += 5; pdf.set_xy(10, y_pos); pdf.cell(90, 5, f"Tel: {tel_ing}", ln=True)
-    y_pos += 5; pdf.set_xy(10, y_pos); pdf.cell(90, 5, f"Adresse: {safe_pdf_txt(adresse_ing)}", ln=True); y_pos += 8
-    pdf.set_font("Arial", "I", 9); pdf.set_text_color(0, 102, 0); pdf.set_xy(10, y_pos); pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align="C")
-    return bytes(pdf.output(dest='S'))
-
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode="", type_facture="Simple"):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None: details_list = [{"nom": details, "qte": 1, "pu": montant}]
@@ -234,41 +150,6 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
         supabase.table("compta").insert(data_compta).execute(); st.toast(f"✅ Enregistré par {st.session_state.user_name}", icon="✅")
     except Exception as e: st.error("❌ ERREUR INSERTION COMPTA"); st.code(repr(e))
     return numero_facture, pdf_bytes
-
-def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_data.to_excel(writer, sheet_name='Releve', index=False, startrow=6)
-        workbook = writer.book; worksheet = writer.sheets['Releve']
-        worksheet.merge_cells('A1:F1'); worksheet['A1'] = 'ASYMAS BUSINESS'
-        worksheet['A1'].font = Font(size=20, bold=True, color='006600'); worksheet['A1'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A2:F2'); worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com'
-        worksheet['A2'].font = Font(size=10, italic=True); worksheet['A2'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A3:F3'); worksheet['A3'] = f'{titre.upper()} - Edité le {date.today().strftime("%d/%m/%Y")}'
-        worksheet['A3'].font = Font(size=14, bold=True, color='FF6600'); worksheet['A3'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A4:F4'); worksheet['A4'] = f'Total Revenus: {total_revenu:,.0f} FC | Total Dépenses: {total_depense:,.0f} FC | Solde: {solde:,.0f} FC'
-        worksheet['A4'].font = Font(size=11, bold=True); worksheet['A4'].alignment = Alignment(horizontal='center')
-        worksheet['A4'].fill = PatternFill(start_color='FFCC00', end_color='FFCC00', fill_type='solid')
-        header_fill = PatternFill(start_color='006600', end_color='006600', fill_type='solid'); header_font = Font(bold=True, color='FFFFFF')
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-        for col in range(1, len(df_data.columns) + 1):
-            cell = worksheet.cell(row=7, column=col); cell.fill = header_fill; cell.font = header_font
-            cell.alignment = Alignment(horizontal='center'); cell.border = thin_border
-        for row in range(7, len(df_data) + 8):
-            for col in range(1, len(df_data.columns) + 1):
-                worksheet.cell(row=row, column=col).border = thin_border; worksheet.cell(row=row, column=col).alignment = Alignment(horizontal='left')
-        for col in range(1, len(df_data.columns) + 1): worksheet.column_dimensions[get_column_letter(col)].width = 18
-    return output.getvalue()
-
-# === CSS APP ===
-st.markdown("""
-<style>
-h1, h2, h3 {color: #00ff41!important; font-size: 2.2rem!important; font-weight: 900!important; padding: 10px 0!important; border-bottom: 3px solid #00ff41!important; margin-bottom: 20px!important;}
-div[data-testid="stMetricValue"] {color: #00ff41!important;}
-.stButton>button {background-color: #00ff41!important; color: black!important; font-weight: bold; border: none;}
-#MainMenu, header,.stAppToolbar, footer {visibility: hidden!important; display: none!important;}
-</style>
-""", unsafe_allow_html=True)
 
 # === CHARGEMENT DONNEES ===
 df_biens = load_table("biens")
@@ -302,4 +183,207 @@ elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E
 elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
 elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
 
-tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile",
+tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
+tabs = st.tabs(tabs_dispo)
+tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+# === DASHBOARD ===
+with tab_map["📊 Dashboard"]:
+    st.markdown("## 📊 Dashboard ASYMAS")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🏠 Biens", len(df_biens))
+    col2.metric("📦 Articles", len(df_articles))
+    col3.metric("🚗 Voitures", len(df_voitures))
+    if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+        revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+        col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+    else:
+        col4.metric("💰 Revenus", "0 FC")
+    st.divider()
+    if not df_compta.empty:
+        st.subheader("📈 Dernières transactions")
+        st.dataframe(df_compta.head(10), use_container_width=True)
+
+# === COMMERCE ===
+with tab_map["🛍️ Commerce"]:
+    st.markdown("## 🛍️ Commerce - Point de Vente")
+    if 'panier_commerce' not in st.session_state: st.session_state.panier_commerce = []
+    if 'vente_finie' not in st.session_state: st.session_state.vente_finie = False
+    if 'pdf_data' not in st.session_state: st.session_state.pdf_data = None
+    if 'num_fact' not in st.session_state: st.session_state.num_fact = None
+    if 'client_com_nom' not in st.session_state: st.session_state.client_com_nom = ""
+    if 'client_com_tel' not in st.session_state: st.session_state.client_com_tel = "+243..."
+    if 'last_qr' not in st.session_state: st.session_state.last_qr = ""
+
+    col_gauche, col_droite = st.columns([2,1])
+    with col_gauche:
+        st.subheader("👤 Client")
+        st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
+        st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
+        st.subheader("🔍 Scanner QR Code")
+        col_scan1, col_scan2 = st.columns([2,1])
+        with col_scan1:
+            qr_code = qrcode_scanner(key='qr_commerce_unique')
+        with col_scan2:
+            recherche_manuelle = st.text_input("🔎 Recherche manuelle", placeholder="Tape le nom...", key="search_man_c")
+        if qr_code and qr_code!= st.session_state.last_qr:
+            st.session_state.last_qr = qr_code
+            st.rerun()
+
+        df_articles_filtre = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
+        if qr_code:
+            qr_clean = str(qr_code).strip().upper()
+            df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
+            if not df_articles_filtre.empty:
+                st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
+            else:
+                st.error(f"❌ QR {qr_code} : Produit introuvable")
+        elif recherche_manuelle:
+            mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
+            df_articles_filtre = df_articles_filtre[mask]
+
+        if df_articles_filtre.empty:
+            st.warning("⚠️ Aucun produit disponible")
+        else:
+            st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
+            options_articles = []
+            for _, p in df_articles_filtre.iterrows():
+                qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
+                prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if 'prix_vente_usd' in p else ""
+                options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}")
+            article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
+            if article_choisi:
+                id_choisi = int(article_choisi.split("ID:")[1])
+                p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
+                c1, c2, c3 = st.columns(3)
+                qte_max = int(p['stock'])
+                qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
+                c2.metric("Stock dispo", qte_max)
+                c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
+                st.info(f"*{p['nom_article']}* | Catégorie: {p.get('categorie','N/A')} | QR: {p.get('code_qr','N/A')}")
+                if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
+                    existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
+                    if existant:
+                        if existant['qte'] + qte <= qte_max:
+                            existant['qte'] += qte
+                            st.success(f"Panier mis à jour: {existant['qte']}x")
+                        else:
+                            st.error(f"Stock insuffisant! Max dispo: {qte_max}")
+                    else:
+                        st.session_state.panier_commerce.append({
+                            "id": int(p['id']),
+                            "nom": str(p['nom_article']),
+                            "pu": float(p['prix_vente']),
+                            "qte": int(qte),
+                            "code_qr": p.get('code_qr',''),
+                            "stock_max": qte_max
+                        })
+                        st.success("Ajouté au panier")
+                    st.rerun()
+    with col_droite:
+        st.subheader("🛒 Panier")
+        if st.session_state.vente_finie and st.session_state.pdf_data:
+            st.success("✅ Vente enregistrée!")
+            st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_data, file_name=f"{st.session_state.num_fact}.pdf", mime="application/pdf", width="stretch")
+            if st.button("NOUVELLE VENTE", width="stretch"):
+                st.session_state.vente_finie = False
+                st.session_state.pdf_data = None
+                st.session_state.num_fact = None
+                st.session_state.client_com_nom = ""
+                st.session_state.last_qr = ""
+                st.rerun()
+        elif not st.session_state.panier_commerce:
+            st.info("Panier vide")
+        else:
+            total_panier = 0
+            for i, item in enumerate(st.session_state.panier_commerce):
+                col1, col2, col3 = st.columns([4,2,1])
+                col1.write(f"*{item['nom']}*")
+                col2.write(f"Qté: {item['qte']} | {item['pu']:,.0f} FC")
+                if col3.button("❌", key=f"d_{i}"):
+                    st.session_state.panier_commerce.pop(i)
+                    st.rerun()
+                total_panier += item['qte'] * item['pu']
+            st.markdown(f"### Total: {total_panier:,.0f} FC")
+            st.divider()
+            if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
+                if not st.session_state.client_com_nom:
+                    st.error("Nom du client obligatoire!")
+                else:
+                    try:
+                        num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        details_list = []
+                        for item in st.session_state.panier_commerce:
+                            supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
+                            stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
+                            supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
+                            details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
+                        details_json = json.dumps(details_list)
+                        supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
+                        pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
+                        st.session_state.pdf_data = pdf_bytes
+                        st.session_state.num_fact = num_fact
+                        st.session_state.vente_finie = True
+                        st.session_state.panier_commerce = []
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error("Erreur finalisation vente")
+                        st.code(repr(e))
+
+# === GESTION STOCK ===
+with tab_map["📦 Gestion Stock"]:
+    st.markdown("## 📦 Gestion Stock")
+    st.dataframe(df_articles, use_container_width=True)
+    with st.expander("➕ Ajouter Article"):
+        with st.form("form_article"):
+            nom = st.text_input("Nom Article")
+            stock = st.number_input("Stock", min_value=0)
+            prix = st.number_input("Prix Vente FC", min_value=0.0)
+            if st.form_submit_button("Ajouter"):
+                supabase.table("articles").insert({"nom_article": nom, "stock": stock, "prix_vente": prix}).execute()
+                st.cache_data.clear(); st.rerun()
+
+# === IMMOBILIER ===
+with tab_map["🏠 Immobilier"]:
+    st.markdown("## 🏠 Immobilier")
+    st.dataframe(df_biens, use_container_width=True)
+
+# === AUTOMOBILE ===
+with tab_map["🚗 Automobile"]:
+    st.markdown("## 🚗 Automobile")
+    st.dataframe(df_voitures, use_container_width=True)
+
+# === GESTION PARC ===
+with tab_map["🚘 Gestion Parc"]:
+    st.markdown("## 🚘 Gestion Parc")
+    st.write("Module en cours...")
+
+# === COMPTABILITÉ ===
+with tab_map["💰 Comptabilité"]:
+    st.markdown("## 💰 Comptabilité")
+    st.dataframe(df_compta, use_container_width=True)
+
+# === FACTURES ===
+with tab_map["📄 Factures"]:
+    st.markdown("## 📄 Factures & Proformas")
+    st.dataframe(df_factures, use_container_width=True)
+
+# === DEVIS ===
+with tab_map["📋 Devis"]:
+    st.markdown("## 📋 Devis Consulting")
+    st.dataframe(df_devis, use_container_width=True)
+
+# === UTILISATEURS ===
+with tab_map["👥 Utilisateurs"]:
+    st.markdown("## 👥 Gestion Utilisateurs")
+    st.dataframe(df_utilisateurs, use_container_width=True)
+
+# === FLOKI SIDEBAR ===
+with st.sidebar:
+    st.divider()
+    st.markdown("### 🤖 FLOKI")
+    st.caption("Conseiller du PDG")
+    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
+    if st.button("Exécuter", type="primary", use_container_width=True):
+        if q:
+            st.info(f"FLOKI: {q}")
