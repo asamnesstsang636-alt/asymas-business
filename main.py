@@ -1,5 +1,15 @@
 import streamlit as st
 import pandas as pd
+class FLOKI:
+    def __init__(self, supabase_client, dfs):
+        self.supabase = supabase_client
+        self.dfs = dfs
+    
+    def ask(self, question):
+        return f"FLOKI a compris : {question}"
+    
+    def notify_internal(self, message):
+        return f"Notification envoyée : {message}"
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
@@ -438,42 +448,24 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
     return output.getvalue()
 
 st.markdown("""
-<link rel="manifest" href="data:application/manifest+json,{
-  \"name\": \"ASYMAS BUSINESS\",
-  \"short_name\": \"ASYMAS\",
-  \"start_url\": \".\",
-  \"display\": \"standalone\",
-  \"background_color\": \"#000\",
-  \"theme_color\": \"#00ff41\",
-  \"description\": \"Agriculture Commerce Immobilier Automobile\",
-  \"icons\": [{
-    \"src\": \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f48e.png\",
-    \"sizes\": \"192x192\",
-    \"type\": \"image/png\"
-  }]
-}">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-""", unsafe_allow_html=True)
-
-# === UI HOLOGRAPHIQUE ASYMAS STYLE IMAGE 2 ===
-st.markdown("""
 <style>
 .stApp {
     background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%);
     color: #00ff41;
 }
+
 h1, h2, h3 {
     color: #00ff41!important;
     text-shadow: 0 0 5px #00ff41, 0 0 15px #00ff41, 0 0 30px #00ff41;
     border-bottom: 2px solid #00ff41!important;
-    padding-bottom: 10px!important;
     animation: pulse 2s ease-in-out infinite;
 }
+
 @keyframes pulse {
     0%, 100% { text-shadow: 0 0 5px #00ff41, 0 0 15px #00ff41; }
     50% { text-shadow: 0 0 10px #00ff41, 0 0 25px #00ff41, 0 0 40px #00ff41; }
 }
+
 .stButton>button {
     background: linear-gradient(135deg, rgba(0,255,65,0.2), rgba(0,204,255,0.2))!important;
     color: #00ff41!important;
@@ -488,6 +480,14 @@ h1, h2, h3 {
     transform: scale(1.05);
     border-color: #00ccff;
 }
+
+div[data-testid="stMetricValue"] {
+    color: #00ff41!important; 
+    text-shadow: 0 0 10px #00ff41;
+    font-size: 2.5rem!important;
+}
+
+/* Effet cercle holographique pour le login */
 .login-circle {
     width: 320px;
     height: 320px;
@@ -502,15 +502,11 @@ h1, h2, h3 {
     background: radial-gradient(circle, rgba(0,255,65,0.1) 0%, rgba(0,0,0,0.9) 70%);
     animation: rotateGlow 4s linear infinite;
 }
+
 @keyframes rotateGlow {
     0% { box-shadow: 0 0 40px #00ff41, inset 0 0 30px rgba(0,255,65,0.2); }
     50% { box-shadow: 0 0 60px #00ccff, inset 0 0 40px rgba(0,204,255,0.3); }
     100% { box-shadow: 0 0 40px #00ff41, inset 0 0 30px rgba(0,255,65,0.2); }
-}
-div[data-testid="stMetricValue"] {
-    color: #00ff41!important;
-    text-shadow: 0 0 10px #00ff41;
-    font-size: 2.5rem!important;
 }
 </style>
 """, unsafe_allow_html=True)
