@@ -51,17 +51,11 @@ st.markdown("""
         
         <!-- Modules ASYMAS autour -->
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;height:360px;">
-            <!-- E-Commerce -->
             <div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">🏪</div>
-            <!-- Logistique -->
             <div style="position:absolute;top:50px;right:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">🚚</div>
-            <!-- Marketing -->
             <div style="position:absolute;bottom:50px;right:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">📢</div>
-            <!-- CRM - chevauche la base -->
             <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">@</div>
-            <!-- Facturation -->
             <div style="position:absolute;bottom:50px;left:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">🧾</div>
-            <!-- Analytics -->
             <div style="position:absolute;top:50px;left:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(255,215,0,0.6);">📊</div>
         </div>
     </div>
@@ -80,6 +74,5 @@ pwd = st.text_input("", type="password", placeholder="Entrez le mot de passe", k
 if pwd:
     if pwd == "asymas2025":  # change ce mot de passe
         st.success("Accès autorisé ✅")
-        # Ici tu peux afficher ton dashboard ASYMAS
     else:
         st.error("Mot de passe incorrect ❌")
