@@ -960,7 +960,7 @@ if "📦 Gestion Stock" in tab_map:
 
 # === PARTIE 3 : IMMOBILIER + AUTOMOBILE + PARC + COMPTA + FACTURES + DEVIS + USERS + FLOKI ===
 # [Colle ici tout ton code Immobilier, Automobile, Gestion Parc, Comptabilité, Factures, Devis, Utilisateurs, FLOKI que tu m’as déjà envoyé]
- if "🏠 Immobilier" in tab_map:
+if "🏠 Immobilier" in tab_map:
     with tab_map["🏠 Immobilier"]:
         st.markdown("## 🏠 Immobilier - Générer Facture")
         nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
