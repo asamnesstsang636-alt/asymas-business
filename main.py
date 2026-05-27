@@ -2,7 +2,6 @@ import streamlit as st
 
 st.set_page_config(layout="wide", page_title="ASYMAS Business")
 
-# Hologramme + champ mot de passe intégré directement dedans
 st.markdown("""
 <style>
 .block-container{padding:0 !important;max-width:100% !important;}
@@ -40,18 +39,11 @@ st.markdown("""
 @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
 </style>
+""", unsafe_allow_html=True)  # <- CETTE LIGNE EST OBLIGATOIRE
 
-<script>
-document.getElementById('pwd').addEventListener('keypress', function(e){
-    if(e.key === 'Enter'){
-        if(this.value === 'asymas2025'){
-            alert('Accès autorisé ✅');
-            window.location.href = '/app'; // change par ta page après login
-        } else {
-            alert('Mot de passe incorrect ❌');
-            this.value = '';
-        }
-    }
-});
-</script>
-""", unsafe_allow_html=True)
+pwd = st.text_input("", type="password", placeholder="Mot de passe", key="auth_pwd", label_visibility="collapsed")
+
+if pwd == "asymas2025":
+    st.success("Accès autorisé ✅")
+elif pwd:
+    st.error("Mot de passe incorrect ❌")
