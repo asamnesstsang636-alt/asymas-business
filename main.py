@@ -21,8 +21,8 @@ if 'active_tab' not in st.session_state:
 if not st.session_state.logged_in:
     st.markdown("""
     <style>
- .block-container{padding:0!important;max-width:100%!important;}
- .main{background:#0a0a0a;margin:0;padding:0;}
+   .block-container{padding:0!important;max-width:100%!important;}
+   .main{background:#0a0a0a;margin:0;padding:0;}
     div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
     div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
     div[data-testid="stTextInput"] label{display:none!important;}
@@ -187,46 +187,63 @@ elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E
 elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
 elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
 
-# === HOLOGRAMME NAVIGATION CLIQUABLE ===
-# Boutons exactement sur les cercles
+# === HOLOGRAMME NAVIGATION CLIQUABLE CORRIGÉ ===
 st.markdown("""
 <style>
-.holo-btns{position:absolute; top:45%; left:50%; transform:translate(-50%,-50%); width:380px; height:380px; z-index:200;}
+.holo-nav{position:relative;width:100%;height:500px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.5) 0%, rgba(15,15,15,1) 85%);margin-bottom:20px;border-radius:20px;}
+.holo-nav div[data-testid="stButton"]{position:absolute!important;margin:0!important;}
+.holo-nav div[data-testid="stButton"] button{
+    width:60px!important;height:60px!important;border-radius:50%!important;
+    border:3px solid #FFD700!important;background:#fff!important;color:#000!important;
+    font-weight:bold;font-size:24px;box-shadow:0 0 20px #FFD700!important;padding:0!important;
+}
 </style>
-<div class="holo-btns">
+<div class="holo-nav">
+    <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+            <div style="font-size:50px;">🛒</div>
+            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+        </div>
+    </div>
+</div>
+<style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+@keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
+# Boutons positionnés exactement sur les cercles
 col1, col2, col3, col4, col5, col6 = st.columns(6)
-
 with col1:
-    st.markdown('<div style="position:absolute; top:0px; left:50%; transform:translateX(-50%);">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
     if st.button("🏪", key="btn_commerce"): st.session_state.active_tab = "🛍️ Commerce"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 with col2:
-    st.markdown('<div style="position:absolute; top:45px; right:35px;">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; top:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
     if st.button("🚚", key="btn_auto"): st.session_state.active_tab = "🚗 Automobile"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 with col3:
-    st.markdown('<div style="position:absolute; bottom:45px; right:35px;">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; bottom:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
     if st.button("🧾", key="btn_fact"): st.session_state.active_tab = "📄 Factures"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 with col4:
-    st.markdown('<div style="position:absolute; bottom:0px; left:50%; transform:translateX(-50%);">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
     if st.button("🏠", key="btn_immo"): st.session_state.active_tab = "🏠 Immobilier"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 with col5:
-    st.markdown('<div style="position:absolute; bottom:45px; left:35px;">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; bottom:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
     if st.button("📦", key="btn_stock"): st.session_state.active_tab = "📦 Gestion Stock"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 with col6:
-    st.markdown('<div style="position:absolute; top:45px; left:35px;">', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute; top:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
     if st.button("📊", key="btn_compta"): st.session_state.active_tab = "💰 Comptabilité"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
+
+st.divider()
+
 # === AFFICHAGE SEULEMENT DE L'ONGLET ACTIF ===
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
@@ -377,73 +394,3 @@ with tab_map["🛍️ Commerce"]:
                         except Exception as e:
                             st.error("Erreur finalisation vente")
                             st.code(repr(e))
-
-# === GESTION STOCK ===
-with tab_map["📦 Gestion Stock"]:
-    if st.session_state.active_tab == "📦 Gestion Stock":
-        st.markdown("## 📦 Gestion Stock")
-        st.dataframe(df_articles, use_container_width=True)
-        with st.expander("➕ Ajouter Article"):
-            with st.form("form_article"):
-                nom = st.text_input("Nom Article")
-                stock = st.number_input("Stock", min_value=0)
-                prix = st.number_input("Prix Vente FC", min_value=0.0)
-                if st.form_submit_button("Ajouter"):
-                    supabase.table("articles").insert({"nom_article": nom, "stock": stock, "prix_vente": prix}).execute()
-                    st.cache_data.clear(); st.rerun()
-
-# === IMMOBILIER ===
-# === IMMOBILIER ===
-with tab_map["🏠 Immobilier"]:
-    if st.session_state.active_tab == "🏠 Immobilier":
-        st.markdown("## 🏠 Immobilier")
-        st.dataframe(df_biens, use_container_width=True)
-        
-
-# === AUTOMOBILE ===
-with tab_map["🚗 Automobile"]:
-    if st.session_state.active_tab == "🚗 Automobile":
-        st.markdown("## 🚗 Automobile")
-        st.dataframe(df_voitures, use_container_width=True)
-
-# === GESTION PARC ===
-with tab_map["🚘 Gestion Parc"]:
-    if st.session_state.active_tab == "🚘 Gestion Parc":
-        st.markdown("## 🚘 Gestion Parc")
-        st.write("Module en cours...")
-
-# === COMPTABILITÉ ===
-with tab_map["💰 Comptabilité"]:
-    if st.session_state.active_tab == "💰 Comptabilité":
-        st.markdown("## 💰 Comptabilité")
-        st.dataframe(df_compta, use_container_width=True)
-
-# === FACTURES ===
-with tab_map["📄 Factures"]:
-    if st.session_state.active_tab == "📄 Factures":
-        st.markdown("## 📄 Factures & Proformas")
-        st.dataframe(df_factures, use_container_width=True)
-
-# === DEVIS ===
-with tab_map["📋 Devis"]:
-    if st.session_state.active_tab == "📋 Devis":
-        st.markdown("## 📋 Devis Consulting")
-        st.dataframe(df_devis, use_container_width=True)
-
-# === UTILISATEURS ===
-with tab_map["👥 Utilisateurs"]:
-    if st.session_state.active_tab == "👥 Utilisateurs":
-        st.markdown("## 👥 Gestion Utilisateurs")
-        st.dataframe(df_utilisateurs, use_container_width=True)
-
-# === FLOKI SIDEBAR ===
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG")
-    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
-    if st.button("Exécuter", type="primary", use_container_width=True):
-        if q:
-            st.info(f"FLOKI: {q}")
-    
-        
