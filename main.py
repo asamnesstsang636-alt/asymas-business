@@ -641,7 +641,13 @@ if "💰 Comptabilité" in tab_map:
                         if 'utilisateur' in df_cat.columns: colonnes_affiche.append('utilisateur')
                         st.dataframe(df_cat[colonnes_affiche],use_container_width=True,hide_index=True)
                         col_dl1,col_dl2=st.columns(2)
-                        excel_bytes_cat=generer_excel_pro(df_cat,f"Releve {cat} {date_debut}-{date_fin}",df_cat[df_cat['type']=='Revenu']['montant'].sum(),df_cat[df_cat['type']=='Dépense']['montant'].sum(),df_cat[df_cat['type']=='Revenu']['montant'].sum()-df_cat[df_cat['type']=='Dépense']['montant'].sum()])
+                        excel_bytes_cat=generer_excel_pro(
+    df_cat,
+    f"Releve {cat} {date_debut}-{date_fin}",
+    df_cat[df_cat['type']=='Revenu']['montant'].sum(),
+    df_cat[df_cat['type']=='Dépense']['montant'].sum(),
+    df_cat[df_cat['type']=='Revenu']['montant'].sum()-df_cat[df_cat['type']=='Dépense']['montant'].sum()
+)
                         safe_cat=str(cat).replace(" ","_").replace("/","_")
                         col_dl1.download_button(label=f"📥 {cat} - EXCEL",data=excel_bytes_cat,file_name=f"Compta_{safe_cat}_{date_debut}_{date_fin}.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",width="stretch",key=f"dl_excel_compta_{safe_cat}_{date_debut}_{filtre_nom}")
                         pdf_cat=FPDF(); pdf_cat.add_page(); pdf_cat.set_fill_color(20,50,40); pdf_cat.rect(0,0,210,35,'F'); pdf_cat.set_text_color(255,255,255)
