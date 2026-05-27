@@ -21,8 +21,8 @@ if 'active_tab' not in st.session_state:
 if not st.session_state.logged_in:
     st.markdown("""
     <style>
-  .block-container{padding:0!important;max-width:100%!important;}
-  .main{background:#0a0a0a;margin:0;padding:0;}
+ .block-container{padding:0!important;max-width:100%!important;}
+ .main{background:#0a0a0a;margin:0;padding:0;}
     div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
     div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
     div[data-testid="stTextInput"] label{display:none!important;}
@@ -211,24 +211,24 @@ div[data-testid="stButton"] button{width:60px;height:60px;border-radius:50%!impo
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
-# Boutons positionnés exactement sur les cercles
-col_btn1, col_btn2, col_btn3, col_btn4, col_btn5, col_btn6 = st.columns([1,1,1,1,1,1])
-with col_btn1:
+# Boutons positionnés sur les cercles
+c1, c2, c3, c4, c5, c6 = st.columns([1,1,1,1,1,1])
+with c1:
     if st.button("🏪", key="btn_commerce", help="Commerce"):
         st.session_state.active_tab = "🛍️ Commerce"; st.rerun()
-with col_btn2:
+with c2:
     if st.button("🚚", key="btn_auto", help="Automobile"):
         st.session_state.active_tab = "🚗 Automobile"; st.rerun()
-with col_btn3:
+with c3:
     if st.button("🧾", key="btn_fact", help="Factures"):
         st.session_state.active_tab = "📄 Factures"; st.rerun()
-with col_btn4:
+with c4:
     if st.button("🏠", key="btn_immo", help="Immobilier"):
         st.session_state.active_tab = "🏠 Immobilier"; st.rerun()
-with col_btn5:
+with c5:
     if st.button("📦", key="btn_stock", help="Gestion Stock"):
         st.session_state.active_tab = "📦 Gestion Stock"; st.rerun()
-with col_btn6:
+with c6:
     if st.button("📊", key="btn_compta", help="Comptabilité"):
         st.session_state.active_tab = "💰 Comptabilité"; st.rerun()
 
@@ -363,26 +363,28 @@ with tab_map["🛍️ Commerce"]:
                 if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
                     if not st.session_state.client_com_nom:
                         st.error("Nom du client obligatoire!")
-                    try:
-    num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    details_list = []
-    for item in st.session_state.panier_commerce:
-        supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
-        stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
-        supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
-        details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
-    details_json = json.dumps(details_list)
-    supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
-    pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
-    st.session_state.pdf_data = pdf_bytes
-    st.session_state.num_fact = num_fact
-    st.session_state.vente_finie = True
-    st.session_state.panier_commerce = []
-    st.cache_data.clear()
-    st.rerun()
-except Exception as e:
-    st.error("Erreur finalisation vente")
-    st.code(repr(e))
+                    else:
+                        try:
+                            num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                            details_list = []
+                            for item in st.session_state.panier_commerce:
+                                supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
+                                stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
+                                supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
+                                details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
+                            details_json = json.dumps(details_list)
+                            supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
+                            pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
+                            st.session_state.pdf_data = pdf_bytes
+                            st.session_state.num_fact = num_fact
+                            st.session_state.vente_finie = True
+                            st.session_state.panier_commerce = []
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur finalisation vente")
+                            st.code(repr(e))
+
 # === GESTION STOCK ===
 with tab_map["📦 Gestion Stock"]:
     if st.session_state.active_tab == "📦 Gestion Stock":
@@ -398,9 +400,7 @@ with tab_map["📦 Gestion Stock"]:
                     st.cache_data.clear(); st.rerun()
 
 # === IMMOBILIER ===
-with tab_map["🏠 Immobilier"]:
-    if st.session_state.active_tab == "🏠 Immobilier":
-        st.markdown("## 🏠 Immobilier")
+st.markdown("## 🏠 Immobilier")
         st.dataframe(df_biens, use_container_width=True)
 
 # === AUTOMOBILE ===
@@ -448,3 +448,5 @@ with st.sidebar:
     if st.button("Exécuter", type="primary", use_container_width=True):
         if q:
             st.info(f"FLOKI: {q}")
+    
+        
