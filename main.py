@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide", page_title="ASYMAS Business")
 
-# CSS : champ positionné dans le petit rectangle en bas de la base
+# CSS : positionne le champ dans le rectangle que tu as marqué
 st.markdown("""
 <style>
 .block-container{padding:0 !important;max-width:100% !important;}
@@ -10,17 +10,17 @@ st.markdown("""
 
 div[data-testid="stTextInput"]{
     position:absolute !important;
-    bottom:28% !important;  /* monté dans le rectangle */
+    bottom:28% !important;  /* position dans le rectangle */
     left:50% !important;
     transform:translateX(-50%) !important;
     width:140px !important;
-    height:38px !important;
+    height:36px !important;
     z-index:100 !important;
 }
 
 div[data-testid="stTextInput"] input{
     width:140px !important;
-    height:38px !important;
+    height:36px !important;
     background:rgba(20,20,20,0.95) !important;
     border:2px solid #FFD700 !important;
     border-radius:8px !important;
@@ -62,7 +62,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Champ mot de passe dans le rectangle
+# Champ mot de passe dans le rectangle marqué en vert
 pwd = st.text_input("", type="password", placeholder="Mot de passe", key="auth_pwd")
 
 if pwd == "asymas2025":
