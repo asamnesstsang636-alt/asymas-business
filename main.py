@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide", page_title="ASYMAS Business")
 
-# CSS : enlève marges + monte le champ dans le rectangle
+# CSS : champ positionné dans le petit rectangle en bas de la base
 st.markdown("""
 <style>
 .block-container{padding:0 !important;max-width:100% !important;}
@@ -10,30 +10,30 @@ st.markdown("""
 
 div[data-testid="stTextInput"]{
     position:absolute !important;
-    bottom:26% !important;
+    bottom:28% !important;  /* monté dans le rectangle */
     left:50% !important;
     transform:translateX(-50%) !important;
-    width:150px !important;
-    height:40px !important;
+    width:140px !important;
+    height:38px !important;
     z-index:100 !important;
 }
 
 div[data-testid="stTextInput"] input{
-    width:150px !important;
-    height:40px !important;
-    background:rgba(0,0,0,0.9) !important;
+    width:140px !important;
+    height:38px !important;
+    background:rgba(20,20,20,0.95) !important;
     border:2px solid #FFD700 !important;
-    border-radius:10px !important;
+    border-radius:8px !important;
     color:#FFD700 !important;
     text-align:center !important;
-    font-size:13px !important;
+    font-size:12px !important;
     padding:0 !important;
 }
 div[data-testid="stTextInput"] label{display:none !important;}
 </style>
 """, unsafe_allow_html=True)
 
-# Hologramme ASYMAS
+# Hologramme
 st.markdown("""
 <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.6) 0%, rgba(15,15,15,1) 80%);overflow:hidden;">
     <div style="position:absolute;bottom:12%;left:50%;transform:translateX(-50%);width:320px;height:160px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:40px;box-shadow:0 30px 60px rgba(0,0,0,0.9);border:3px solid #444;"></div>
@@ -63,7 +63,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Champ mot de passe dans le rectangle
-pwd = st.text_input("", type="password", placeholder="Entrez le mot de passe", key="auth_pwd")
+pwd = st.text_input("", type="password", placeholder="Mot de passe", key="auth_pwd")
 
 if pwd == "asymas2025":
     st.success("Accès autorisé ✅")
