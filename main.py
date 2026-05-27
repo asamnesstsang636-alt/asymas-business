@@ -1,15 +1,11 @@
 import streamlit as st
 import pandas as pd
+
 class FLOKI:
-    def __init__(self, supabase_client, dfs):
-        self.supabase = supabase_client
-        self.dfs = dfs
-    
-    def ask(self, question):
-        return f"FLOKI a compris : {question}"
-    
-    def notify_internal(self, message):
-        return f"Notification envoyée : {message}"
+    def __init__(self, supabase_client, dfs): pass
+    def ask(self, q): return f"FLOKI: {q}"
+    def notify_internal(self, m): return f"Notifié: {m}"
+
 st.set_page_config(
     page_title="ASYMAS BUSINESS",
     page_icon="🌾",
@@ -19,6 +15,7 @@ st.set_page_config(
 st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 """, unsafe_allow_html=True)
+
 from supabase import create_client, Client
 from datetime import date, datetime, timedelta
 from fpdf import FPDF
@@ -447,47 +444,86 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
             worksheet.column_dimensions[get_column_letter(col)].width = 18
     return output.getvalue()
 
+# === CSS HOLOGRAPHIQUE ASYMAS ===
 st.markdown("""
 <style>
 .stApp {
-    background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%);
-    color: #00ff41;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+    overflow-x: hidden;
 }
-
-h1, h2, h3 {
+h1 {
     color: #00ff41!important;
-    text-shadow: 0 0 5px #00ff41, 0 0 15px #00ff41, 0 0 30px #00ff41;
-    border-bottom: 2px solid #00ff41!important;
-    animation: pulse 2s ease-in-out infinite;
+    text-align: center;
+    font-size: 3rem!important;
+    text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff41, 0 0 50px #00ccff;
+    margin-bottom: 50px;
+    animation: pulseNeon 2s ease-in-out infinite;
 }
-
-@keyframes pulse {
-    0%, 100% { text-shadow: 0 0 5px #00ff41, 0 0 15px #00ff41; }
-    50% { text-shadow: 0 0 10px #00ff41, 0 0 25px #00ff41, 0 0 40px #00ff41; }
+@keyframes pulseNeon {
+    0%, 100% { text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff41; }
+    50% { text-shadow: 0 0 20px #00ff41, 0 0 60px #00ccff; }
 }
-
-.stButton>button {
-    background: linear-gradient(135deg, rgba(0,255,65,0.2), rgba(0,204,255,0.2))!important;
-    color: #00ff41!important;
-    font-weight: bold;
+.holo-container {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    margin: 50px auto;
+}
+.holo-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(255,204,0,0.3) 0%, rgba(255,204,0,0) 70%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: glowPulse 3s ease-in-out infinite;
+}
+.holo-center svg {
+    width: 70px;
+    height: 70px;
+    filter: drop-shadow(0 0 15px #ffcc00);
+}
+@keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 30px #ffcc00; }
+    50% { box-shadow: 0 0 60px #ffcc00, 0 0 80px #00ff41; }
+}
+.holo-icon {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: rgba(0,255,65,0.1);
     border: 2px solid #00ff41;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 0 20px #00ff41, inset 0 0 10px rgba(0,255,65,0.3);
     backdrop-filter: blur(10px);
-    transition: all 0.3s;
+    animation: orbit 20s linear infinite;
 }
-.stButton>button:hover {
-    box-shadow: 0 0 40px #00ff41, inset 0 0 20px rgba(0,255,65,0.5);
-    transform: scale(1.05);
-    border-color: #00ccff;
+.holo-icon svg {
+    width: 24px;
+    height: 24px;
+    color: #00ff41;
+    filter: drop-shadow(0 0 5px #00ff41);
 }
-
-div[data-testid="stMetricValue"] {
-    color: #00ff41!important; 
-    text-shadow: 0 0 10px #00ff41;
-    font-size: 2.5rem!important;
+.holo-icon:nth-child(2) { top: 0; left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+.holo-icon:nth-child(3) { top: 15%; right: 15%; animation-delay: -2.5s; }
+.holo-icon:nth-child(4) { top: 50%; right: 0; transform: translateY(-50%); animation-delay: -5s; }
+.holo-icon:nth-child(5) { bottom: 15%; right: 15%; animation-delay: -7.5s; }
+.holo-icon:nth-child(6) { bottom: 0; left: 50%; transform: translateX(-50%); animation-delay: -10s; }
+.holo-icon:nth-child(7) { bottom: 15%; left: 15%; animation-delay: -12.5s; }
+.holo-icon:nth-child(8) { top: 50%; left: 0; transform: translateY(-50%); animation-delay: -15s; }
+.holo-icon:nth-child(9) { top: 15%; left: 15%; animation-delay: -17.5s; }
+@keyframes orbit {
+    from { transform: rotate(0deg) translateX(150px) rotate(0deg); }
+    to { transform: rotate(360deg) translateX(150px) rotate(-360deg); }
 }
-
-/* Effet cercle holographique pour le login */
 .login-circle {
     width: 320px;
     height: 320px;
@@ -502,11 +538,16 @@ div[data-testid="stMetricValue"] {
     background: radial-gradient(circle, rgba(0,255,65,0.1) 0%, rgba(0,0,0,0.9) 70%);
     animation: rotateGlow 4s linear infinite;
 }
-
 @keyframes rotateGlow {
     0% { box-shadow: 0 0 40px #00ff41, inset 0 0 30px rgba(0,255,65,0.2); }
     50% { box-shadow: 0 0 60px #00ccff, inset 0 0 40px rgba(0,204,255,0.3); }
     100% { box-shadow: 0 0 40px #00ff41, inset 0 0 30px rgba(0,255,65,0.2); }
+}
+div[data-testid="stMetricValue"] {
+    color: #00ff41!important;
+    text-shadow: 0 0 15px #00ff41;
+    font-size: 2.8rem!important;
+    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -526,7 +567,9 @@ if st.session_state.user_role is None:
     with col2:
         st.markdown('<div class="login-circle">', unsafe_allow_html=True)
         st.markdown("### CONNEXION")
-        st.image("https://i.imgur.com/placeholder.png", width=150)
+        # Silhouette homme encodée en base64 - plus besoin d'URL externe
+        silhouette_svg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEyIiBjeT0iOCIgcj0iNCIgZmlsbD0iIzAwZmY0MSIgb3BhY2l0eT0iMC44Ii8+PHBhdGggZD0iTTQgMjB2LTJhNiA2IDAgMCAxIDEyIDB2MiIgc3Ryb2tlPSIjMDBmZjQxIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC44Ii8+PC9zdmc+"
+        st.image(silhouette_svg, width=150)
         df_users_login = load_table("utilisateurs")
         if not df_users_login.empty:
             options_login = ["-- Sélectionner --"] + [f"{row['nom']} - {row['role']}" for _, row in df_users_login.iterrows()]
@@ -563,63 +606,6 @@ if 'user_role' in st.session_state and st.session_state.user_role is not None:
             st.session_state.user_perms={}
             st.session_state.user_cats=[]
             st.rerun()
-
-df_biens = load_table("biens")
-df_articles = load_table("articles")
-df_voitures = load_table("voitures")
-df_compta = load_table("compta")
-df_factures = load_table("factures_proforma")
-df_devis = load_table("devis")
-df_utilisateurs = load_table("utilisateurs")
-
-if 'montant' not in df_compta.columns:
-    df_compta['montant'] = 0
-if 'type' not in df_compta.columns:
-    df_compta['type'] = 'Inconnu'
-if 'date' in df_compta.columns:
-    df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
-    df_compta = df_compta.sort_values('date', ascending=False)
-
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
-
-with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v2.6")
-    if st.button("🔄 Actualiser", key="btn_save"):
-        st.cache_data.clear()
-        st.rerun()
-
-perms = st.session_state.user_perms
-if isinstance(perms, str):
-    try: perms = json.loads(perms)
-    except: perms = {}
-
-# === TABS AVEC PERMISSION ===
-tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
-tabs = st.tabs(tabs_dispo)
-
-def check_perm(perm_key):
-    if st.session_state.user_role == "PDG":
-        return True
-    return perms.get(perm_key, False)
-
-# Dashboard
-with tabs[0]:
-    if check_perm('dashboard'):
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🏠 Biens", len(df_biens))
-        col2.metric("📦 Articles", len(df_articles))
-        col3.metric("🚗 Voitures", len(df_voitures))
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-    else:
-        st.info("🔒 Accès Dashboard restreint - Contacte le PDG")
-
 # Commerce
 with tabs[1]:
     if check_perm('commerce'):
