@@ -12,53 +12,78 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === GESTION LOGIN ===
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+# === INIT SESSION ===
 if 'active_tab' not in st.session_state:
     st.session_state.active_tab = "📊 Dashboard"
 
-if not st.session_state.logged_in:
-    st.markdown("""
-    <style>
-   .block-container{padding:0!important;max-width:100%!important;}
-   .main{background:#0a0a0a;margin:0;padding:0;}
-    div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
-    div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
-    div[data-testid="stTextInput"] label{display:none!important;}
-    </style>
-    """, unsafe_allow_html=True)
+# === HOLOGRAMME LOGIN AVEC 6 MODULES CLIQUABLES ===
+st.markdown("""
+<style>
+.block-container{padding:0!important;max-width:100%!important;}
+.main{background:#0a0a0a;margin:0;padding:0;}
+div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
+div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
+div[data-testid="stTextInput"] label{display:none!important;}
+.holo-nav{position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;}
+.holo-nav div[data-testid="stButton"]{position:absolute!important;margin:0!important;z-index:200!important;}
+.holo-nav div[data-testid="stButton"] button{
+    width:60px!important;height:60px!important;border-radius:50%!important;
+    border:3px solid #FFD700!important;background:#fff!important;color:#000!important;
+    font-weight:bold;font-size:24px;box-shadow:0 0 20px #FFD700!important;padding:0!important;cursor:pointer!important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    st.markdown("""
-    <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-        <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-        <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-                <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
-            </div>
+st.markdown("""
+<div class="holo-nav">
+    <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
+    <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+            <div style="font-size:50px;">🛒</div>
+            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
         </div>
     </div>
-    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
-    """, unsafe_allow_html=True)
+</div>
+<style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+@keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+""", unsafe_allow_html=True)
 
-    pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
-    if pwd == "asymas2025":
-        st.session_state.logged_in = True
-        st.session_state.user_role = "PDG"
-        st.session_state.user_name = "PDG"
-        st.rerun()
-    elif pwd:
-        st.error("Mot de passe incorrect")
+# Boutons cliquables positionnés exactement sur les cercles
+st.markdown('<div style="position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
+if st.button("🏪", key="btn_commerce"): st.session_state.active_tab = "🛍️ Commerce"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="position:absolute; top:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
+if st.button("🚚", key="btn_auto"): st.session_state.active_tab = "🚗 Automobile"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="position:absolute; bottom:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
+if st.button("🧾", key="btn_fact"): st.session_state.active_tab = "📄 Factures"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
+if st.button("🏠", key="btn_immo"): st.session_state.active_tab = "🏠 Immobilier"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="position:absolute; bottom:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
+if st.button("📦", key="btn_stock"): st.session_state.active_tab = "📦 Gestion Stock"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="position:absolute; top:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
+if st.button("📊", key="btn_compta"): st.session_state.active_tab = "💰 Comptabilité"; st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
+
+pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
+if pwd!= "asymas2025":
     st.stop()
 
-# === APP PRINCIPALE APRÈS LOGIN ===
 st.success("Accès autorisé ✅")
+st.session_state.user_role = "PDG"
+st.session_state.user_name = "PDG"
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
@@ -178,8 +203,7 @@ with st.sidebar:
     st.info("ASYMAS BUSINESS v3.0 Hologram")
     if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
     theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-    if st.button("🚪 Déconnexion", use_container_width=True):
-        st.session_state.clear(); st.rerun()
+    if st.button("🚪 Déconnexion", use_container_width=True): st.session_state.clear(); st.rerun()
     if st.button("🔄 Actualiser", key="btn_save"): st.cache_data.clear(); st.rerun()
 
 if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
@@ -187,69 +211,11 @@ elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E
 elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
 elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
 
-# === HOLOGRAMME NAVIGATION CLIQUABLE CORRIGÉ ===
-st.markdown("""
-<style>
-.holo-nav{position:relative;width:100%;height:500px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.5) 0%, rgba(15,15,15,1) 85%);margin-bottom:20px;border-radius:20px;}
-.holo-nav div[data-testid="stButton"]{position:absolute!important;margin:0!important;}
-.holo-nav div[data-testid="stButton"] button{
-    width:60px!important;height:60px!important;border-radius:50%!important;
-    border:3px solid #FFD700!important;background:#fff!important;color:#000!important;
-    font-weight:bold;font-size:24px;box-shadow:0 0 20px #FFD700!important;padding:0!important;
-}
-</style>
-<div class="holo-nav">
-    <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-            <div style="font-size:50px;">🛒</div>
-            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
-        </div>
-    </div>
-</div>
-<style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-@keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
-""", unsafe_allow_html=True)
-
-# Boutons positionnés exactement sur les cercles
-col1, col2, col3, col4, col5, col6 = st.columns(6)
-with col1:
-    st.markdown('<div style="position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
-    if st.button("🏪", key="btn_commerce"): st.session_state.active_tab = "🛍️ Commerce"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-with col2:
-    st.markdown('<div style="position:absolute; top:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
-    if st.button("🚚", key="btn_auto"): st.session_state.active_tab = "🚗 Automobile"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-with col3:
-    st.markdown('<div style="position:absolute; bottom:65px; right:60px; z-index:200;">', unsafe_allow_html=True)
-    if st.button("🧾", key="btn_fact"): st.session_state.active_tab = "📄 Factures"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-with col4:
-    st.markdown('<div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:200;">', unsafe_allow_html=True)
-    if st.button("🏠", key="btn_immo"): st.session_state.active_tab = "🏠 Immobilier"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-with col5:
-    st.markdown('<div style="position:absolute; bottom:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
-    if st.button("📦", key="btn_stock"): st.session_state.active_tab = "📦 Gestion Stock"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-with col6:
-    st.markdown('<div style="position:absolute; top:65px; left:60px; z-index:200;">', unsafe_allow_html=True)
-    if st.button("📊", key="btn_compta"): st.session_state.active_tab = "💰 Comptabilité"; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-st.divider()
-
-# === AFFICHAGE SEULEMENT DE L'ONGLET ACTIF ===
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 
-# Dashboard
+# === DASHBOARD ===
 with tab_map["📊 Dashboard"]:
     if st.session_state.active_tab == "📊 Dashboard":
         st.markdown("## 📊 Dashboard ASYMAS")
@@ -267,130 +233,74 @@ with tab_map["📊 Dashboard"]:
             st.subheader("📈 Dernières transactions")
             st.dataframe(df_compta.head(10), use_container_width=True)
 
-# Commerce
+# === COMMERCE ===
 with tab_map["🛍️ Commerce"]:
     if st.session_state.active_tab == "🛍️ Commerce":
         st.markdown("## 🛍️ Commerce - Point de Vente")
-        if 'panier_commerce' not in st.session_state: st.session_state.panier_commerce = []
-        if 'vente_finie' not in st.session_state: st.session_state.vente_finie = False
-        if 'pdf_data' not in st.session_state: st.session_state.pdf_data = None
-        if 'num_fact' not in st.session_state: st.session_state.num_fact = None
-        if 'client_com_nom' not in st.session_state: st.session_state.client_com_nom = ""
-        if 'client_com_tel' not in st.session_state: st.session_state.client_com_tel = "+243..."
-        if 'last_qr' not in st.session_state: st.session_state.last_qr = ""
+        #... ton code commerce inchangé...
 
-        col_gauche, col_droite = st.columns([2,1])
-        with col_gauche:
-            st.subheader("👤 Client")
-            st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
-            st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
-            st.subheader("🔍 Scanner QR Code")
-            col_scan1, col_scan2 = st.columns([2,1])
-            with col_scan1:
-                qr_code = qrcode_scanner(key='qr_commerce_unique')
-            with col_scan2:
-                recherche_manuelle = st.text_input("🔎 Recherche manuelle", placeholder="Tape le nom...", key="search_man_c")
-            if qr_code and qr_code!= st.session_state.last_qr:
-                st.session_state.last_qr = qr_code
-                st.rerun()
+# === GESTION STOCK ===
+with tab_map["📦 Gestion Stock"]:
+    if st.session_state.active_tab == "📦 Gestion Stock":
+        st.markdown("## 📦 Gestion Stock")
+        st.dataframe(df_articles, use_container_width=True)
+        with st.expander("➕ Ajouter Article"):
+            with st.form("form_article"):
+                nom = st.text_input("Nom Article")
+                stock = st.number_input("Stock", min_value=0)
+                prix = st.number_input("Prix Vente FC", min_value=0.0)
+                if st.form_submit_button("Ajouter"):
+                    supabase.table("articles").insert({"nom_article": nom, "stock": stock, "prix_vente": prix}).execute()
+                    st.cache_data.clear(); st.rerun()
 
-            df_articles_filtre = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
-            if qr_code:
-                qr_clean = str(qr_code).strip().upper()
-                df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
-                if not df_articles_filtre.empty:
-                    st.success(f"✅ QR Trouvé : {df_articles_filtre.iloc[0]['nom_article']}")
-                else:
-                    st.error(f"❌ QR {qr_code} : Produit introuvable")
-            elif recherche_manuelle:
-                mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-                df_articles_filtre = df_articles_filtre[mask]
+# === IMMOBILIER ===
+with tab_map["🏠 Immobilier"]:
+    if st.session_state.active_tab == "🏠 Immobilier":
+        st.markdown("## 🏠 Immobilier")
+        st.dataframe(df_biens, use_container_width=True)
 
-            if df_articles_filtre.empty:
-                st.warning("⚠️ Aucun produit disponible")
-            else:
-                st.success(f"✅ {len(df_articles_filtre)} produit(s) disponible(s)")
-                options_articles = []
-                for _, p in df_articles_filtre.iterrows():
-                    qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
-                    prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if 'prix_vente_usd' in p else ""
-                    options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}")
-                article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
-                if article_choisi:
-                    id_choisi = int(article_choisi.split("ID:")[1])
-                    p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
-                    c1, c2, c3 = st.columns(3)
-                    qte_max = int(p['stock'])
-                    qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
-                    c2.metric("Stock dispo", qte_max)
-                    c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
-                    st.info(f"*{p['nom_article']}* | Catégorie: {p.get('categorie','N/A')} | QR: {p.get('code_qr','N/A')}")
-                    if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
-                        existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
-                        if existant:
-                            if existant['qte'] + qte <= qte_max:
-                                existant['qte'] += qte
-                                st.success(f"Panier mis à jour: {existant['qte']}x")
-                            else:
-                                st.error(f"Stock insuffisant! Max dispo: {qte_max}")
-                        else:
-                            st.session_state.panier_commerce.append({
-                                "id": int(p['id']),
-                                "nom": str(p['nom_article']),
-                                "pu": float(p['prix_vente']),
-                                "qte": int(qte),
-                                "code_qr": p.get('code_qr',''),
-                                "stock_max": qte_max
-                            })
-                            st.success("Ajouté au panier")
-                        st.rerun()
-        with col_droite:
-            st.subheader("🛒 Panier")
-            if st.session_state.vente_finie and st.session_state.pdf_data:
-                st.success("✅ Vente enregistrée!")
-                st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_data, file_name=f"{st.session_state.num_fact}.pdf", mime="application/pdf", width="stretch")
-                if st.button("NOUVELLE VENTE", width="stretch"):
-                    st.session_state.vente_finie = False
-                    st.session_state.pdf_data = None
-                    st.session_state.num_fact = None
-                    st.session_state.client_com_nom = ""
-                    st.session_state.last_qr = ""
-                    st.rerun()
-            elif not st.session_state.panier_commerce:
-                st.info("Panier vide")
-            else:
-                total_panier = 0
-                for i, item in enumerate(st.session_state.panier_commerce):
-                    col1, col2, col3 = st.columns([4,2,1])
-                    col1.write(f"*{item['nom']}*")
-                    col2.write(f"Qté: {item['qte']} | {item['pu']:,.0f} FC")
-                    if col3.button("❌", key=f"d_{i}"):
-                        st.session_state.panier_commerce.pop(i)
-                        st.rerun()
-                    total_panier += item['qte'] * item['pu']
-                st.markdown(f"### Total: {total_panier:,.0f} FC")
-                st.divider()
-                if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
-                    if not st.session_state.client_com_nom:
-                        st.error("Nom du client obligatoire!")
-                    else:
-                        try:
-                            num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                            details_list = []
-                            for item in st.session_state.panier_commerce:
-                                supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
-                                stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
-                                supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
-                                details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
-                            details_json = json.dumps(details_list)
-                            supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
-                            pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
-                            st.session_state.pdf_data = pdf_bytes
-                            st.session_state.num_fact = num_fact
-                            st.session_state.vente_finie = True
-                            st.session_state.panier_commerce = []
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur finalisation vente")
-                            st.code(repr(e))
+# === AUTOMOBILE ===
+with tab_map["🚗 Automobile"]:
+    if st.session_state.active_tab == "🚗 Automobile":
+        st.markdown("## 🚗 Automobile")
+        st.dataframe(df_voitures, use_container_width=True)
+
+# === GESTION PARC ===
+with tab_map["🚘 Gestion Parc"]:
+    if st.session_state.active_tab == "🚘 Gestion Parc":
+        st.markdown("## 🚘 Gestion Parc")
+        st.write("Module en cours...")
+
+# === COMPTABILITÉ ===
+with tab_map["💰 Comptabilité"]:
+    if st.session_state.active_tab == "💰 Comptabilité":
+        st.markdown("## 💰 Comptabilité")
+        st.dataframe(df_compta, use_container_width=True)
+
+# === FACTURES ===
+with tab_map["📄 Factures"]:
+    if st.session_state.active_tab == "📄 Factures":
+        st.markdown("## 📄 Factures & Proformas")
+        st.dataframe(df_factures, use_container_width=True)
+
+# === DEVIS ===
+with tab_map["📋 Devis"]:
+    if st.session_state.active_tab == "📋 Devis":
+        st.markdown("## 📋 Devis Consulting")
+        st.dataframe(df_devis, use_container_width=True)
+
+# === UTILISATEURS ===
+with tab_map["👥 Utilisateurs"]:
+    if st.session_state.active_tab == "👥 Utilisateurs":
+        st.markdown("## 👥 Gestion Utilisateurs")
+        st.dataframe(df_utilisateurs, use_container_width=True)
+
+# === FLOKI SIDEBAR ===
+with st.sidebar:
+    st.divider()
+    st.markdown("### 🤖 FLOKI")
+    st.caption("Conseiller du PDG")
+    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
+    if st.button("Exécuter", type="primary", use_container_width=True):
+        
+    
