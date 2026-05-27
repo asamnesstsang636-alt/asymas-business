@@ -12,56 +12,66 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
-st.markdown("""
-<style>
-.block-container{padding:0!important;max-width:100%!important;}
-.main{background:#0a0a0a;margin:0;padding:0;}
-div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
-div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
-div[data-testid="stTextInput"] label{display:none!important;}
-</style>
-""", unsafe_allow_html=True)
+# === GESTION LOGIN ===
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
-st.markdown("""
-<div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-    <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-    <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-            <div style="font-size:50px;">🛒</div>
-            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
-        </div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;">
-            <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏪</div><div style="font-size:8px;color:#000;font-weight:bold;">Commerce</div></div>
-            <div style="position:absolute;top:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🚚</div><div style="font-size:8px;color:#000;font-weight:bold;">Auto</div></div>
-            <div style="position:absolute;bottom:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🧾</div><div style="font-size:8px;color:#000;font-weight:bold;">Factures</div></div>
-            <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏠</div><div style="font-size:8px;color:#000;font-weight:bold;">Immo</div></div>
-            <div style="position:absolute;bottom:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📦</div><div style="font-size:8px;color:#000;font-weight:bold;">Stock</div></div>
-            <div style="position:absolute;top:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📊</div><div style="font-size:8px;color:#000;font-weight:bold;">Compta</div></div>
+if not st.session_state.logged_in:
+    # HOLOGRAMME LOGIN VISIBLE SEULEMENT AVANT LOGIN
+    st.markdown("""
+    <style>
+   .block-container{padding:0!important;max-width:100%!important;}
+   .main{background:#0a0a0a;margin:0;padding:0;}
+    div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
+    div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
+    div[data-testid="stTextInput"] label{display:none!important;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+        <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
+        <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+                <div style="font-size:50px;">🛒</div>
+                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+            </div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;">
+                <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏪</div><div style="font-size:8px;color:#000;font-weight:bold;">Commerce</div></div>
+                <div style="position:absolute;top:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🚚</div><div style="font-size:8px;color:#000;font-weight:bold;">Auto</div></div>
+                <div style="position:absolute;bottom:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🧾</div><div style="font-size:8px;color:#000;font-weight:bold;">Factures</div></div>
+                <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>🏠</div><div style="font-size:8px;color:#000;font-weight:bold;">Immo</div></div>
+                <div style="position:absolute;bottom:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📦</div><div style="font-size:8px;color:#000;font-weight:bold;">Stock</div></div>
+                <div style="position:absolute;top:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;"><div>📊</div><div style="font-size:8px;color:#000;font-weight:bold;">Compta</div></div>
+            </div>
         </div>
     </div>
-</div>
-<style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-@keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-@keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
-""", unsafe_allow_html=True)
+    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+    """, unsafe_allow_html=True)
 
-pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
-if pwd!= "asymas2025":
+    pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
+    if pwd == "asymas2025":
+        st.session_state.logged_in = True
+        st.session_state.user_role = "PDG"
+        st.session_state.user_name = "PDG"
+        st.rerun()
+    elif pwd:
+        st.error("Mot de passe incorrect")
     st.stop()
 
+# === APP PRINCIPALE APRÈS LOGIN ===
 st.success("Accès autorisé ✅")
-st.session_state.user_role = "PDG"
-st.session_state.user_name = "PDG"
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === TOUTES TES FONCTIONS DE L'ANCIEN CODE ===
+# === TOUTES TES FONCTIONS ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -175,7 +185,8 @@ with st.sidebar:
     st.info("ASYMAS BUSINESS v3.0 Hologram")
     if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
     theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-    if st.button("🚪 Déconnexion", use_container_width=True): st.session_state.clear(); st.rerun()
+    if st.button("🚪 Déconnexion", use_container_width=True):
+        st.session_state.clear(); st.rerun()
     if st.button("🔄 Actualiser", key="btn_save"): st.cache_data.clear(); st.rerun()
 
 if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
@@ -186,6 +197,7 @@ elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+
 # === DASHBOARD ===
 with tab_map["📊 Dashboard"]:
     st.markdown("## 📊 Dashboard ASYMAS")
@@ -376,14 +388,4 @@ with tab_map["📋 Devis"]:
 # === UTILISATEURS ===
 with tab_map["👥 Utilisateurs"]:
     st.markdown("## 👥 Gestion Utilisateurs")
-    st.dataframe(df_utilisateurs, use_container_width=True)
-
-# === FLOKI SIDEBAR ===
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG")
-    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
-    if st.button("Exécuter", type="primary", use_container_width=True):
-        if q:
-            st.info(f"FLOKI: {q}")
+    st.dataframe(df_utilisateurs,
