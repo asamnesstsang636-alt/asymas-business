@@ -363,28 +363,26 @@ with tab_map["🛍️ Commerce"]:
                 if st.button("💾 FINALISER VENTE & FACTURE", width="stretch", type="primary"):
                     if not st.session_state.client_com_nom:
                         st.error("Nom du client obligatoire!")
-                    else:
-                        try:
-                            num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                            details_list = []
-                            for item in st.session_state.panier_commerce:
-                                supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
-                                stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
-                                supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
-                                details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
-                        details_json = json.dumps(details_list)
-                        supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
-                        pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
-                        st.session_state.pdf_data = pdf_bytes
-                        st.session_state.num_fact = num_fact
-                        st.session_state.vente_finie = True
-                        st.session_state.panier_commerce = []
-                        st.cache_data.clear()
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erreur finalisation vente")
-                        st.code(repr(e))
-
+                    try:
+    num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    details_list = []
+    for item in st.session_state.panier_commerce:
+        supabase.table("ventes").insert({"numero_facture": num_fact,"client_nom": st.session_state.client_com_nom,"article_id": item['id'],"quantite": item['qte'],"prix_unitaire": item['pu'],"total": item['qte'] * item['pu']}).execute()
+        stock_actuel = df_articles[df_articles['id'] == item['id']]['stock'].iloc[0]
+        supabase.table("articles").update({"stock": int(stock_actuel - item['qte'])}).eq("id", item['id']).execute()
+        details_list.append({"nom": item['nom'],"qte": item['qte'],"pu": item['pu'],"total": item['qte'] * item['pu']})
+    details_json = json.dumps(details_list)
+    supabase.table("compta").insert({"date": str(date.today()),"type": "Revenu","categorie": "Vente Commerce","description": f"Vente - {st.session_state.client_com_nom}","montant": float(total_panier),"devise": "FC","numero_facture": num_fact,"details": details_json,"utilisateur": st.session_state.user_name}).execute()
+    pdf_bytes = generer_pdf_facture(num_fact, "Vente Commerce", st.session_state.client_com_nom, details_list, total_panier, "FC", st.session_state.client_com_tel)
+    st.session_state.pdf_data = pdf_bytes
+    st.session_state.num_fact = num_fact
+    st.session_state.vente_finie = True
+    st.session_state.panier_commerce = []
+    st.cache_data.clear()
+    st.rerun()
+except Exception as e:
+    st.error("Erreur finalisation vente")
+    st.code(repr(e))
 # === GESTION STOCK ===
 with tab_map["📦 Gestion Stock"]:
     if st.session_state.active_tab == "📦 Gestion Stock":
