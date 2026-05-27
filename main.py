@@ -11,37 +11,62 @@ from PIL import Image
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
-import difflib, re, urllib.parse, requests
 
-# === HOLOGRAMME LOGIN ===
+# === HOLOGRAMME LOGIN AVEC 6 MODULES ASYMAS ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-div[data-testid="stTextInput"]{position:absolute!important; bottom:23%!important; left:50%!important; transform:translateX(-50%)!important; width:160px!important; z-index:100!important;}
+div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
 div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
 div[data-testid="stTextInput"] label{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
-<div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.6) 0%, rgba(15,15,15,1) 80%);overflow:hidden;">
-    <div style="position:absolute;bottom:12%;left:50%;transform:translateX(-50%);width:320px;height:160px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:40px;box-shadow:0 30px 60px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-    <div style="position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);width:420px;height:420px;">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;height:360px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 70px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;height:280px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 80px #FFD700;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:150px;height:150px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 90px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-            <div style="font-size:45px;">🛒</div>
-            <div style="font-size:14px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+<div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+    <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
+    <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+            <div style="font-size:50px;">🛒</div>
+            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
         </div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;height:360px;">
-            <div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">🏪</div>
-            <div style="position:absolute;top:50px;right:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">🚚</div>
-            <div style="position:absolute;bottom:50px;right:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">📢</div>
-            <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">@</div>
-            <div style="position:absolute;bottom:50px;left:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">🧾</div>
-            <div style="position:absolute;top:50px;left:40px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;font-size:26px;">📊</div>
+        
+        <!-- 6 CERCLES MODULES ASYMAS -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;">
+            <!-- Haut: Commerce -->
+            <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>🏪</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Commerce</div>
+            </div>
+            <!-- Haut-Droite: Livraison -->
+            <div style="position:absolute;top:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>🚚</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Auto</div>
+            </div>
+            <!-- Bas-Droite: Factures -->
+            <div style="position:absolute;bottom:45px;right:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>🧾</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Factures</div>
+            </div>
+            <!-- Bas: Immobilier -->
+            <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>🏠</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Immo</div>
+            </div>
+            <!-- Bas-Gauche: Stock -->
+            <div style="position:absolute;bottom:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>📦</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Stock</div>
+            </div>
+            <!-- Haut-Gauche: Stats -->
+            <div style="position:absolute;top:45px;left:35px;background:#fff;border:3px solid #FFD700;border-radius:50%;width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px #FFD700;">
+                <div>📊</div>
+                <div style="font-size:8px;color:#000;font-weight:bold;">Compta</div>
+            </div>
         </div>
     </div>
 </div>
@@ -52,7 +77,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-pwd = st.text_input("", type="password", placeholder="Entrez le mot de passe")
+pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
 if pwd!= "asymas2025":
     st.stop()
 
@@ -60,11 +85,15 @@ st.success("Accès autorisé ✅")
 st.session_state.user_role = "PDG"
 st.session_state.user_name = "PDG"
 
-# === CONFIG SUPABASE ===
+# === ICI VIENT TON CODE COMPLET DE 2700 LIGNES ===
+# SUPABASE, FONCTIONS, TABS, COMMERCE, STOCK, IMMO, AUTO, COMPTA, FACTURES, DEVIS, UTILISATEURS, FLOKI
+# COLLE EXACTEMENT TON ANCIEN CODE COMPLET À PARTIR D'ICI SANS RIEN COUPER
+
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# [COLLE ICI TOUT TON CODE DE 2700 LIGNES]
 # === FONCTIONS COMPLETES ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
