@@ -999,27 +999,47 @@ with tabs[4]:
                     st.markdown(f"**Client:** {st.session_state.client_auto_nom}")
                     st.markdown(f"**Tel:** {st.session_state.client_auto_tel}")
                     if st.button("✅ FINALISER VENTE VOITURE", type="primary", use_container_width=True):
-                        if st.session_state.client_auto_nom and st.session_state.panier_voiture:
-                            try:
-                                details_list = [{"nom": f"{item['nom']} | {item.get('qualite','')} | {item['plaque']}", "qte": item['qte'], "pu": item['pu']} for item in st.session_state.panier_voiture]
-                                details_text = " | ".join([f"{item['qte']}x {item['nom']} ({item.get('qualite','')})" for item in st.session_state.panier_voiture])
-                                num_fact, pdf_bytes = creer_facture_auto("Vente Voiture", st.session_state.client_auto_nom, details_text, total_voiture, "$", details_list, st.session_state.client_auto_tel, "", "Proforma")
-                                for item in st.session_state.panier_voiture:
-                                    supabase.table("voitures").update({
-                                        "quantite": item['stock_max'] - item['qte'],
-                                        "statut": "Vendue" if item['stock_max'] - item['qte'] == 0 else "Disponible"
-                                                                    }).eq("id", item['id']).execute()
-                            st.session_state.vente_auto_finie = True
-                            st.session_state.pdf_auto = pdf_bytes
-                            st.session_state.num_fact_auto = num_fact
-                            st.session_state.total_auto = total_voiture
-                            st.session_state.panier_voiture = []
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erreur finalisation: {e}")
-                    else:
-                        st.error("Nom client obligatoire - Remplis à gauche")
+    if st.session_state.client_auto_nom and st.session_state.panier_voiture:
+        try:
+            details_list = [{"nom": f"{item['nom']} | {item.get('qualite','')} | {item['plaque']}", 
+                             "qte": item['qte'], "pu": item['pu']} for item in st.session_state.panier_voiture]
+            details_text = " | ".join([f"{item['qte']}x {item['nom']} ({item.get('qualite','')})" 
+                                       for item in st.session_state.panier_voiture])
+            num_fact, pdf_bytes = creer_facture_auto(
+                "Vente Voiture", st.session_state.client_auto_nom, details_text, 
+                total_voiture, "$", details_list, st.session_state.client_auto_tel, "", "Proforma"
+            )
+            for item in st.session_state.panier_voiture:
+                supabase.table("voitures").update({
+                    "quantite": item['stock_max'] - item['qte'],
+                    "statut": "Vendue" if item['stock_max'] - item['qte'] == 0 else "Disponible"
+                }).eq("id", item['id']).execute()
+            st.session_state.vente_auto_finie = True
+            st.session_state.pdf_auto = pdf_bytes
+            st.session_state.num_fact_auto = num_fact
+            st.session_state.total_auto = total_voiture
+            st.session_state.panier_voiture = []
+            st.cache_data.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erreur finalisation: {e}")
+    else:
+        st.error("Nom client obligatoire - Remplis à gauche")
+                                    
+                                        
+                                        
+                                                                    
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                        
+                            
+                    
+                        
     else:
         st.info("🔒 Accès Automobile restreint - Contacte le PDG")
 
