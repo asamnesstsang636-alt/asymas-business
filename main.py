@@ -12,16 +12,16 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === CSS NETTOYÉ : PLUS DE DOUBLON ===
+# === CSS PROPRE SANS BUG ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-/* SUPPRIMÉ LE POSITION ABSOLUTE QUI CRÉAIT LE DOUBLON */
+/* SUPPRIMÉ TOUT CE QUI CASSAIT LE LOGIN */
 </style>
 """, unsafe_allow_html=True)
 
-# === HOLOGRAMME LOGIN ===
+# === HOLOGRAMME EN FOND FIXE ===
 st.markdown("""
 <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);z-index:1;">
     <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
@@ -48,14 +48,14 @@ st.markdown("""
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
-# === CHAMP CONNEXION VISIBLE, PAS DE DOUBLON ===
+# === BOÎTE LOGIN CENTRÉE ET VISIBLE ===
 col1,col2,col3 = st.columns([1,1.2,1])
 with col2:
-    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:25px;border:3px solid #FFD700;border-radius:15px;margin-top:70vh;z-index:100;position:relative;'>", unsafe_allow_html=True)
-    pwd = st.text_input("Mot de passe", type="password", placeholder="Tape ton mot de passe ASYMAS")
+    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:30px;border:3px solid #FFD700;border-radius:20px;margin-top:70vh;z-index:100;position:relative;box-shadow:0 0 40px #FFD700;'>", unsafe_allow_html=True)
+    pwd = st.text_input("Mot de passe ASYMAS", type="password", placeholder="Tape ton mot de passe")
     st.markdown("</div>", unsafe_allow_html=True)
 
-if pwd!= "asymas2025":
+if not pwd or pwd!= "asymas2025":
     st.stop()
 
 st.success("Accès autorisé ✅")
@@ -245,7 +245,7 @@ with tab_map["🛍️ Commerce"]:
                 st.error(f"❌ QR {qr_code} : Produit introuvable")
         elif recherche_manuelle:
             mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-            df_articles_filtre = df_articles_filtre[mask]
+            df_articles_filtre = df_articles_filtre
 
         if df_articles_filtre.empty:
             st.warning("⚠️ Aucun produit disponible")
@@ -383,7 +383,16 @@ with tab_map["📋 Devis"]:
 with tab_map["👥 Utilisateurs"]:
     st.markdown("## 👥 Gestion Utilisateurs")
     st.dataframe(df_utilisateurs, use_container_width=True)
-
     with st.expander("➕ Ajouter Utilisateur"):
         with st.form("form_user"):
             nom = st.text_input("Nom")
+            role = st.selectbox("Rôle", ["Agent", "Manager", "PDG"])
+            pwd = st.text_input("Mot de passe", type="password")
+            perms_json = st.text_area("Permissions JSON", value='{"stock": true, "commerce": true}')
+            if st.form_submit_button("Ajouter"):
+                try:
+                    supabase.table("utilisateurs").insert({"nom": nom, "role": role, "password": pwd, "permissions": perms_json}).execute()
+                    st.success("Utilisateur ajouté")
+                    st.cache_data.clear(); st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur: {e}")
