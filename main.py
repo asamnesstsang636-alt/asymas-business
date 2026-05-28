@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="collapsed")
-st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
 from datetime import date, datetime
@@ -9,19 +8,31 @@ from datetime import date, datetime
 # === SESSION ===
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'module_actif' not in st.session_state:
-    st.session_state.module_actif = None
 
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-.holo-container{position:relative;width:100%;height:75vh;}
+.holo-container{position:relative;width:100%;height:80vh;}
+.holo-btn{position:absolute;transform:translate(-50%,-50%);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;
+background:#fff;color:#000;font-size:24px;font-weight:bold;cursor:pointer;box-shadow:0 0 20px #FFD700;z-index:10;}
+.holo-btn:hover{transform:translate(-50%,-50%) scale(1.15);box-shadow:0 0 40px #FFD700;}
 </style>
 """, unsafe_allow_html=True)
 
-def afficher_hologramme():
-    st.markdown("""
+def afficher_hologramme(avec_boutons=False, module=""):
+    btn_html = ""
+    if avec_boutons:
+        btn_html = f"""
+        <button class="holo-btn" style="top:0%;left:50%;" onclick="window.location.href='?module=Commerce'">🏪</button>
+        <button class="holo-btn" style="top:22%;left:82%;" onclick="window.location.href='?module=Auto'">🚚</button>
+        <button class="holo-btn" style="top:78%;left:82%;" onclick="window.location.href='?module=Factures'">🧾</button>
+        <button class="holo-btn" style="top:100%;left:50%;" onclick="window.location.href='?module=Immo'">🏠</button>
+        <button class="holo-btn" style="top:78%;left:18%;" onclick="window.location.href='?module=Stock'">📦</button>
+        <button class="holo-btn" style="top:22%;left:18%;" onclick="window.location.href='?module=Compta'">📊</button>
+        """
+    
+    st.markdown(f"""
     <div class="holo-container">
         <div style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -32,16 +43,17 @@ def afficher_hologramme():
                 <div style="font-size:50px;">🛒</div>
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
+            {btn_html}
         </div>
     </div>
-    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
+    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
+    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """, unsafe_allow_html=True)
 
-# === ÉCRAN LOGIN ===
+# === LOGIN ===
 if not st.session_state.logged_in:
-    afficher_hologramme()
+    afficher_hologramme(avec_boutons=False)
     
     col1,col2,col3 = st.columns([1,1.5,1])
     with col2:
@@ -51,8 +63,6 @@ if not st.session_state.logged_in:
     
     if pwd == "asymas2025":
         st.session_state.logged_in = True
-        st.session_state.user_role = "PDG"
-        st.session_state.user_name = "PDG"
         st.rerun()
     elif pwd:
         st.error("Mot de passe incorrect")
@@ -75,81 +85,40 @@ df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
 
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+st.markdown("# ASYMAS BUSINESS - PDG")
 st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
-# === HOLOGRAMME + 6 BOUTONS POSÉS DESSUS ===
-afficher_hologramme()
+# Lire le module depuis l'URL
+module = st.query_params.get("module", None)
 
-# Boutons positionnés aux 6 endroits du cercle
-col_btn1, col_btn2, col_btn3 = st.columns([1,1,1])
-with col_btn1:
-    st.markdown("<div style='margin-top:-42vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("🏪\nCommerce", key="btn_com"):
-        st.session_state.module_actif = "Commerce"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-with col_btn2:
-    st.markdown("<div style='margin-top:-42vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("📦\nStock", key="btn_stock"):
-        st.session_state.module_actif = "Stock"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-with col_btn3:
-    st.markdown("<div style='margin-top:-42vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("🏠\nImmo", key="btn_immo"):
-        st.session_state.module_actif = "Immo"
-    st.markdown("</div>", unsafe_allow_html=True)
-
-col_btn4, col_btn5, col_btn6 = st.columns([1,1,1])
-with col_btn4:
-    st.markdown("<div style='margin-top:-35vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("🚗\nAuto", key="btn_auto"):
-        st.session_state.module_actif = "Auto"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-with col_btn5:
-    st.markdown("<div style='margin-top:-35vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("🧾\nFactures", key="btn_fact"):
-        st.session_state.module_actif = "Factures"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-with col_btn6:
-    st.markdown("<div style='margin-top:-35vh;text-align:center;'>", unsafe_allow_html=True)
-    if st.button("📊\nCompta", key="btn_comp"):
-        st.session_state.module_actif = "Compta"
-    st.markdown("</div>", unsafe_allow_html=True)
+# Afficher hologramme + 6 boutons cliquables dessus
+afficher_hologramme(avec_boutons=True)
 
 st.divider()
 
-# === UN SEUL MODULE S'AFFICHE ===
-if st.session_state.module_actif == "Commerce":
+# Un seul module s'affiche selon le clic
+if module == "Commerce":
     st.markdown("## 🛍️ Commerce - Point de Vente")
     st.dataframe(df_articles, use_container_width=True)
-    
-elif st.session_state.module_actif == "Stock":
+elif module == "Stock":
     st.markdown("## 📦 Gestion Stock")
     st.dataframe(df_articles, use_container_width=True)
-    
-elif st.session_state.module_actif == "Immo":
+elif module == "Immo":
     st.markdown("## 🏠 Immobilier")
     st.dataframe(df_biens, use_container_width=True)
-    
-elif st.session_state.module_actif == "Auto":
+elif module == "Auto":
     st.markdown("## 🚗 Automobile")
     st.dataframe(df_voitures, use_container_width=True)
-    
-elif st.session_state.module_actif == "Factures":
+elif module == "Factures":
     st.markdown("## 🧾 Factures")
     st.info("Module factures en cours")
-    
-elif st.session_state.module_actif == "Compta":
+elif module == "Compta":
     st.markdown("## 💰 Comptabilité")
     st.dataframe(df_compta, use_container_width=True)
 
 # Sidebar
 with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
+    st.markdown("## 👤 PDG")
     if st.button("🚪 Déconnexion", width="stretch"):
         st.session_state.clear()
         st.rerun()
