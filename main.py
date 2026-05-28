@@ -26,7 +26,7 @@ st.markdown("""
 div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
 div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
 div[data-testid="stTextInput"] label{display:none!important;}
-div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 20px #FFD700!important;font-size:24px!important;padding:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 20px #FFD700!important;font-size:24px!important;padding:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,7 +70,7 @@ def show_login():
         st.rerun()
     st.stop()
 
-# === PAGE D'ACCUEIL AVEC BOUTONS CLIQUABLES ===
+# === PAGE D'ACCUEIL AVEC BOUTONS SUR LE GRAND CERCLE ===
 def show_home():
     st.markdown("""
     <div style="position:relative;width:100vw;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -90,30 +90,21 @@ def show_home():
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # Boutons cliquables aux positions exactes de ton code
-    st.markdown("<div style='position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏪\nCommerce", key="b1"): st.session_state.selected_module = "Commerce"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='position:absolute;top:45px;right:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🚚\nAuto", key="b2"): st.session_state.selected_module = "Auto"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='position:absolute;bottom:45px;right:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🧾\nFactures", key="b3"): st.session_state.selected_module = "Factures"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='position:absolute;bottom:0px;left:50%;transform:translateX(-50%);z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏠\nImmo", key="b4"): st.session_state.selected_module = "Immo"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='position:absolute;bottom:45px;left:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📦\nStock", key="b5"): st.session_state.selected_module = "Stock"
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='position:absolute;top:45px;left:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📊\nCompta", key="b6"): st.session_state.selected_module = "Compta"
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 6 boutons collés sur le GRAND cercle de 380px de diamètre = rayon 190px
+    modules = [
+        ("🏪\nCommerce", "Commerce", 0),
+        ("🚚\nAuto", "Auto", 60),
+        ("🧾\nFactures", "Factures", 120),
+        ("🏠\nImmo", "Immo", 180),
+        ("📦\nStock", "Stock", 240),
+        ("📊\nCompta", "Compta", 300)
+    ]
+
+    for label, module_name, angle in modules:
+        st.markdown(f"<div style='position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
+        if st.button(label, key=f"b_{module_name}"): 
+            st.session_state.selected_module = module_name
+        st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
