@@ -92,10 +92,14 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
     
-    result = components.html(html_buttons, height=700)
-    if result:
-        st.session_state.selected_module = result
-        st.rerun()
+    components.html(html_buttons, height=700)
+    result = components.html("", height=0)
+    
+    if st.session_state.get('selected_module') is None:
+        query_params = st.query_params
+        if 'module' in query_params:
+            st.session_state.selected_module = query_params['module']
+            st.rerun()
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
