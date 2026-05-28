@@ -3,7 +3,6 @@ import pandas as pd
 st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="collapsed")
 
 from supabase import create_client, Client
-from datetime import date, datetime
 
 # === SESSION ===
 if 'logged_in' not in st.session_state:
@@ -58,7 +57,7 @@ if not st.session_state.logged_in:
     
     col1,col2,col3 = st.columns([1,1.5,1])
     with col2:
-        st.markdown("<div style='margin-top:-10vh;background:rgba(0,0,0,0.95);padding:20px;border:3px solid #FFD700;border-radius:15px;box-shadow:0 0 30px #FFD700;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:-5vh;background:rgba(0,0,0,0.95);padding:20px;border:3px solid #FFD700;border-radius:15px;box-shadow:0 0 30px #FFD700;'>", unsafe_allow_html=True)
         pwd = st.text_input("Accès ASYMAS", type="password", label_visibility="collapsed")
         st.markdown("</div>", unsafe_allow_html=True)
     
