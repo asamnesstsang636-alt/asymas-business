@@ -80,12 +80,42 @@ def show_home():
     """, unsafe_allow_html=True)
     
     c1, c2, c3, c4, c5, c6 = st.columns([1,1,1,1,1,1])
-    with c1: st.markdown("<div style='position:absolute;top:120px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True); if st.button("🏪", key="b1"): st.session_state.selected_module = "Commerce"; st.markdown("</div>", unsafe_allow_html=True)
-    with c2: st.markdown("<div style='position:absolute;top:165px;right:50%;margin-right:-190px;'>", unsafe_allow_html=True); if st.button("🚚", key="b2"): st.session_state.selected_module = "Auto"; st.markdown("</div>", unsafe_allow_html=True)
-    with c3: st.markdown("<div style='position:absolute;bottom:165px;right:50%;margin-right:-190px;'>", unsafe_allow_html=True); if st.button("🧾", key="b3"): st.session_state.selected_module = "Factures"; st.markdown("</div>", unsafe_allow_html=True)
-    with c4: st.markdown("<div style='position:absolute;bottom:120px;left:50%;margin-left:-30px;'>", unsafe_allow_html=True); if st.button("🏠", key="b4"): st.session_state.selected_module = "Immo"; st.markdown("</div>", unsafe_allow_html=True)
-    with c5: st.markdown("<div style='position:absolute;bottom:165px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True); if st.button("📦", key="b5"): st.session_state.selected_module = "Stock"; st.markdown("</div>", unsafe_allow_html=True)
-    with c6: st.markdown("<div style='position:absolute;top:165px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True); if st.button("📊", key="b6"): st.session_state.selected_module = "Compta"; st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c1:
+        st.markdown("<div style='position:absolute;top:120px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True)
+        if st.button("🏪", key="b1"):
+            st.session_state.selected_module = "Commerce"
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c2:
+        st.markdown("<div style='position:absolute;top:165px;right:50%;margin-right:-190px;'>", unsafe_allow_html=True)
+        if st.button("🚚", key="b2"):
+            st.session_state.selected_module = "Auto"
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c3:
+        st.markdown("<div style='position:absolute;bottom:165px;right:50%;margin-right:-190px;'>", unsafe_allow_html=True)
+        if st.button("🧾", key="b3"):
+            st.session_state.selected_module = "Factures"
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c4:
+        st.markdown("<div style='position:absolute;bottom:120px;left:50%;margin-left:-30px;'>", unsafe_allow_html=True)
+        if st.button("🏠", key="b4"):
+            st.session_state.selected_module = "Immo"
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c5:
+        st.markdown("<div style='position:absolute;bottom:165px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True)
+        if st.button("📦", key="b5"):
+            st.session_state.selected_module = "Stock"
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with c6:
+        st.markdown("<div style='position:absolute;top:165px;left:50%;margin-left:-190px;'>", unsafe_allow_html=True)
+        if st.button("📊", key="b6"):
+            st.session_state.selected_module = "Compta"
+        st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Déconnexion", key="logout"):
         st.session_state.clear()
