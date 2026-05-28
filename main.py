@@ -67,7 +67,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES - SEUL SI AUCUN MODULE SELECTIONNE ===
+# === ACCUEIL : CERCLE + 6 BOUTONS CLIQUABLES ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -92,9 +92,9 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
 
-    clicked = components.html(html_buttons, height=700)
-    if clicked:
-        st.session_state.selected_module = clicked
+    result = components.html(html_buttons, height=700)
+    if result:
+        st.session_state.selected_module = result
         st.rerun()
 
     if st.button("🚪 Déconnexion"):
@@ -180,3 +180,5 @@ else:
         if not df_compta.empty:
             st.subheader("📈 Dernières transactions")
             st.dataframe(df_compta.head(10), use_container_width=True)
+
+    # ... garde tout ton code des autres tabs ici tel quel ...
