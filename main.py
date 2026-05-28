@@ -57,7 +57,7 @@ def show_login():
     st.stop()
 
 def show_home():
-    # Container relatif de 650px de haut pour forcer le centrage
+    # Container relatif avec hauteur fixe = clé pour que ça bouge pas au rerun
     st.markdown('<div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
 
     # Le cercle centré
@@ -73,34 +73,33 @@ def show_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # Boutons positionnés par rapport au centre du container
-    positions = [
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(0deg) translate(190px) rotate(0deg)"},
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(60deg) translate(190px) rotate(-60deg)"},
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(120deg) translate(190px) rotate(-120deg)"},
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(180deg) translate(190px) rotate(-180deg)"},
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(240deg) translate(190px) rotate(-240deg)"},
-        {"top": "50%", "left": "50%", "transform": "translate(-50%,-50%) rotate(300deg) translate(190px) rotate(-300deg)"}
+    # Boutons placés en cercle autour du centre
+    modules = [
+        ("🏪\nCommerce", "Commerce"),
+        ("🚚\nAuto", "Auto"),
+        ("🧾\nFactures", "Factures"),
+        ("🏠\nImmo", "Immo"),
+        ("📦\nStock", "Stock"),
+        ("📊\nCompta", "Compta")
     ]
 
-    labels = ["🏪\nCommerce", "🚚\nAuto", "🧾\nFactures", "🏠\nImmo", "📦\nStock", "📊\nCompta"]
-    modules = ["Commerce", "Auto", "Factures", "Immo", "Stock", "Compta"]
+    angles = [0, 60, 120, 180, 240, 300] # 6 positions en cercle
 
-    for i in range(6):
-        st.markdown(f'<div style="position:absolute;top:{positions[i]["top"]};left:{positions[i]["left"]};transform:{positions[i]["transform"]};z-index:10;">', unsafe_allow_html=True)
-        if st.button(labels[i], key=f"btn_{modules[i]}"):
-            st.session_state.selected_module = modules[i]
+    for i, (label, module_name) in enumerate(modules):
+        angle = angles[i]
+        st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
+        if st.button(label, key=f"btn_{module_name}"):
+            st.session_state.selected_module = module_name
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Bouton déconnexion
+    # Bouton déconnexion en haut droite
     st.markdown('<div style="position:absolute;top:20px;right:20px;z-index:20;">', unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 if not st.session_state.logged_in:
     show_login()
 else:
