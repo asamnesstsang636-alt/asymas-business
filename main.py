@@ -73,9 +73,9 @@ def show_login():
 # === PAGE D'ACCUEIL AVEC BOUTONS CLIQUABLES SUR LE CERCLE ===
 def show_home():
     st.markdown("""
-    <div style="position:relative;width:100vw;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+    <div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-        <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+        <div id="circle-container" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
@@ -90,7 +90,7 @@ def show_home():
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # 6 boutons cliquables positionnés sur le grand cercle de 380px
+    # Boutons calés dans le container du cercle
     modules = [
         ("🏪\nCommerce", "Commerce", 0),
         ("🚚\nAuto", "Auto", 60),
@@ -101,10 +101,19 @@ def show_home():
     ]
 
     for label, module_name, angle in modules:
-        st.markdown(f"<div style='position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='position:absolute;top:calc(50% + 325px);left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button(label, key=f"b_{module_name}"): 
             st.session_state.selected_module = module_name
-        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Bouton déconnexion
+    st.markdown("<div style='position:absolute;top:20px;right:20px;z-index:20;'>", unsafe_allow_html=True)
+    if st.button("🚪 Déconnexion", key="logout"):
+        st.session_state.clear()
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # Bouton déconnexion sur la page d'accueil
     st.markdown("<div style='position:absolute;top:20px;right:20px;z-index:20;'>", unsafe_allow_html=True)
