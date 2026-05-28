@@ -4,10 +4,7 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date, datetime
-from fpdf import FPDF
-import io, qrcode, tempfile, os, json
-from streamlit_qrcode_scanner import qrcode_scanner
+from datetime import date
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'selected_module' not in st.session_state: st.session_state.selected_module = None
@@ -21,7 +18,6 @@ st.markdown("""
 div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
 div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
 div[data-testid="stTextInput"] label{display:none!important;}
-div[data-testid="stButton"] button{width:100%;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 20px #FFD700;font-size:24px;cursor:pointer;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,28 +71,60 @@ def show_home():
                 <div style="font-size:50px;">🛒</div>
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;">
-                <div style="position:absolute;top:0px;left:50%;transform:translateX(-50%);"></div>
-                <div style="position:absolute;top:45px;right:35px;"></div>
-                <div style="position:absolute;bottom:45px;right:35px;"></div>
-                <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);"></div>
-                <div style="position:absolute;bottom:45px;left:35px;"></div>
-                <div style="position:absolute;top:45px;left:35px;"></div>
-            </div>
         </div>
     </div>
     <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
     @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
     @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """, unsafe_allow_html=True)
+    
     col1, col2, col3, col4, col5, col6 = st.columns(6)
-    with col1: st.markdown("<div style='position:absolute;top:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True); if st.button("🏪", key="btn_com"): st.session_state.selected_module = "Commerce"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    with col2: st.markdown("<div style='position:absolute;top:45px;right:35px;width:60px;'>", unsafe_allow_html=True); if st.button("🚚", key="btn_auto"): st.session_state.selected_module = "Auto"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    with col3: st.markdown("<div style='position:absolute;bottom:45px;right:35px;width:60px;'>", unsafe_allow_html=True); if st.button("🧾", key="btn_fact"): st.session_state.selected_module = "Factures"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    with col4: st.markdown("<div style='position:absolute;bottom:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True); if st.button("🏠", key="btn_immo"): st.session_state.selected_module = "Immo"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    with col5: st.markdown("<div style='position:absolute;bottom:45px;left:35px;width:60px;'>", unsafe_allow_html=True); if st.button("📦", key="btn_stock"): st.session_state.selected_module = "Stock"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    with col6: st.markdown("<div style='position:absolute;top:45px;left:35px;width:60px;'>", unsafe_allow_html=True); if st.button("📊", key="btn_compta"): st.session_state.selected_module = "Compta"; st.rerun(); st.markdown("</div>", unsafe_allow_html=True)
-    if st.button("Déconnexion", key="logout"): st.session_state.clear(); st.rerun()
+    
+    with col1:
+        st.markdown("<div style='position:absolute;top:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True)
+        if st.button("🏪", key="btn_com"):
+            st.session_state.selected_module = "Commerce"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("<div style='position:absolute;top:45px;right:35px;width:60px;'>", unsafe_allow_html=True)
+        if st.button("🚚", key="btn_auto"):
+            st.session_state.selected_module = "Auto"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("<div style='position:absolute;bottom:45px;right:35px;width:60px;'>", unsafe_allow_html=True)
+        if st.button("🧾", key="btn_fact"):
+            st.session_state.selected_module = "Factures"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown("<div style='position:absolute;bottom:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True)
+        if st.button("🏠", key="btn_immo"):
+            st.session_state.selected_module = "Immo"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col5:
+        st.markdown("<div style='position:absolute;bottom:45px;left:35px;width:60px;'>", unsafe_allow_html=True)
+        if st.button("📦", key="btn_stock"):
+            st.session_state.selected_module = "Stock"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    with col6:
+        st.markdown("<div style='position:absolute;top:45px;left:35px;width:60px;'>", unsafe_allow_html=True)
+        if st.button("📊", key="btn_compta"):
+            st.session_state.selected_module = "Compta"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    if st.button("Déconnexion", key="logout"):
+        st.session_state.clear()
+        st.rerun()
 
 if not st.session_state.logged_in:
     show_login()
@@ -105,22 +133,24 @@ else:
         show_home()
     else:
         st.markdown(f"## {st.session_state.selected_module} - {st.session_state.user_name}")
-        if st.button("← Retour", key="back"): st.session_state.selected_module = None; st.rerun()
+        if st.button("← Retour", key="back"):
+            st.session_state.selected_module = None
+            st.rerun()
         if st.session_state.selected_module == "Commerce":
-            df_articles = load_table("articles")
-            st.dataframe(df_articles, use_container_width=True)
+            df = load_table("articles")
+            st.dataframe(df, use_container_width=True)
         elif st.session_state.selected_module == "Stock":
-            df_articles = load_table("articles")
-            st.dataframe(df_articles, use_container_width=True)
+            df = load_table("articles")
+            st.dataframe(df, use_container_width=True)
         elif st.session_state.selected_module == "Immo":
-            df_biens = load_table("biens")
-            st.dataframe(df_biens, use_container_width=True)
+            df = load_table("biens")
+            st.dataframe(df, use_container_width=True)
         elif st.session_state.selected_module == "Auto":
-            df_voitures = load_table("voitures")
-            st.dataframe(df_voitures, use_container_width=True)
+            df = load_table("voitures")
+            st.dataframe(df, use_container_width=True)
         elif st.session_state.selected_module == "Compta":
-            df_compta = load_table("compta")
-            st.dataframe(df_compta, use_container_width=True)
+            df = load_table("compta")
+            st.dataframe(df, use_container_width=True)
         elif st.session_state.selected_module == "Factures":
-            df_factures = load_table("factures_proforma")
-            st.dataframe(df_factures, use_container_width=True)
+            df = load_table("factures_proforma")
+            st.dataframe(df, use_container_width=True)
