@@ -4,15 +4,12 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date, datetime
 
-# === ÉTAT SESSION ===
 if 'logged_in' not in st.session_state: 
     st.session_state.logged_in = False
 if 'selected_module' not in st.session_state: 
     st.session_state.selected_module = None
 
-# === CSS ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;margin-top:-80px!important;}
@@ -36,7 +33,6 @@ def load_table(table_name):
     except:
         return pd.DataFrame()
 
-# === LOGIN ===
 def show_login():
     st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -62,11 +58,9 @@ def show_login():
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC BOUTONS SUR LE GRAND CERCLE ===
 def show_home():
     st.markdown('<div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
 
-    # Cercle central
     st.markdown("""
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -79,37 +73,43 @@ def show_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # 6 boutons sur le GRAND cercle
-    modules = [
-        ("🏪\nCommerce", "Commerce", 0),
-        ("🚚\nAuto", "Auto", 60),
-        ("🧾\nFactures", "Factures", 120),
-        ("🏠\nImmo", "Immo", 180),
-        ("📦\nStock", "Stock", 240),
-        ("📊\nCompta", "Compta", 300)
-    ]
+    # Boutons codés en dur pour éviter toute erreur d'indentation
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(0deg) translate(220px) rotate(0deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("🏪\nCommerce", key="btn_commerce"): st.session_state.selected_module = "Commerce"
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    for label, module_name, angle in modules:
-        st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(220px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
-        if st.button(label, key=f"btn_{module_name}"):
-            st.session_state.selected_module = module_name
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(60deg) translate(220px) rotate(-60deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("🚚\nAuto", key="btn_auto"): st.session_state.selected_module = "Auto"
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(120deg) translate(220px) rotate(-120deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("🧾\nFactures", key="btn_factures"): st.session_state.selected_module = "Factures"
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(180deg) translate(220px) rotate(-180deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("🏠\nImmo", key="btn_immo"): st.session_state.selected_module = "Immo"
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(240deg) translate(220px) rotate(-240deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("📦\nStock", key="btn_stock"): st.session_state.selected_module = "Stock"
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(300deg) translate(220px) rotate(-300deg);z-index:10;">', unsafe_allow_html=True)
+    if st.button("📊\nCompta", key="btn_compta"): st.session_state.selected_module = "Compta"
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Bouton déconnexion
     st.markdown('<div style="position:absolute;top:20px;right:20px;z-index:20;">', unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# === ROUTAGE ===
 if not st.session_state.logged_in:
     show_login()
 else:
     show_home()
-
     if st.session_state.selected_module:
         st.divider()
         col1, col2 = st.columns([6,1])
