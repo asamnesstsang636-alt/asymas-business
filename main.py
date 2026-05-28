@@ -16,6 +16,113 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="📊")
+# === MENU CIRCULAIRE ASYMAS ===
+if 'show_circle_menu' not in st.session_state:
+    st.session_state.show_circle_menu = True
+
+if st.session_state.show_circle_menu:
+    st.markdown("""
+    <style>
+    .circle-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 70vh;
+        background: radial-gradient(circle at center, #FFD700 0%, #1a1a2e 70%);
+        border-radius: 20px;
+        margin: 20px 0;
+    }
+    .circle-menu {
+        position: relative;
+        width: 400px;
+        height: 400px;
+        border: 3px solid #FFD700;
+        border-radius: 50%;
+        animation: rotate 20s linear infinite;
+    }
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .center-btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-weight: bold;
+        font-size: 18px;
+        color: #000;
+        box-shadow: 0 0 30px #FFD700;
+        z-index: 10;
+    }
+    .menu-item {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 11px;
+        font-weight: bold;
+        color: #000;
+        box-shadow: 0 0 15px #FFD700;
+        cursor: pointer;
+        transition: all 0.3s;
+        animation: counter-rotate 20s linear infinite;
+    }
+    @keyframes counter-rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(-360deg); }
+    }
+    .menu-item:hover {
+        transform: scale(1.2);
+        box-shadow: 0 0 25px #FFD700;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="circle-container">', unsafe_allow_html=True)
+    st.markdown('<div class="circle-menu">', unsafe_allow_html=True)
+    
+    # Bouton centre
+    st.markdown('<div class="center-btn">🛒<br>ASYMAS</div>', unsafe_allow_html=True)
+    
+    # Items du menu - positions en cercle
+    items = [
+        {"name": "Commerce", "icon": "🏪", "tab": "Commerce", "pos": "top: 0%; left: 50%; transform: translateX(-50%)"},
+        {"name": "Auto", "icon": "🚗", "tab": "Automobile", "pos": "top: 15%; right: 15%"},
+        {"name": "Factures", "icon": "📄", "tab": "Factures", "pos": "bottom: 15%; right: 15%"},
+        {"name": "Immo", "icon": "🏠", "tab": "Immobilier", "pos": "bottom: 0%; left: 50%; transform: translateX(-50%)"},
+        {"name": "Stock", "icon": "📦", "tab": "Gestion Stock", "pos": "bottom: 15%; left: 15%"},
+        {"name": "Compta", "icon": "📊", "tab": "Comptabilité", "pos": "top: 15%; left: 15%"},
+    ]
+    
+    for item in items:
+        if st.button(f"{item['icon']}\n{item['name']}", key=f"circle_{item['tab']}"):
+            st.session_state.show_circle_menu = False
+            st.session_state.active_tab = item['tab']
+            st.rerun()
+        st.markdown(f'<div class="menu-item" style="{item["pos"]}">{item["icon"]}<br>{item["name"]}</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
+    
+    # Bouton pour revenir au menu
+    if st.button("📋 Voir tous les onglets"):
+        st.session_state.show_circle_menu = False
+        st.rerun()
+    
+    st.stop()  # Empêche l’affichage des tabs tant que le cercle est actif
 
 # === FONCTIONS UTILES ===
 def get_table_columns(table_name):
