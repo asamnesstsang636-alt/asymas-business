@@ -4,7 +4,13 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date
+from datetime import date, datetime, timedelta
+from fpdf import FPDF
+import base64, io, qrcode, tempfile, os, json
+from PIL import Image
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # === ÉTAT SESSION ===
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
@@ -20,7 +26,7 @@ st.markdown("""
 div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
 div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
 div[data-testid="stTextInput"] label{display:none!important;}
-div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 20px #FFD700!important;font-size:24px!important;padding:0!important;}
+div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 20px #FFD700!important;font-size:24px!important;padding:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -36,9 +42,9 @@ def load_table(table_name):
     except:
         return pd.DataFrame()
 
-# === ÉCRAN LOGIN ===
+# === LOGIN ===
 def show_login():
-    st.markdown(f"""
+    st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -51,12 +57,11 @@ def show_login():
             </div>
         </div>
     </div>
-    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
-    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
-    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
+    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # Le champ est ICI sur l'écran login
     pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
     if pwd == "asymas2025":
         st.session_state.logged_in = True
@@ -65,9 +70,9 @@ def show_login():
         st.rerun()
     st.stop()
 
-# === PAGE D'ACCUEIL AVEC CERCLE ===
+# === PAGE D'ACCUEIL AVEC BOUTONS CLIQUABLES ===
 def show_home():
-    st.markdown(f"""
+    st.markdown("""
     <div style="position:relative;width:100vw;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -80,48 +85,46 @@ def show_home():
             </div>
         </div>
     </div>
-    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
-    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
-    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
+    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # Les 6 boutons sur le cercle - visibles SEULEMENT après accès
+    # Boutons cliquables aux positions exactes de ton code
     st.markdown("<div style='position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏪", key="b1"): st.session_state.selected_module = "Commerce"
+    if st.button("🏪\nCommerce", key="b1"): st.session_state.selected_module = "Commerce"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;top:45px;right:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🚚", key="b2"): st.session_state.selected_module = "Auto"
+    if st.button("🚚\nAuto", key="b2"): st.session_state.selected_module = "Auto"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:45px;right:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🧾", key="b3"): st.session_state.selected_module = "Factures"
+    if st.button("🧾\nFactures", key="b3"): st.session_state.selected_module = "Factures"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:0px;left:50%;transform:translateX(-50%);z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏠", key="b4"): st.session_state.selected_module = "Immo"
+    if st.button("🏠\nImmo", key="b4"): st.session_state.selected_module = "Immo"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:45px;left:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📦", key="b5"): st.session_state.selected_module = "Stock"
+    if st.button("📦\nStock", key="b5"): st.session_state.selected_module = "Stock"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;top:45px;left:35px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📊", key="b6"): st.session_state.selected_module = "Compta"
+    if st.button("📊\nCompta", key="b6"): st.session_state.selected_module = "Compta"
     st.markdown("</div>", unsafe_allow_html=True)
     
-    # Bouton déconnexion sur la page d'accueil
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
         st.rerun()
 
-# === ROUTAGE PRINCIPAL ===
+# === ROUTAGE ===
 if not st.session_state.logged_in:
     show_login()
 else:
     show_home()
     
-    # Si un module est sélectionné, on l'ouvre en dessous
     if st.session_state.selected_module:
         st.divider()
         st.markdown(f"### {st.session_state.selected_module} - {st.session_state.user_name}")
@@ -145,5 +148,4 @@ else:
             df = load_table("factures_proforma")
             st.dataframe(df, use_container_width=True)
         
-        # Bouton retour pour revenir à l'accueil
         st.button("← Retour à l'accueil", key="back", on_click=lambda: st.session_state.update(selected_module=None))
