@@ -34,8 +34,16 @@ div[data-testid="stTextInput"] label{display:none!important;}
 """, unsafe_allow_html=True)
 
 # === PAGE D'ACCUEIL : HOLOGRAMME + BOUTONS TOUJOURS VISIBLES ===
+# Mets ça tout en haut de ton script, juste après les imports
+if 'page' not in st.session_state:
+    st.session_state.page = "home"
+
+# Et ensuite tu peux utiliser sans risque :
 if st.session_state.page == "home":
-    st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+    #... ton code accueil
+else:
+    #... tes modules
+    
     
     # Ton hologramme
     st.markdown("""
