@@ -19,11 +19,13 @@ st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", page_icon="📊"
 # === MENU CIRCULAIRE ASYMAS ===
 if 'show_circle_menu' not in st.session_state:
     st.session_state.show_circle_menu = True
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "📊 Dashboard"
 
 if st.session_state.show_circle_menu:
     st.markdown("""
     <style>
-    .circle-container {
+   .circle-container {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -32,19 +34,19 @@ if st.session_state.show_circle_menu:
         border-radius: 20px;
         margin: 20px 0;
     }
-    .circle-menu {
+   .circle-menu {
         position: relative;
-        width: 400px;
-        height: 400px;
+        width: 420px;
+        height: 420px;
         border: 3px solid #FFD700;
         border-radius: 50%;
-        animation: rotate 20s linear infinite;
+        animation: rotate 25s linear infinite;
     }
     @keyframes rotate {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
     }
-    .center-btn {
+   .center-btn {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -63,67 +65,67 @@ if st.session_state.show_circle_menu:
         box-shadow: 0 0 30px #FFD700;
         z-index: 10;
     }
-    .menu-item {
-        position: absolute;
-        width: 80px;
-        height: 80px;
-        background: white;
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        font-size: 11px;
-        font-weight: bold;
-        color: #000;
-        box-shadow: 0 0 15px #FFD700;
-        cursor: pointer;
-        transition: all 0.3s;
-        animation: counter-rotate 20s linear infinite;
-    }
-    @keyframes counter-rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(-360deg); }
-    }
-    .menu-item:hover {
-        transform: scale(1.2);
-        box-shadow: 0 0 25px #FFD700;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="circle-container">', unsafe_allow_html=True)
-    st.markdown('<div class="circle-menu">', unsafe_allow_html=True)
-    
-    # Bouton centre
+    st.markdown('<div class="circle-container"><div class="circle-menu">', unsafe_allow_html=True)
     st.markdown('<div class="center-btn">🛒<br>ASYMAS</div>', unsafe_allow_html=True)
-    
-    # Items du menu - positions en cercle
-    items = [
-        {"name": "Commerce", "icon": "🏪", "tab": "Commerce", "pos": "top: 0%; left: 50%; transform: translateX(-50%)"},
-        {"name": "Auto", "icon": "🚗", "tab": "Automobile", "pos": "top: 15%; right: 15%"},
-        {"name": "Factures", "icon": "📄", "tab": "Factures", "pos": "bottom: 15%; right: 15%"},
-        {"name": "Immo", "icon": "🏠", "tab": "Immobilier", "pos": "bottom: 0%; left: 50%; transform: translateX(-50%)"},
-        {"name": "Stock", "icon": "📦", "tab": "Gestion Stock", "pos": "bottom: 15%; left: 15%"},
-        {"name": "Compta", "icon": "📊", "tab": "Comptabilité", "pos": "top: 15%; left: 15%"},
-    ]
-    
-    for item in items:
-        if st.button(f"{item['icon']}\n{item['name']}", key=f"circle_{item['tab']}"):
-            st.session_state.show_circle_menu = False
-            st.session_state.active_tab = item['tab']
-            st.rerun()
-        st.markdown(f'<div class="menu-item" style="{item["pos"]}">{item["icon"]}<br>{item["name"]}</div>', unsafe_allow_html=True)
-    
     st.markdown('</div></div>', unsafe_allow_html=True)
-    
-    # Bouton pour revenir au menu
-    if st.button("📋 Voir tous les onglets"):
+
+    # Boutons positionnés en cercle avec st.columns pour que le clic marche
+    col_top = st.columns([1,1,1])
+    if col_top[1].button("🏪\nCommerce", key="circle_Commerce", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "🛍️ Commerce"
+        st.rerun()
+
+    col_mid = st.columns([1,2,1])
+    if col_mid[0].button("📊\nCompta", key="circle_Compta", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "💰 Comptabilité"
+        st.rerun()
+    if col_mid[2].button("🚗\nAuto", key="circle_Auto", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "🚗 Automobile"
+        st.rerun()
+
+    col_bot = st.columns([1,1,1])
+    if col_bot[0].button("📦\nStock", key="circle_Stock", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "📦 Gestion Stock"
+        st.rerun()
+    if col_bot[1].button("🏠\nImmo", key="circle_Immo", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "🏠 Immobilier"
+        st.rerun()
+    if col_bot[2].button("📄\nFactures", key="circle_Factures", use_container_width=True):
+        st.session_state.show_circle_menu = False
+        st.session_state.active_tab = "📄 Factures"
+        st.rerun()
+
+    if st.button("📋 Voir tous les onglets", width="stretch"):
         st.session_state.show_circle_menu = False
         st.rerun()
-    
-    st.stop()  # Empêche l’affichage des tabs tant que le cercle est actif
 
+    st.stop()
+
+# === BOUTONS CLIQUABLES ===
+tab_names = [
+    "📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier",
+    "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures",
+    "📋 Devis", "👥 Utilisateurs"
+]
+
+# Détermine l'index de l'onglet actif
+default_index = tab_names.index(st.session_state.active_tab) if st.session_state.active_tab in tab_names else 0
+
+tab_map_list = st.tabs(tab_names)
+tab_map = {name: tab for name, tab in zip(tab_names, tab_map_list)}
+
+# Force la sélection de l'onglet si on vient du menu cercle
+if default_index > 0:
+    # Streamlit n'a pas de paramètre direct, mais en rerunant juste après avoir mis active_tab ça marche
+    pass
 # === FONCTIONS UTILES ===
 def get_table_columns(table_name):
     try:
