@@ -87,7 +87,6 @@ df_compta = load_table("compta")
 
 module = st.query_params.get("module", None)
 
-# Afficher hologramme + 6 boutons cliquables
 afficher_hologramme(avec_boutons=True)
 
 st.divider()
