@@ -4,10 +4,6 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date, datetime, timedelta
-from fpdf import FPDF
-import base64, io, qrcode, tempfile, os, json
-from PIL import Image
 
 # === ÉTAT SESSION ===
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
@@ -63,24 +59,25 @@ def show_login():
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC BOUTONS SUR LE CERCLE ===
+# === ACCUEIL AVEC CERCLE CENTRÉ ===
 def show_home():
+    # Container relatif pour centrer tout
+    st.markdown('<div style="position:relative;width:100%;height:650px;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
+    
+    # Le cercle
     st.markdown("""
-    <div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-        <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-                <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
-            </div>
+    <div style="position:absolute;width:450px;height:450px;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+            <div style="font-size:50px;">🛒</div>
+            <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Boutons cliquables sur le grand cercle
+    # Boutons cliquables positionnés sur le cercle
     modules = [
         ("🏪\nCommerce", "Commerce", 0),
         ("🚚\nAuto", "Auto", 60),
@@ -91,12 +88,14 @@ def show_home():
     ]
 
     for label, module_name, angle in modules:
-        st.markdown(f"<div style='position:absolute;top:calc(50% + 325px);left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
         if st.button(label, key=f"b_{module_name}"): 
             st.session_state.selected_module = module_name
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Bouton déconnexion sur la page d'accueil
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Bouton déconnexion en haut à droite
     st.markdown("<div style='position:absolute;top:20px;right:20px;z-index:20;'>", unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
@@ -117,7 +116,6 @@ else:
         with col2:
             st.button("← Retour", key="back", on_click=lambda: st.session_state.update(selected_module=None))
         
-        # Un seul module ouvert à la fois
         if st.session_state.selected_module == "Commerce":
             df = load_table("articles")
             st.dataframe(df, use_container_width=True)
