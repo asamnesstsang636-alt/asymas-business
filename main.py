@@ -67,7 +67,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === PAGE ACCUEIL AVEC CERCLE + 6 BOUTONS ===
+# === PAGE ACCUEIL AVEC CERCLE + 6 BOUTONS CLIQUABLES ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -92,20 +92,16 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
     
-    components.html(html_buttons, height=700)
-    result = components.html("", height=0)
-    
-    if st.session_state.get('selected_module') is None:
-        query_params = st.query_params
-        if 'module' in query_params:
-            st.session_state.selected_module = query_params['module']
-            st.rerun()
+    result = components.html(html_buttons, height=700)
+    if result:
+        st.session_state.selected_module = result
+        st.rerun()
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
 
-# === PAGE MODULE SELECTIONNE ===
+# === PAGE MODULE SELECTIONNE - SEUL CE MODULE EST VISIBLE ===
 elif st.session_state.selected_module:
     st.divider()
     col1, col2, col3 = st.columns([5,1,1])
