@@ -12,14 +12,12 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === CSS CORRIGÉ : PLUS DE BARRE NOIRE ===
+# === CSS NETTOYÉ : PLUS DE DOUBLON ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-/* SUPPRIMÉ LE POSITION ABSOLUTE QUI CASSAIT TOUT */
-div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
-div[data-testid="stTextInput"] label{display:none!important;}
+/* SUPPRIMÉ LE POSITION ABSOLUTE QUI CRÉAIT LE DOUBLON */
 </style>
 """, unsafe_allow_html=True)
 
@@ -50,11 +48,11 @@ st.markdown("""
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
-# === BOÎTE LOGIN CENTRÉE, PAS PAR-DESSUS LE LOGO ===
-col1,col2,col3 = st.columns([1,1.5,1])
+# === CHAMP CONNEXION VISIBLE, PAS DE DOUBLON ===
+col1,col2,col3 = st.columns([1,1.2,1])
 with col2:
-    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:30px;border:3px solid #FFD700;border-radius:20px;margin-top:65vh;z-index:100;position:relative;'>", unsafe_allow_html=True)
-    pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
+    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:25px;border:3px solid #FFD700;border-radius:15px;margin-top:70vh;z-index:100;position:relative;'>", unsafe_allow_html=True)
+    pwd = st.text_input("Mot de passe", type="password", placeholder="Tape ton mot de passe ASYMAS")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if pwd!= "asymas2025":
@@ -68,7 +66,7 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === TOUTES TES FONCTIONS DE L'ANCIEN CODE ===
+# === TES FONCTIONS ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -193,6 +191,7 @@ elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+
 # === DASHBOARD ===
 with tab_map["📊 Dashboard"]:
     st.markdown("## 📊 Dashboard ASYMAS")
@@ -381,37 +380,10 @@ with tab_map["📋 Devis"]:
     st.dataframe(df_devis, use_container_width=True)
 
 # === UTILISATEURS ===
-# === UTILISATEURS ===
 with tab_map["👥 Utilisateurs"]:
     st.markdown("## 👥 Gestion Utilisateurs")
     st.dataframe(df_utilisateurs, use_container_width=True)
-    
+
     with st.expander("➕ Ajouter Utilisateur"):
         with st.form("form_user"):
             nom = st.text_input("Nom")
-            role = st.selectbox("Rôle", ["Agent", "Manager", "PDG"])
-            pwd = st.text_input("Mot de passe", type="password")
-            perms_json = st.text_area("Permissions JSON", value='{"stock": true, "commerce": true, "immobilier": false}')
-            if st.form_submit_button("Ajouter"):
-                try:
-                    supabase.table("utilisateurs").insert({
-                        "nom": nom, 
-                        "role": role, 
-                        "password": pwd, 
-                        "permissions": perms_json
-                    }).execute()
-                    st.success("Utilisateur ajouté")
-                    st.cache_data.clear()
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur: {e}")
-
-# === FLOKI SIDEBAR ===
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG")
-    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
-    if st.button("Exécuter", type="primary", use_container_width=True):
-        if q:
-            st.info(f"FLOKI: {q}")
