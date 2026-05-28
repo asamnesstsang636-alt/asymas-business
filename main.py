@@ -12,17 +12,15 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
+# === CSS NETTOYÉ ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
-div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
-div[data-testid="stTextInput"] label{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
+# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
 st.markdown("""
 <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
     <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
@@ -49,8 +47,14 @@ st.markdown("""
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
-pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
-if pwd!= "asymas2025":
+# === CHAMP EN DESSOUS DU RECTANGLE ===
+col1,col2,col3 = st.columns([1,1.3,1])
+with col2:
+    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:25px;border:3px solid #FFD700;border-radius:15px;margin-top:5vh;box-shadow:0 0 30px #FFD700;'>", unsafe_allow_html=True)
+    pwd = st.text_input("Mot de passe ASYMAS", type="password", placeholder="Tape asymas2025")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+if not pwd or pwd!= "asymas2025":
     st.stop()
 
 st.success("Accès autorisé ✅")
@@ -186,6 +190,7 @@ elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+
 # === DASHBOARD ===
 with tab_map["📊 Dashboard"]:
     st.markdown("## 📊 Dashboard ASYMAS")
@@ -239,7 +244,7 @@ with tab_map["🛍️ Commerce"]:
                 st.error(f"❌ QR {qr_code} : Produit introuvable")
         elif recherche_manuelle:
             mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-            df_articles_filtre = df_articles_filtre[mask]
+            df_articles_filtre = df_articles_filtre
 
         if df_articles_filtre.empty:
             st.warning("⚠️ Aucun produit disponible")
