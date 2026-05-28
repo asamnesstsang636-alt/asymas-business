@@ -92,7 +92,7 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
     
-    result = components.html(html_buttons, height=700, key="circle_menu")
+    result = components.html(html_buttons, height=700)
     if result:
         st.session_state.selected_module = result
         st.rerun()
