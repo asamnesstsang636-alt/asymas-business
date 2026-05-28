@@ -25,11 +25,12 @@ def load_table(table_name):
 
 df_utilisateurs = load_table("utilisateurs")
 
-# === CSS GLOBAL ===
+# === CSS SANS BARRE NOIRE ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
+/* J’AI SUPPRIMÉ LE CSS QUI CASSAIT LE LOGIN */
 </style>
 """, unsafe_allow_html=True)
 
