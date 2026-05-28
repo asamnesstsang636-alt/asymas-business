@@ -20,20 +20,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# === HOLOGRAMME LOGIN AVEC 6 MODULES + LOGIN AU-DESSUS DU RECTANGLE ===
-st.markdown("""
-<style>
-.block-container{padding:0!important;max-width:100%!important;}
-.main{background:#0a0a0a;margin:0;padding:0;}
-</style>
-""", unsafe_allow_html=True)
-
+# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
 st.markdown("""
 <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-    <!-- Rectangle du bas -->
     <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-    
-    <!-- Cercle + 6 boutons -->
     <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
@@ -61,11 +51,12 @@ st.markdown("""
 col1,col2,col3 = st.columns([1,1.2,1])
 with col2:
     st.markdown("<div style='background:rgba(0,0,0,0.95);padding:20px;border:3px solid #FFD700;border-radius:15px;margin-top:-12vh;box-shadow:0 0 30px #FFD700;position:relative;z-index:100;'>", unsafe_allow_html=True)
-    pwd = st.text_input("Accès ASYMAS", type="password")  # Plus de placeholder qui montre le mdp
+    pwd = st.text_input("Accès ASYMAS", type="password")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if not pwd or pwd!= "asymas2025":
     st.stop()
+
 st.success("Accès autorisé ✅")
 st.session_state.user_role = "PDG"
 st.session_state.user_name = "PDG"
@@ -253,7 +244,7 @@ with tab_map["🛍️ Commerce"]:
                 st.error(f"❌ QR {qr_code} : Produit introuvable")
         elif recherche_manuelle:
             mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-            df_articles_filtre = df_articles_filtre
+            df_articles_filtre = df_articles_filtre[mask]
 
         if df_articles_filtre.empty:
             st.warning("⚠️ Aucun produit disponible")
