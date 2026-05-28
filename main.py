@@ -34,7 +34,6 @@ def afficher_hologramme(avec_boutons=False):
     
     st.markdown("""
     <div class="holo-container">
-        <div style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
@@ -59,7 +58,7 @@ if not st.session_state.logged_in:
     
     col1,col2,col3 = st.columns([1,1.5,1])
     with col2:
-        st.markdown("<div style='margin-top:-25vh;background:rgba(0,0,0,0.95);padding:20px;border:3px solid #FFD700;border-radius:15px;box-shadow:0 0 30px #FFD700;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:-10vh;background:rgba(0,0,0,0.95);padding:20px;border:3px solid #FFD700;border-radius:15px;box-shadow:0 0 30px #FFD700;'>", unsafe_allow_html=True)
         pwd = st.text_input("Accès ASYMAS", type="password", label_visibility="collapsed")
         st.markdown("</div>", unsafe_allow_html=True)
     
@@ -87,15 +86,12 @@ df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
 
-# Lire le module depuis l'URL
 module = st.query_params.get("module", None)
 
-# Afficher hologramme + 6 boutons cliquables dessus
 afficher_hologramme(avec_boutons=True)
 
 st.divider()
 
-# Un seul module s'affiche selon le clic
 if module == "Commerce":
     st.markdown("## 🛍️ Commerce - Point de Vente")
     st.dataframe(df_articles, use_container_width=True)
@@ -115,7 +111,6 @@ elif module == "Compta":
     st.markdown("## 💰 Comptabilité")
     st.dataframe(df_compta, use_container_width=True)
 
-# Sidebar
 with st.sidebar:
     st.markdown("## 👤 PDG")
     if st.button("🚪 Déconnexion", width="stretch"):
