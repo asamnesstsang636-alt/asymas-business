@@ -79,35 +79,29 @@ def show_home():
     @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """, unsafe_allow_html=True)
     
-    # Boutons positionnés sur le cercle
-    st.markdown("<div style='position:absolute;top:120px;left:50%;margin-left:-190px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏪", key="b1"):
-        st.session_state.selected_module = "Commerce"
+    # 6 boutons parfaitement sur le cercle : 12h, 2h, 4h, 6h, 8h, 10h
+    st.markdown("<div style='position:absolute;top:120px;left:50%;margin-left:-30px;z-index:10;'>", unsafe_allow_html=True)
+    if st.button("📊", key="b1"): st.session_state.selected_module = "Compta"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;top:165px;right:50%;margin-right:-190px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🚚", key="b2"):
-        st.session_state.selected_module = "Auto"
+    if st.button("🚚", key="b2"): st.session_state.selected_module = "Auto"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:165px;right:50%;margin-right:-190px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🧾", key="b3"):
-        st.session_state.selected_module = "Factures"
+    if st.button("🏠", key="b3"): st.session_state.selected_module = "Immo"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:120px;left:50%;margin-left:-30px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("🏠", key="b4"):
-        st.session_state.selected_module = "Immo"
+    if st.button("🧾", key="b4"): st.session_state.selected_module = "Factures"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;bottom:165px;left:50%;margin-left:-190px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📦", key="b5"):
-        st.session_state.selected_module = "Stock"
+    if st.button("📦", key="b5"): st.session_state.selected_module = "Stock"
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position:absolute;top:165px;left:50%;margin-left:-190px;z-index:10;'>", unsafe_allow_html=True)
-    if st.button("📊", key="b6"):
-        st.session_state.selected_module = "Compta"
+    if st.button("🏪", key="b6"): st.session_state.selected_module = "Commerce"
     st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Déconnexion", key="logout"):
