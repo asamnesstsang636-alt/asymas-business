@@ -391,5 +391,5 @@ with st.sidebar:
     st.caption("Conseiller du PDG")
     q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
     if st.button("Exécuter", type="primary", use_container_width=True):
-    if q:
-        st.info(f"FLOKI: {q}")
+       if q:
+          st.info(f"FLOKI: {q}")
