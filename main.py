@@ -7,8 +7,10 @@ from supabase import create_client, Client
 from datetime import date, datetime
 
 # === ÉTAT SESSION ===
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'selected_module' not in st.session_state: st.session_state.selected_module = None
+if 'logged_in' not in st.session_state: 
+    st.session_state.logged_in = False
+if 'selected_module' not in st.session_state: 
+    st.session_state.selected_module = None
 
 # === CSS ===
 st.markdown("""
@@ -60,7 +62,7 @@ def show_login():
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC BOUTONS EN CERCLE ===
+# === ACCUEIL AVEC BOUTONS SUR LE GRAND CERCLE ===
 def show_home():
     st.markdown('<div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
 
@@ -77,23 +79,25 @@ def show_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # 6 boutons sur le GRAND cercle, pas le petit
-   modules = [
-    ("🏪\nCommerce", "Commerce", 0),
-    ("🚚\nAuto", "Auto", 60),
-    ("🧾\nFactures", "Factures", 120),
-    ("🏠\nImmo", "Immo", 180),
-    ("📦\nStock", "Stock", 240),
-    ("📊\nCompta", "Compta", 300)
-]
+    # 6 boutons sur le GRAND cercle
+    modules = [
+        ("🏪\nCommerce", "Commerce", 0),
+        ("🚚\nAuto", "Auto", 60),
+        ("🧾\nFactures", "Factures", 120),
+        ("🏠\nImmo", "Immo", 180),
+        ("📦\nStock", "Stock", 240),
+        ("📊\nCompta", "Compta", 300)
+    ]
 
-for label, module_name, angle in modules:
-    # 220px au lieu de 190px pour coller au grand cercle de 380px
-    st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(220px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
-    if st.button(label, key=f"btn_{module_name}"):
-        st.session_state.selected_module = module_name
+    for label, module_name, angle in modules:
+        st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(220px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
+        if st.button(label, key=f"btn_{module_name}"):
+            st.session_state.selected_module = module_name
+        st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
-    # Déconnexion
+
+    # Bouton déconnexion
     st.markdown('<div style="position:absolute;top:20px;right:20px;z-index:20;">', unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
