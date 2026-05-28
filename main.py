@@ -61,7 +61,7 @@ def show_login():
 
 def show_home():
     st.markdown(f"""
-    <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+    <div style="position:relative;width:100vw;height:600px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -84,42 +84,36 @@ def show_home():
         st.markdown("<div style='position:absolute;top:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True)
         if st.button("🏪", key="btn_com"):
             st.session_state.selected_module = "Commerce"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
         st.markdown("<div style='position:absolute;top:45px;right:35px;width:60px;'>", unsafe_allow_html=True)
         if st.button("🚚", key="btn_auto"):
             st.session_state.selected_module = "Auto"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col3:
         st.markdown("<div style='position:absolute;bottom:45px;right:35px;width:60px;'>", unsafe_allow_html=True)
         if st.button("🧾", key="btn_fact"):
             st.session_state.selected_module = "Factures"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col4:
         st.markdown("<div style='position:absolute;bottom:0px;left:50%;transform:translateX(-50%);width:60px;'>", unsafe_allow_html=True)
         if st.button("🏠", key="btn_immo"):
             st.session_state.selected_module = "Immo"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col5:
         st.markdown("<div style='position:absolute;bottom:45px;left:35px;width:60px;'>", unsafe_allow_html=True)
         if st.button("📦", key="btn_stock"):
             st.session_state.selected_module = "Stock"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col6:
         st.markdown("<div style='position:absolute;top:45px;left:35px;width:60px;'>", unsafe_allow_html=True)
         if st.button("📊", key="btn_compta"):
             st.session_state.selected_module = "Compta"
-            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Déconnexion", key="logout"):
@@ -129,13 +123,12 @@ def show_home():
 if not st.session_state.logged_in:
     show_login()
 else:
-    if st.session_state.selected_module is None:
-        show_home()
-    else:
+    show_home()
+    
+    if st.session_state.selected_module:
+        st.divider()
         st.markdown(f"## {st.session_state.selected_module} - {st.session_state.user_name}")
-        if st.button("← Retour", key="back"):
-            st.session_state.selected_module = None
-            st.rerun()
+        
         if st.session_state.selected_module == "Commerce":
             df = load_table("articles")
             st.dataframe(df, use_container_width=True)
@@ -154,3 +147,7 @@ else:
         elif st.session_state.selected_module == "Factures":
             df = load_table("factures_proforma")
             st.dataframe(df, use_container_width=True)
+        
+        if st.button("Fermer", key="close"):
+            st.session_state.selected_module = None
+            st.rerun()
