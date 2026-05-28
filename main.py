@@ -25,17 +25,17 @@ def load_table(table_name):
 
 df_utilisateurs = load_table("utilisateurs")
 
-# === CSS SANS BARRE NOIRE ===
+# === CSS NETTOYÉ : AUCUN POSITION ABSOLUE SUR LES INPUTS ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-/* J’AI SUPPRIMÉ LE CSS QUI CASSAIT LE LOGIN */
 </style>
 """, unsafe_allow_html=True)
 
-# === PAGE DE CONNEXION VISIBLE ===
+# === PAGE DE CONNEXION SÉPARÉE ===
 if not st.session_state.user_role:
+    # Hologramme en fond
     st.markdown("""
     <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);z-index:1;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -50,10 +50,11 @@ if not st.session_state.user_role:
     </style>
     """, unsafe_allow_html=True)
 
+    # Boîte login centrée avec z-index supérieur
     col1, col2, col3 = st.columns([1,1.5,1])
     with col2:
-        st.markdown("<div style='background:rgba(0,0,0,0.9);padding:30px;border:2px solid #FFD700;border-radius:20px;margin-top:30vh;z-index:10;position:relative;'>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align:center;color:#FFD700;margin-bottom:20px'>ASYMAS BUSINESS</h2>", unsafe_allow_html=True)
+        st.markdown("<div style='background:rgba(20,20,20,0.95);padding:40px;border:3px solid #FFD700;border-radius:20px;margin-top:28vh;z-index:100;position:relative;box-shadow:0 0 40px #FFD700;'>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center;color:#FFD700;margin-bottom:25px'>ASYMAS BUSINESS</h2>", unsafe_allow_html=True)
         pwd = st.text_input("Mot de passe", type="password", placeholder="Entre ton mot de passe")
         if st.button("Se connecter", use_container_width=True, type="primary"):
             if pwd == "asymas2025":
@@ -75,7 +76,7 @@ if not st.session_state.user_role:
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# === CHARGEMENT DONNEES APRES LOGIN ===
+# === APP APRÈS LOGIN ===
 df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
@@ -85,14 +86,13 @@ df_factures = load_table("factures_proforma")
 if 'montant' not in df_compta.columns: df_compta['montant'] = 0
 if 'type' not in df_compta.columns: df_compta['type'] = 'Inconnu'
 
-# === SIDEBAR ===
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
     st.markdown(f"**Rôle : {st.session_state.user_role}**")
     if st.button("🚪 Déconnexion", use_container_width=True):
         st.session_state.clear(); st.rerun()
 
-# === PAGE ACCUEIL : HOLOGRAMME + 6 BOUTONS SUR LE CERCLE ===
+# === PAGE ACCUEIL HOLOGRAMME ===
 if st.session_state.page == "home":
     st.markdown(f"<h1 style='text-align:center;color:#FFD700'>ASYMAS BUSINESS - {st.session_state.user_name}</h1>", unsafe_allow_html=True)
 
@@ -153,7 +153,7 @@ if st.session_state.page == "home":
         </style>
         """, unsafe_allow_html=True)
 
-# === PAGES MODULES : UNE SEULE OUVERTE A LA FOIS ===
+# === MODULES ===
 else:
     if st.button("← Retour Accueil", type="primary"):
         st.session_state.page = "home"
