@@ -9,8 +9,6 @@ from datetime import date, datetime
 # === SESSION ===
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'module_actif' not in st.session_state:
-    st.session_state.module_actif = None
 
 st.markdown("""
 <style>
@@ -26,7 +24,6 @@ background:#fff;color:#000;font-size:24px;font-weight:bold;cursor:pointer;box-sh
 """, unsafe_allow_html=True)
 
 def afficher_hologramme(avec_boutons=False):
-    btn_html = ""
     if avec_boutons:
         btn_html = """
         <button class="holo-btn" style="top:0%;left:50%;" onclick="window.location.href='?module=Commerce'">🏪</button>
@@ -36,8 +33,10 @@ def afficher_hologramme(avec_boutons=False):
         <button class="holo-btn" style="top:78%;left:18%;" onclick="window.location.href='?module=Stock'">📦</button>
         <button class="holo-btn" style="top:22%;left:18%;" onclick="window.location.href='?module=Compta'">📊</button>
         """
+    else:
+        btn_html = ""
     
-    st.markdown("""
+    st.markdown(f"""
     <div style="position:relative;width:100vw;height:85vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -48,12 +47,12 @@ def afficher_hologramme(avec_boutons=False):
                 <div style="font-size:50px;">🛒</div>
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
-            """ + btn_html + """
+            {btn_html}
         </div>
     </div>
-    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
+    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
+    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """, unsafe_allow_html=True)
 
 # === ÉCRAN LOGIN ===
@@ -69,7 +68,7 @@ if not st.session_state.logged_in:
         st.error("Mot de passe incorrect")
     st.stop()
 
-# === PAGE D'ACCUEIL APRÈS LOGIN ===
+# === APRÈS LOGIN ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -88,16 +87,11 @@ df_compta = load_table("compta")
 
 module = st.query_params.get("module", None)
 
-# J'AI SUPPRIMÉ LES 2 LIGNES DE TITRE ICI
-# st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")  <-- SUPPRIMÉ
-# st.markdown("### Agriculture • Commerce...")  <-- SUPPRIMÉ
-
 # Afficher hologramme + 6 boutons cliquables
 afficher_hologramme(avec_boutons=True)
 
 st.divider()
 
-# === UN SEUL MODULE S'AFFICHE SELON LE CLIC ===
 if module == "Commerce":
     st.markdown("## 🛍️ Commerce - Point de Vente")
     st.dataframe(df_articles, use_container_width=True)
@@ -117,10 +111,8 @@ elif module == "Compta":
     st.markdown("## 💰 Comptabilité")
     st.dataframe(df_compta, use_container_width=True)
 
-# Sidebar
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
     if st.button("🚪 Déconnexion", use_container_width=True):
         st.session_state.clear()
         st.rerun()
