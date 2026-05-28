@@ -5,6 +5,10 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
+from datetime import date, datetime
+from fpdf import FPDF
+import tempfile, os, json, qrcode
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # === SESSION STATE ===
 if 'logged_in' not in st.session_state:
@@ -35,7 +39,7 @@ def load_table(table_name):
     except:
         return pd.DataFrame()
 
-# === PAGE LOGIN ===
+# === LOGIN ===
 if not st.session_state.logged_in:
     st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -63,7 +67,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === PAGE ACCUEIL : SEUL LE CERCLE S'AFFICHE ===
+# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES - SEUL LE CERCLE S'AFFICHE ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -87,7 +91,7 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
-    
+
     clicked = components.html(html_buttons, height=700)
     if clicked:
         st.session_state.selected_module = clicked
@@ -97,20 +101,16 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
         st.session_state.clear()
         st.rerun()
 
-# === PAGE MODULE : SEUL CE MODULE EST VISIBLE ===
+# === AFFICHAGE MODULE UNIQUE ===
 elif st.session_state.selected_module:
     st.divider()
-    col1, col2, col3 = st.columns([5,1,1])
+    col1, col2 = st.columns([6,1])
     with col1:
         st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
         st.markdown(f"### {st.session_state.selected_module}")
     with col2:
-        if st.button("← Retour Accueil"):
+        if st.button("← Retour"):
             st.session_state.selected_module = None
-            st.rerun()
-    with col3:
-        if st.button("🚪 Déconnexion"):
-            st.session_state.clear()
             st.rerun()
 
     table_map = {
