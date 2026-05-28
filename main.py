@@ -12,17 +12,19 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 
-# === CSS NETTOYÉ ===
+# === HOLOGRAMME LOGIN AVEC 6 MODULES ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
+div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
+div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
+div[data-testid="stTextInput"] label{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-# === HOLOGRAMME EN FOND FIXE ===
 st.markdown("""
-<div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);z-index:1;">
+<div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
     <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
     <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -47,15 +49,8 @@ st.markdown("""
 @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
 """, unsafe_allow_html=True)
 
-# === CHAMP CONNEXION PROPRE ===
-col1,col2,col3 = st.columns([1,1.3,1])
-with col2:
-    st.markdown("<div style='background:rgba(0,0,0,0.95);padding:30px;border:3px solid #FFD700;border-radius:20px;margin-top:70vh;z-index:100;position:relative;box-shadow:0 0 40px #FFD700;'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;color:#FFD700;margin-bottom:15px'>Connexion ASYMAS</h3>", unsafe_allow_html=True)
-    pwd = st.text_input("Mot de passe", type="password", placeholder="Tape asymas2025")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-if not pwd or pwd!= "asymas2025":
+pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
+if pwd!= "asymas2025":
     st.stop()
 
 st.success("Accès autorisé ✅")
@@ -66,7 +61,7 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === TES FONCTIONS ===
+# === TOUTES TES FONCTIONS DE L'ANCIEN CODE ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -191,7 +186,6 @@ elif theme=="Noir Luxe": st.markdown("""<style>.stApp{background:#000;color:#FFF
 tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
 tabs = st.tabs(tabs_dispo)
 tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
-
 # === DASHBOARD ===
 with tab_map["📊 Dashboard"]:
     st.markdown("## 📊 Dashboard ASYMAS")
@@ -391,5 +385,5 @@ with st.sidebar:
     st.caption("Conseiller du PDG")
     q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: CA du mois")
     if st.button("Exécuter", type="primary", use_container_width=True):
-       if q:
-          st.info(f"FLOKI: {q}")
+        if q:
+            st.info(f"FLOKI: {q}")
