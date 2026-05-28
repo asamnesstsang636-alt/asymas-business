@@ -20,10 +20,10 @@ background:#fff;color:#000;font-size:24px;font-weight:bold;cursor:pointer;box-sh
 </style>
 """, unsafe_allow_html=True)
 
-def afficher_hologramme(avec_boutons=False, module=""):
+def afficher_hologramme(avec_boutons=False):
     btn_html = ""
     if avec_boutons:
-        btn_html = f"""
+        btn_html = """
         <button class="holo-btn" style="top:0%;left:50%;" onclick="window.location.href='?module=Commerce'">🏪</button>
         <button class="holo-btn" style="top:22%;left:82%;" onclick="window.location.href='?module=Auto'">🚚</button>
         <button class="holo-btn" style="top:78%;left:82%;" onclick="window.location.href='?module=Factures'">🧾</button>
@@ -32,7 +32,7 @@ def afficher_hologramme(avec_boutons=False, module=""):
         <button class="holo-btn" style="top:22%;left:18%;" onclick="window.location.href='?module=Compta'">📊</button>
         """
     
-    st.markdown(f"""
+    st.markdown("""
     <div class="holo-container">
         <div style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
         <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -43,12 +43,14 @@ def afficher_hologramme(avec_boutons=False, module=""):
                 <div style="font-size:50px;">🛒</div>
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
-            {btn_html}
+            """ + btn_html + """
         </div>
     </div>
-    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
-    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
-    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
+    <style>
+    @keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+    </style>
     """, unsafe_allow_html=True)
 
 # === LOGIN ===
@@ -84,9 +86,6 @@ df_biens = load_table("biens")
 df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
-
-st.markdown("# ASYMAS BUSINESS - PDG")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
 
 # Lire le module depuis l'URL
 module = st.query_params.get("module", None)
