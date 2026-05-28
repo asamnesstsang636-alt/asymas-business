@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="ASYMAS BUSINESS", layout="wide", initial_sidebar_state="collapsed")
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'selected_module' not in st.session_state: st.session_state.selected_module = None
@@ -17,17 +17,12 @@ div[data-testid="stButton"] button{width:60px!important;height:60px!important;bo
 """, unsafe_allow_html=True)
 
 from supabase import create_client, Client
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 @st.cache_data(ttl=60)
-def load_table(table_name):
-    try:
-        data = supabase.table(table_name).select("*").order("id", desc=True).execute()
-        return pd.DataFrame(data.data)
-    except:
-        return pd.DataFrame()
+def load_table(name):
+    try: return pd.DataFrame(supabase.table(name).select("*").order("id", desc=True).execute().data)
+    except: return pd.DataFrame()
 
 def show_login():
     st.markdown("""
@@ -38,8 +33,7 @@ def show_login():
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-                <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+                <div style="font-size:50px;">🛒</div><div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
     </div>
@@ -62,8 +56,7 @@ def show_home():
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-                <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+                <div style="font-size:50px;">🛒</div><div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
     </div>
@@ -72,21 +65,11 @@ def show_home():
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # Boutons exactement sur tes repères verts - calcul depuis centre top:45% left:50%
-    # Rayon 190px pour coller au cercle doré
-    modules = [
-        ("📊", "Compta", 0),      # Haut - ton repère en haut
-        ("🚚", "Auto", 60),       # Haut-droite - ton repère 2h
-        ("🏠", "Immo", 120),      # Bas-droite - ton repère 4h avec flèche verte
-        ("🧾", "Factures", 180),  # Bas - ton repère 6h sur le rectangle bleu
-        ("📦", "Stock", 240),     # Bas-gauche - ton repère 8h
-        ("🏪", "Commerce", 300),  # Haut-gauche - ton repère 10h
-    ]
-    
-    for emoji, name, angle in modules:
+    # 6 boutons pile sur le cercle - RAYON = 190px
+    for emoji, name, angle in [("📊","Compta",0), ("🚚","Auto",60), ("🏠","Immo",120), 
+                               ("🧾","Factures",180), ("📦","Stock",240), ("🏪","Commerce",300)]:
         st.markdown(f"<div style='position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
-        if st.button(emoji, key=name):
-            st.session_state.selected_module = name
+        if st.button(emoji, key=name): st.session_state.selected_module = name
         st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Déconnexion", key="logout"):
@@ -97,11 +80,9 @@ if not st.session_state.logged_in:
     show_login()
 else:
     show_home()
-    
     if st.session_state.selected_module:
         st.divider()
         st.markdown(f"### {st.session_state.selected_module}")
         tables = {"Commerce":"articles","Stock":"articles","Immo":"biens","Auto":"voitures","Compta":"compta","Factures":"factures_proforma"}
-        df = load_table(tables[st.session_state.selected_module])
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(load_table(tables[st.session_state.selected_module]), use_container_width=True)
         st.button("← Retour à l'accueil", on_click=lambda: st.session_state.update(selected_module=None))
