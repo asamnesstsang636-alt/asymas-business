@@ -802,15 +802,18 @@ if "🚘 Gestion Parc" in tab_map:
             st.subheader("📋 Historique Dégâts/Pertes Voitures")
             try:
                 pertes_v = supabase.table('mouvements_stock').select("*").eq("type", "PERTE_VOITURE").order("created_at", desc=True).limit(20).execute().data
-            except:
+            except Exception as e:
+                st.error("Erreur lecture pertes")
+                st.code(repr(e))
                 pertes_v = []
+            
             if not pertes_v:
                 st.info("Aucun dégât de voiture enregistré")
             else:
                 total_pertes_v = sum(p.get('valeur', 0) for p in pertes_v)
                 st.metric("💸 TOTAL PERTES VOITURES", f"{total_pertes_v:,.2f} $")
                 for p in pertes_v:
-                    with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
+                    with st.expander(f"🔴 {p.get('article_nom', 'N/A')} - Qté: {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.write(f"**Qté endommagée:** {abs(p.get('quantite', 0))}")
@@ -821,40 +824,14 @@ if "🚘 Gestion Parc" in tab_map:
                         with col3:
                             if st.session_state.user_role == "PDG":
                                 if st.button("🗑️ Supprimer", key=f"del_perte_v_{p.get('id')}"):
-                                    supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
-                                    st.rerun()
-                     options_voitures.append(f"{v['marque']} {v['modele']} {v.get('annee','')} | {v.get('couleur','')} | {v['plaque']} | Stock:{int(v.get('quantite',1))} | {v['prix']:,.0f}$ | ID:{v['id']}")
-                    voiture_choisie = st.selectbox("Sélectionne le véhicule", options_voitures, key="select_voiture_unique")
-                    if voiture_choisie:
-                        id_choisi = int(voiture_choisie.split("ID:")[1])
-                        v = df_voitures_dispo[df_voitures_dispo['id'] == id_choisi].iloc[0]
-                        c1, c2, c3 = st.columns(3)
-                        qte_max = int(v.get('quantite', 1))
-                        qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key=f"qte_v_unique")
-                        c2.metric("Stock dispo", qte_max)
-                        c3.metric("Prix unitaire", f"{v['prix']:,.0f}$")
-                        st.info(f"**{v['marque']} {v['modele']}** | Couleur: {v.get('couleur','N/A')} | Qualité: {v.get('qualite','N/A')} | QR: {v.get('code_qr','N/A')}")
-                        if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_voiture_unique"):
-                            existant = next((item for item in st.session_state.panier_voiture if item['id'] == int(v['id'])), None)
-                            if existant:
-                                if existant['qte'] + qte <= qte_max:
-                                    existant['qte'] += qte
-                                    st.success(f"Panier mis à jour: {existant['qte']}x")
-                                else:
-                                    st.error(f"Stock insuffisant! Max dispo: {qte_max}")
-                            else:
-                                st.session_state.panier_voiture.append({
-                                    "id": int(v['id']),
-                                    "nom": f"{v['marque']} {v['modele']} {v.get('annee','')}",
-                                    "pu": float(v['prix']),
-                                    "qte": int(qte),
-                                    "plaque": v.get('plaque',''),
-                                    "qualite": v.get('qualite',''),
-                                    "code_qr": v.get('code_qr',''),
-                                    "stock_max": qte_max
-                                })
-                                st.success("Ajouté au panier")
-                            st.rerun()
+                                    try:
+                                        supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
+                                        st.success("Supprimé")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error("Erreur suppression")
+                                        st.code(repr(e))
             with col_droite:
                 st.subheader("🛒 Panier Voiture")
                 total_voiture = 0
