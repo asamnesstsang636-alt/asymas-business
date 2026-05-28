@@ -5,10 +5,6 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date, datetime
-from fpdf import FPDF
-import tempfile, os, json, qrcode
-from streamlit_qrcode_scanner import qrcode_scanner
 
 # === SESSION STATE ===
 if 'logged_in' not in st.session_state:
@@ -67,7 +63,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === PAGE ACCUEIL AVEC CERCLE + 6 BOUTONS CLIQUABLES ===
+# === PAGE ACCUEIL : SEUL LE CERCLE S'AFFICHE ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -92,16 +88,16 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
     
-    result = components.html(html_buttons, height=700)
-    if result:
-        st.session_state.selected_module = result
+    clicked = components.html(html_buttons, height=700)
+    if clicked:
+        st.session_state.selected_module = clicked
         st.rerun()
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
 
-# === PAGE MODULE SELECTIONNE - SEUL CE MODULE EST VISIBLE ===
+# === PAGE MODULE : SEUL CE MODULE EST VISIBLE ===
 elif st.session_state.selected_module:
     st.divider()
     col1, col2, col3 = st.columns([5,1,1])
