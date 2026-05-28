@@ -67,7 +67,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === PAGE ACCUEIL APRES LOGIN ===
+# === PAGE ACCUEIL AVEC CERCLE + 6 BOUTONS ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -91,9 +91,10 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
-    clicked = components.html(html_buttons, height=700)
-    if clicked:
-        st.session_state.selected_module = clicked
+    
+    result = components.html(html_buttons, height=700, key="circle_menu")
+    if result:
+        st.session_state.selected_module = result
         st.rerun()
 
     if st.button("🚪 Déconnexion"):
