@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
-st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="auto")
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
+from datetime import date, datetime
+from fpdf import FPDF
+import tempfile, os, json, qrcode
+from streamlit_qrcode_scanner import qrcode_scanner
 
 # === SESSION STATE ===
 if 'logged_in' not in st.session_state:
@@ -63,7 +67,7 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES ===
+# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES - SEUL SI AUCUN MODULE SELECTIONNE ===
 if st.session_state.logged_in and st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -88,9 +92,9 @@ if st.session_state.logged_in and st.session_state.selected_module is None:
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
 
-    result = components.html(html_buttons, height=700)
-    if result and result != st.session_state.selected_module:
-        st.session_state.selected_module = result
+    clicked = components.html(html_buttons, height=700)
+    if clicked:
+        st.session_state.selected_module = clicked
         st.rerun()
 
     if st.button("🚪 Déconnexion"):
@@ -115,3 +119,64 @@ elif st.session_state.selected_module:
     }
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
+
+# === TON ANCIEN CODE TABS - SEULEMENT SI AUCUN MODULE CLIQUE ===
+else:
+    st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+    st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
+
+    with st.sidebar:
+        st.markdown(f"## 👤 {st.session_state.user_name}")
+        st.markdown(f"**Rôle : {st.session_state.user_role}**")
+        st.info("ASYMAS BUSINESS v3.0 Hologram")
+        if 'theme_choisi' not in st.session_state:
+            st.session_state.theme_choisi = "Sombre ASYMAS"
+        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
+        if st.button("🔄 Actualiser", key="btn_save"):
+            st.cache_data.clear()
+            st.rerun()
+
+    if theme=="Sombre ASYMAS":
+        st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Bleu Pro":
+        st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Vert Agri":
+        st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
+    elif theme=="Noir Luxe":
+        st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+
+    df_biens = load_table("biens")
+    df_articles = load_table("articles")
+    df_voitures = load_table("voitures")
+    df_compta = load_table("compta")
+    df_factures = load_table("factures_proforma")
+    df_devis = load_table("devis")
+    df_utilisateurs = load_table("utilisateurs")
+
+    if 'montant' not in df_compta.columns:
+        df_compta['montant'] = 0
+    if 'type' not in df_compta.columns:
+        df_compta['type'] = 'Inconnu'
+    if 'date' in df_compta.columns:
+        df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
+        df_compta = df_compta.sort_values('date', ascending=False)
+
+    tabs_dispo = ["📊 Dashboard", "🛍️ Commerce", "📦 Gestion Stock", "🏠 Immobilier", "🚗 Automobile", "🚘 Gestion Parc", "💰 Comptabilité", "📄 Factures", "📋 Devis", "👥 Utilisateurs"]
+    tabs = st.tabs(tabs_dispo)
+    tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+
+    with tab_map["📊 Dashboard"]:
+        st.markdown("## 📊 Dashboard ASYMAS")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("🏠 Biens", len(df_biens))
+        col2.metric("📦 Articles", len(df_articles))
+        col3.metric("🚗 Voitures", len(df_voitures))
+        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+        else:
+            col4.metric("💰 Revenus", "0 FC")
+        st.divider()
+        if not df_compta.empty:
+            st.subheader("📈 Dernières transactions")
+            st.dataframe(df_compta.head(10), use_container_width=True)
