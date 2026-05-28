@@ -6,7 +6,6 @@ st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_all
 from supabase import create_client, Client
 from datetime import date, datetime
 
-# === SESSION ===
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
@@ -24,6 +23,7 @@ background:#fff;color:#000;font-size:24px;font-weight:bold;cursor:pointer;box-sh
 """, unsafe_allow_html=True)
 
 def afficher_hologramme(avec_boutons=False):
+    btn_html = ""
     if avec_boutons:
         btn_html = """
         <button class="holo-btn" style="top:0%;left:50%;" onclick="window.location.href='?module=Commerce'">🏪</button>
@@ -33,8 +33,6 @@ def afficher_hologramme(avec_boutons=False):
         <button class="holo-btn" style="top:78%;left:18%;" onclick="window.location.href='?module=Stock'">📦</button>
         <button class="holo-btn" style="top:22%;left:18%;" onclick="window.location.href='?module=Compta'">📊</button>
         """
-    else:
-        btn_html = ""
     
     st.markdown(f"""
     <div style="position:relative;width:100vw;height:85vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -55,9 +53,8 @@ def afficher_hologramme(avec_boutons=False):
     @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """, unsafe_allow_html=True)
 
-# === ÉCRAN LOGIN ===
 if not st.session_state.logged_in:
-    afficher_hologramme(avec_boutons=False)
+    afficher_hologramme(False)
     pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
     if pwd == "asymas2025":
         st.session_state.logged_in = True
@@ -68,7 +65,6 @@ if not st.session_state.logged_in:
         st.error("Mot de passe incorrect")
     st.stop()
 
-# === APRÈS LOGIN ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -87,28 +83,15 @@ df_compta = load_table("compta")
 
 module = st.query_params.get("module", None)
 
-afficher_hologramme(avec_boutons=True)
-
+afficher_hologramme(True)
 st.divider()
 
-if module == "Commerce":
-    st.markdown("## 🛍️ Commerce - Point de Vente")
-    st.dataframe(df_articles, use_container_width=True)
-elif module == "Stock":
-    st.markdown("## 📦 Gestion Stock")
-    st.dataframe(df_articles, use_container_width=True)
-elif module == "Immo":
-    st.markdown("## 🏠 Immobilier")
-    st.dataframe(df_biens, use_container_width=True)
-elif module == "Auto":
-    st.markdown("## 🚗 Automobile")
-    st.dataframe(df_voitures, use_container_width=True)
-elif module == "Factures":
-    st.markdown("## 🧾 Factures")
-    st.info("Module factures en cours")
-elif module == "Compta":
-    st.markdown("## 💰 Comptabilité")
-    st.dataframe(df_compta, use_container_width=True)
+if module == "Commerce": st.markdown("## 🛍️ Commerce"); st.dataframe(df_articles, use_container_width=True)
+elif module == "Stock": st.markdown("## 📦 Stock"); st.dataframe(df_articles, use_container_width=True)
+elif module == "Immo": st.markdown("## 🏠 Immobilier"); st.dataframe(df_biens, use_container_width=True)
+elif module == "Auto": st.markdown("## 🚗 Auto"); st.dataframe(df_voitures, use_container_width=True)
+elif module == "Factures": st.markdown("## 🧾 Factures"); st.info("Module en cours")
+elif module == "Compta": st.markdown("## 💰 Compta"); st.dataframe(df_compta, use_container_width=True)
 
 with st.sidebar:
     st.markdown(f"## 👤 {st.session_state.user_name}")
