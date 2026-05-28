@@ -4,10 +4,13 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
+from datetime import date, datetime
 
+# === ÉTAT SESSION ===
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'selected_module' not in st.session_state: st.session_state.selected_module = None
 
+# === CSS ===
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;margin-top:-80px!important;}
@@ -15,7 +18,7 @@ st.markdown("""
 div[data-testid="stTextInput"]{position:absolute!important; bottom:8%!important; left:50%!important; transform:translateX(-50%)!important; width:180px!important; z-index:100!important;}
 div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; border:2px solid #FFD700!important; border-radius:10px!important; color:#FFD700!important; text-align:center!important; padding:10px!important;}
 div[data-testid="stTextInput"] label{display:none!important;}
-div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 20px #FFD700!important;font-size:24px!important;padding:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;}
+div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 25px #FFD700!important;font-size:11px!important;font-weight:bold!important;color:#000!important;padding:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -31,6 +34,7 @@ def load_table(table_name):
     except:
         return pd.DataFrame()
 
+# === LOGIN ===
 def show_login():
     st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -56,11 +60,11 @@ def show_login():
         st.rerun()
     st.stop()
 
+# === ACCUEIL AVEC BOUTONS EN CERCLE ===
 def show_home():
-    # Container relatif avec hauteur fixe = clé pour que ça bouge pas au rerun
     st.markdown('<div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
 
-    # Le cercle centré
+    # Cercle central
     st.markdown("""
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -73,20 +77,17 @@ def show_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # Boutons placés en cercle autour du centre
+    # 6 boutons en cercle autour - exactement comme ta photo
     modules = [
-        ("🏪\nCommerce", "Commerce"),
-        ("🚚\nAuto", "Auto"),
-        ("🧾\nFactures", "Factures"),
-        ("🏠\nImmo", "Immo"),
-        ("📦\nStock", "Stock"),
-        ("📊\nCompta", "Compta")
+        ("🏪\nCommerce", "Commerce", 0),
+        ("🚚\nAuto", "Auto", 60),
+        ("🧾\nFactures", "Factures", 120),
+        ("🏠\nImmo", "Immo", 180),
+        ("📦\nStock", "Stock", 240),
+        ("📊\nCompta", "Compta", 300)
     ]
 
-    angles = [0, 60, 120, 180, 240, 300] # 6 positions en cercle
-
-    for i, (label, module_name) in enumerate(modules):
-        angle = angles[i]
+    for label, module_name, angle in modules:
         st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
         if st.button(label, key=f"btn_{module_name}"):
             st.session_state.selected_module = module_name
@@ -94,12 +95,14 @@ def show_home():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Bouton déconnexion en haut droite
+    # Déconnexion
     st.markdown('<div style="position:absolute;top:20px;right:20px;z-index:20;">', unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
+
+# === ROUTAGE ===
 if not st.session_state.logged_in:
     show_login()
 else:
