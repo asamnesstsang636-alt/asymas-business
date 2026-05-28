@@ -4,11 +4,7 @@ st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide"
 st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 from supabase import create_client, Client
-from datetime import date, datetime, timedelta
-from fpdf import FPDF
-import base64, io, qrcode, tempfile, os, json
-from PIL import Image
-from streamlit_qrcode_scanner import qrcode_scanner
+from datetime import date, datetime
 
 # === SESSION ===
 if 'logged_in' not in st.session_state:
@@ -90,11 +86,11 @@ df_articles = load_table("articles")
 df_voitures = load_table("voitures")
 df_compta = load_table("compta")
 
-# Lire le module depuis l'URL
 module = st.query_params.get("module", None)
 
-st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
+# J'AI SUPPRIMÉ LES 2 LIGNES DE TITRE ICI
+# st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")  <-- SUPPRIMÉ
+# st.markdown("### Agriculture • Commerce...")  <-- SUPPRIMÉ
 
 # Afficher hologramme + 6 boutons cliquables
 afficher_hologramme(avec_boutons=True)
@@ -103,46 +99,23 @@ st.divider()
 
 # === UN SEUL MODULE S'AFFICHE SELON LE CLIC ===
 if module == "Commerce":
-    if st.session_state.user_role in ["PDG", "Commerce"]:
-        st.markdown("## 🛍️ Commerce - Point de Vente")
-        st.dataframe(df_articles, use_container_width=True)
-    else:
-        st.error("⛔ Accès refusé - Autorisation requise")
-        
+    st.markdown("## 🛍️ Commerce - Point de Vente")
+    st.dataframe(df_articles, use_container_width=True)
 elif module == "Stock":
-    if st.session_state.user_role in ["PDG", "Stock"]:
-        st.markdown("## 📦 Gestion Stock")
-        st.dataframe(df_articles, use_container_width=True)
-    else:
-        st.error("⛔ Accès refusé")
-        
+    st.markdown("## 📦 Gestion Stock")
+    st.dataframe(df_articles, use_container_width=True)
 elif module == "Immo":
-    if st.session_state.user_role in ["PDG", "Immo"]:
-        st.markdown("## 🏠 Immobilier")
-        st.dataframe(df_biens, use_container_width=True)
-    else:
-        st.error("⛔ Accès refusé")
-        
+    st.markdown("## 🏠 Immobilier")
+    st.dataframe(df_biens, use_container_width=True)
 elif module == "Auto":
-    if st.session_state.user_role in ["PDG", "Auto"]:
-        st.markdown("## 🚗 Automobile")
-        st.dataframe(df_voitures, use_container_width=True)
-    else:
-        st.error("⛔ Accès refusé")
-        
+    st.markdown("## 🚗 Automobile")
+    st.dataframe(df_voitures, use_container_width=True)
 elif module == "Factures":
-    if st.session_state.user_role in ["PDG", "Compta"]:
-        st.markdown("## 🧾 Factures")
-        st.info("Module factures en cours")
-    else:
-        st.error("⛔ Accès refusé")
-        
+    st.markdown("## 🧾 Factures")
+    st.info("Module factures en cours")
 elif module == "Compta":
-    if st.session_state.user_role in ["PDG", "Compta"]:
-        st.markdown("## 💰 Comptabilité")
-        st.dataframe(df_compta, use_container_width=True)
-    else:
-        st.error("⛔ Accès refusé")
+    st.markdown("## 💰 Comptabilité")
+    st.dataframe(df_compta, use_container_width=True)
 
 # Sidebar
 with st.sidebar:
