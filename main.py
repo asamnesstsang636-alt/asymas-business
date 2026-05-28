@@ -64,6 +64,7 @@ def show_login():
 def show_home():
     st.markdown('<div style="position:relative;width:100%;height:650px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">', unsafe_allow_html=True)
 
+    # Cercle central
     st.markdown("""
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -76,29 +77,25 @@ def show_home():
     </div>
     """, unsafe_allow_html=True)
 
-    modules = [
-        ("🏪\nCommerce", "Commerce", 0),
-        ("🚚\nAuto", "Auto", 60),
-        ("🧾\nFactures", "Factures", 120),
-        ("🏠\nImmo", "Immo", 180),
-        ("📦\nStock", "Stock", 240),
-        ("📊\nCompta", "Compta", 300)
-    ]
-
-    for label, module_name, angle in modules:
-        st.markdown(f'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(220px) rotate(-{angle}deg);z-index:10;">', unsafe_allow_html=True)
-        if st.button(label, key=f"btn_{module_name}"):
-            st.session_state.selected_module = module_name
-        st.markdown('</div>', unsafe_allow_html=True)
-
+    # Boutons en ligne horizontale sous le cercle
+    st.markdown('<div style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);display:flex;gap:20px;z-index:10;">', unsafe_allow_html=True)
+    
+    if st.button("🏪\nCommerce", key="btn_commerce"): st.session_state.selected_module = "Commerce"
+    if st.button("🚚\nAuto", key="btn_auto"): st.session_state.selected_module = "Auto"
+    if st.button("🧾\nFactures", key="btn_factures"): st.session_state.selected_module = "Factures"
+    if st.button("🏠\nImmo", key="btn_immo"): st.session_state.selected_module = "Immo"
+    if st.button("📦\nStock", key="btn_stock"): st.session_state.selected_module = "Stock"
+    if st.button("📊\nCompta", key="btn_compta"): st.session_state.selected_module = "Compta"
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Bouton déconnexion
     st.markdown('<div style="position:absolute;top:20px;right:20px;z-index:20;">', unsafe_allow_html=True)
     if st.button("🚪 Déconnexion", key="logout"):
         st.session_state.clear()
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
 # === TOUTES TES FONCTIONS ===
 @st.cache_data(ttl=60)
 def load_table(table_name):
