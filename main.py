@@ -72,9 +72,16 @@ def show_home():
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """, unsafe_allow_html=True)
     
-    # Rayon du cercle = 190px. Position calculée depuis le centre
-    modules = [("📊","Compta",0), ("🚚","Auto",60), ("🏠","Immo",120), 
-               ("🧾","Factures",180), ("📦","Stock",240), ("🏪","Commerce",300)]
+    # Boutons exactement sur tes repères verts - calcul depuis centre top:45% left:50%
+    # Rayon 190px pour coller au cercle doré
+    modules = [
+        ("📊", "Compta", 0),      # Haut - ton repère en haut
+        ("🚚", "Auto", 60),       # Haut-droite - ton repère 2h
+        ("🏠", "Immo", 120),      # Bas-droite - ton repère 4h avec flèche verte
+        ("🧾", "Factures", 180),  # Bas - ton repère 6h sur le rectangle bleu
+        ("📦", "Stock", 240),     # Bas-gauche - ton repère 8h
+        ("🏪", "Commerce", 300),  # Haut-gauche - ton repère 10h
+    ]
     
     for emoji, name, angle in modules:
         st.markdown(f"<div style='position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);z-index:10;'>", unsafe_allow_html=True)
