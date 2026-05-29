@@ -471,6 +471,7 @@ else:
             st.session_state.clear()
             st.rerun()
 
+    # Chargement avec sécurité si table vide
     df_biens = load_table("biens")
     df_articles = load_table("articles")
     df_voitures = load_table("voitures")
@@ -479,10 +480,9 @@ else:
     df_devis = load_table("devis")
     df_utilisateurs = load_table("utilisateurs")
 
-    # Sécurité si une table est vide ou n’existe pas
+    # Sécurisation df_compta
     if df_compta.empty:
         df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
-
     if 'montant' not in df_compta.columns:
         df_compta['montant'] = 0
     if 'type' not in df_compta.columns:
@@ -490,6 +490,14 @@ else:
     if 'date' in df_compta.columns:
         df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
         df_compta = df_compta.sort_values('date', ascending=False)
+
+    # Sécurisation pour éviter NameError dans Dashboard
+    if df_biens.empty:
+        df_biens = pd.DataFrame(columns=['id'])
+    if df_articles.empty:
+        df_articles = pd.DataFrame(columns=['id', 'stock', 'prix_vente'])
+    if df_voitures.empty:
+        df_voitures = pd.DataFrame(columns=['id'])
 
     perms = st.session_state.perms
     if isinstance(perms, str):
