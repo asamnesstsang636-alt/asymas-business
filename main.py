@@ -456,6 +456,37 @@ elif st.session_state.selected_module:
 
 # === CHARGEMENT GLOBAL ===
 else:
+    # Si on est sur l'accueil, on n'affiche que le cercle avec les 6 boutons
+    if st.session_state.selected_module is None:
+        html_buttons = """
+        <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+                    <div style="font-size:50px;">🛒</div>
+                    <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
+                </div>
+            </div>
+            <button onclick="window.location.search='?module=Commerce'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏪<br>Commerce</button>
+            <button onclick="window.location.search='?module=Auto'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🚚<br>Auto</button>
+            <button onclick="window.location.search='?module=Factures'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🧾<br>Factures</button>
+            <button onclick="window.location.search='?module=Immo'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏠<br>Immo</button>
+            <button onclick="window.location.search='?module=Stock'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📦<br>Stock</button>
+            <button onclick="window.location.search='?module=Compta'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📊<br>Compta</button>
+        </div>
+        <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+        @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+        @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+        """
+        components.html(html_buttons, height=700)
+        if st.button("🚪 Déconnexion"):
+            st.session_state.clear()
+            st.rerun()
+        st.stop()
+
+    # Sinon on charge les données et on affiche les tabs pour le module choisi
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
         st.markdown(f"**Rôle : {st.session_state.user_role}**")
@@ -471,7 +502,6 @@ else:
             st.session_state.clear()
             st.rerun()
 
-    # Chargement avec sécurité si table vide
     df_biens = load_table("biens")
     df_articles = load_table("articles")
     df_voitures = load_table("voitures")
@@ -480,7 +510,7 @@ else:
     df_devis = load_table("devis")
     df_utilisateurs = load_table("utilisateurs")
 
-    # Sécurisation df_compta
+    # Sécurité si table vide
     if df_compta.empty:
         df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
     if 'montant' not in df_compta.columns:
@@ -491,7 +521,6 @@ else:
         df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
         df_compta = df_compta.sort_values('date', ascending=False)
 
-    # Sécurisation pour éviter NameError dans Dashboard
     if df_biens.empty:
         df_biens = pd.DataFrame(columns=['id'])
     if df_articles.empty:
@@ -506,33 +535,29 @@ else:
         except:
             perms = {}
 
-tabs_dispo = []
-if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
-    tabs_dispo.append("📊 Dashboard")
-if st.session_state.user_role == "PDG" or perms.get('commerce', True):
-    tabs_dispo.append("🛍️ Commerce")
-if st.session_state.user_role == "PDG" or perms.get('stock', False):
-    tabs_dispo.append("📦 Gestion Stock")
-if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
-    tabs_dispo.append("🏠 Immobilier")
-if st.session_state.user_role == "PDG" or perms.get('automobile', False):
-    tabs_dispo.append("🚗 Automobile")
-if st.session_state.user_role == "PDG" or perms.get('parc', False):
-    tabs_dispo.append("🚘 Gestion Parc")
-if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
-    tabs_dispo.append("💰 Comptabilité")
-if st.session_state.user_role == "PDG" or perms.get('factures', False):
-    tabs_dispo.append("📄 Factures")
-if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
-    tabs_dispo.append("📋 Devis")
-if st.session_state.user_role == "PDG" or perms.get('users', False):
-    tabs_dispo.append("👥 Utilisateurs")
-
-if not tabs_dispo:
-    tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
-
-tabs = st.tabs(tabs_dispo)
-tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+    # Ici tu gardes ton code des tabs pour les modules
+    perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
+    perm_key = perm_map.get(st.session_state.selected_module, "")
+    if not check_perm(perm_key):
+        st.error(f"⛔ Pas d'autorisation pour {st.session_state.selected_module}")
+        if st.button("← Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        st.stop()
+    st.divider()
+    col1, col2 = st.columns([6,1])
+    with col1:
+        st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+        st.markdown(f"### {st.session_state.selected_module}")
+    with col2:
+        if st.button("← Retour"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+    table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
+    df = load_table(table_map.get(st.session_state.selected_module, "articles"))
+    st.dataframe(df, use_container_width=True)
 
 if "📊 Dashboard" in tab_map:
     with tab_map["📊 Dashboard"]:
