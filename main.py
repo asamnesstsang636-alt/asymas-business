@@ -487,7 +487,7 @@ else:
                             st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": []})
                             st.rerun()
 
-                st.divider()
+                            st.divider()
                 main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_ind")
                 cout_total_ind = total_general_ind + main_oeuvre
                 st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis}")
@@ -518,7 +518,6 @@ else:
 
             peut_telecharger_ind = is_pdg or perms.get('devis_industriel_download', False)
             peut_imprimer_ind = is_pdg or perms.get('devis_industriel_print', False)
-
             if peut_telecharger_ind or peut_imprimer_ind:
                 st.divider()
                 st.subheader("📚 Devis Industriel Enregistrés")
