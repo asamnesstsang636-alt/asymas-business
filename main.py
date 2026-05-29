@@ -1103,27 +1103,45 @@ else:
             else:
                 st.error("Nom client + Adresse obligatoires")
 
-if "🚗 Automobile" in tab_map:
-    with tab_map["🚗 Automobile"]:
-        st.markdown("## 🚗 Automobile - Générer Facture")
-        nom_client = st.text_input("👤 Nom du client", key="nom_client_voiture")
-        tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_voiture")
-        col1, col2 = st.columns(2)
+if "🏠 Immobilier" in tab_map:
+    with tab_map["🏠 Immobilier"]:
+        st.markdown("## 🏠 Immobilier - Générer Facture")
+        nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
+        tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            type_service = st.selectbox("Type Service", ["Location", "Achat", "Réparation"], key="type_service_auto")
-            vehicule = st.text_input("Véhicule", placeholder="Ex: Toyota Hilux", key="vehicule_auto")
+            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
+            adresse = st.text_input("Adresse", key="adresse_bien")
         with col2:
-            montant = st.number_input("💰 Montant USD", min_value=0.0, key="montant_auto")
-            periode = st.text_input("📅 Période", placeholder="Ex: Janvier 2025", key="periode_auto")
+            prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
+            electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
+        with col3:
+            eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
+            duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
 
-        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_auto"):
-            if nom_client and vehicule:
-                details_list = [{"nom": f"{type_service} {vehicule} | Période: {periode}", "qte": 1, "pu": montant}]
-                details_text = f"{type_service} | Vehicule: {vehicule} | Periode: {periode} | Montant: {montant} $"
-                num_fact, pdf_bytes = creer_facture_auto(type_service, nom_client, details_text, montant, "$", details_list, tel_client, periode, "Proforma")
+        total_mensuel = float(prix) + float(electricite) + float(eau)
+        st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
+
+        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+            if nom_client and adresse:
+                details_list = [
+                    {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Duree: {duree_contrat}", "qte": 1, "pu": prix},
+                    {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "pu": electricite},
+                    {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "pu": eau}
+                ]
+                details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Duree Contrat: {duree_contrat} | Loyer: {prix} $ | Electricite: {electricite} $ | Eau: {eau} $"
+                periode = date.today().strftime("%B %Y")
+                num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode, "Proforma")
 
                 st.success(f"✅ Facture générée : {num_fact}")
-                st.download_button(label="📥 Télécharger Facture PDF", data=pdf_bytes, file_name=f"{num_fact}.pdf", mime="application/pdf", width="stretch", key="dl_facture_auto")
+                st.download_button(
+                    label="📥 Télécharger Facture PDF",
+                    data=pdf_bytes,
+                    file_name=f"{num_fact}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    key="dl_facture_immo"
+                )
 
                 pdf_b64 = base64.b64encode(pdf_bytes).decode()
                 st.components.v1.html(f"""
@@ -1142,7 +1160,7 @@ if "🚗 Automobile" in tab_map:
                 """, height=60)
                 st.cache_data.clear()
             else:
-                st.error("Nom client + Véhicule obligatoires")
+                st.error("Nom client + Adresse obligatoires")
 
 if "🚘 Gestion Parc" in tab_map:
     with tab_map["🚘 Gestion Parc"]:
