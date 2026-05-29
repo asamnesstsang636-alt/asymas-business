@@ -400,7 +400,7 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === ACCUEIL 6 BOUTONS ===
+# === ACCUEIL 6 BOUTONS CLIQUABLES ===
 if st.session_state.selected_module is None:
     html_buttons = """
 <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -453,7 +453,6 @@ elif st.session_state.selected_module:
     table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
-
 # === CHARGEMENT GLOBAL ===
 else:
     # Si on est sur l'accueil, on n'affiche que le cercle
