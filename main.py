@@ -556,93 +556,121 @@ else:
             st.query_params.clear()
             st.rerun()
 
-    table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
-    df = load_table(table_map.get(st.session_state.selected_module, "articles"))
-    st.dataframe(df, use_container_width=True)
-if "📊 Dashboard" in tab_map:
-    with tab_map["📊 Dashboard"]:
-        st.markdown("## 📊 Dashboard ASYMAS")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🏠 Biens", len(df_biens))
-        col2.metric("📦 Articles", len(df_articles))
-        col3.metric("🚗 Voitures", len(df_voitures))
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        elif not df_compta.empty:
-            col4.metric("💰 Écritures", len(df_compta))
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-        if not df_compta.empty:
-            st.subheader("📈 Dernières transactions")
-            st.dataframe(df_compta.head(10), use_container_width=True)
+    # Construction des tabs UNIQUEMENT ici, à l'intérieur du bloc module
+    tabs_dispo = []
+    if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
+        tabs_dispo.append("📊 Dashboard")
+    if st.session_state.user_role == "PDG" or perms.get('commerce', True):
+        tabs_dispo.append("🛍️ Commerce")
+    if st.session_state.user_role == "PDG" or perms.get('stock', False):
+        tabs_dispo.append("📦 Gestion Stock")
+    if st.session_state.user_role == "PDG" or perms.get('immobilier', False):
+        tabs_dispo.append("🏠 Immobilier")
+    if st.session_state.user_role == "PDG" or perms.get('automobile', False):
+        tabs_dispo.append("🚗 Automobile")
+    if st.session_state.user_role == "PDG" or perms.get('parc', False):
+        tabs_dispo.append("🚘 Gestion Parc")
+    if st.session_state.user_role == "PDG" or perms.get('comptabilite', False):
+        tabs_dispo.append("💰 Comptabilité")
+    if st.session_state.user_role == "PDG" or perms.get('factures', False):
+        tabs_dispo.append("📄 Factures")
+    if st.session_state.user_role == "PDG" or perms.get('devis_industriel', False) or perms.get('devis_batiment', False):
+        tabs_dispo.append("📋 Devis")
+    if st.session_state.user_role == "PDG" or perms.get('users', False):
+        tabs_dispo.append("👥 Utilisateurs")
 
-if "🛍️ Commerce" in tab_map:
-    with tab_map["🛍️ Commerce"]:
-        st.markdown("## 🛍️ Commerce - Point de Vente")
-        if 'panier_commerce' not in st.session_state:
-            st.session_state.panier_commerce = []
-        if 'vente_finie' not in st.session_state:
-            st.session_state.vente_finie = False
-        if 'pdf_data' not in st.session_state:
-            st.session_state.pdf_data = None
-        if 'num_fact' not in st.session_state:
-            st.session_state.num_fact = None
-        if 'client_com_nom' not in st.session_state:
-            st.session_state.client_com_nom = ""
-        if 'client_com_tel' not in st.session_state:
-            st.session_state.client_com_tel = "+243..."
-        if 'last_qr' not in st.session_state:
-            st.session_state.last_qr = ""
+    if not tabs_dispo:
+        tabs_dispo = ["📊 Dashboard", "🛍️ Commerce"]
 
-        col_gauche, col_droite = st.columns([2,1])
-        with col_gauche:
-            st.subheader("👤 Client")
-            st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
-            st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
-            st.subheader("🔍 Scanner QR Code")
-            col_scan1, col_scan2 = st.columns([2,1])
-            with col_scan1:
-                qr_code = qrcode_scanner(key='qr_commerce_unique')
-            with col_scan2:
-                recherche_manuelle = st.text_input("🔎 Recherche manuelle", placeholder="Tape le nom...", key="search_man_c")
-            if qr_code and qr_code!= st.session_state.last_qr:
-                st.session_state.last_qr = qr_code
-                st.rerun()
+    tabs = st.tabs(tabs_dispo)
+    tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 
-            df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
-            if qr_code:
-                qr_clean = str(qr_code).strip().upper()
-                df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
-            elif recherche_manuelle:
-                mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
-                df_articles_filtre = df_articles_filtre[mask]
+    # TOUT le code des tabs doit être indenté ici
+    if "📊 Dashboard" in tab_map:
+        with tab_map["📊 Dashboard"]:
+            st.markdown("## 📊 Dashboard ASYMAS")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("🏠 Biens", len(df_biens))
+            col2.metric("📦 Articles", len(df_articles))
+            col3.metric("🚗 Voitures", len(df_voitures))
+            if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+                revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+                col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+            elif not df_compta.empty:
+                col4.metric("💰 Écritures", len(df_compta))
+            else:
+                col4.metric("💰 Revenus", "0 FC")
+            if not df_compta.empty:
+                st.subheader("📈 Dernières transactions")
+                st.dataframe(df_compta.head(10), use_container_width=True)
 
-            if not df_articles_filtre.empty:
-                options_articles = []
-                for _, p in df_articles_filtre.iterrows():
-                    qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
-                    prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if 'prix_vente_usd' in p else ""
-                    options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}")
-                article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
-                if article_choisi:
-                    id_choisi = int(article_choisi.split("ID:")[1])
-                    p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
-                    c1, c2, c3 = st.columns(3)
-                    qte_max = int(p['stock'])
-                    qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
-                    c2.metric("Stock dispo", qte_max)
-                    c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
-                    if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
-                        existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
-                        if existant:
-                            if existant['qte'] + qte <= qte_max:
-                                existant['qte'] += qte
-                                st.success(f"Panier mis à jour: {existant['qte']}x")
-                        else:
-                            st.session_state.panier_commerce.append({"id": int(p['id']), "nom": str(p['nom_article']), "pu": float(p['prix_vente']), "qte": int(qte), "code_qr": p.get('code_qr',''), "stock_max": qte_max})
-                            st.success("Ajouté au panier")
-                        st.rerun()
+    if "🛍️ Commerce" in tab_map:
+        with tab_map["🛍️ Commerce"]:
+            st.markdown("## 🛍️ Commerce - Point de Vente")
+            if 'panier_commerce' not in st.session_state:
+                st.session_state.panier_commerce = []
+            if 'vente_finie' not in st.session_state:
+                st.session_state.vente_finie = False
+            if 'pdf_data' not in st.session_state:
+                st.session_state.pdf_data = None
+            if 'num_fact' not in st.session_state:
+                st.session_state.num_fact = None
+            if 'client_com_nom' not in st.session_state:
+                st.session_state.client_com_nom = ""
+            if 'client_com_tel' not in st.session_state:
+                st.session_state.client_com_tel = "+243..."
+            if 'last_qr' not in st.session_state:
+                st.session_state.last_qr = ""
+
+            col_gauche, col_droite = st.columns([2,1])
+            with col_gauche:
+                st.subheader("👤 Client")
+                st.session_state.client_com_nom = st.text_input("Nom Client", value=st.session_state.client_com_nom, key="nom_client_c")
+                st.session_state.client_com_tel = st.text_input("Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c")
+                st.subheader("🔍 Scanner QR Code")
+                col_scan1, col_scan2 = st.columns([2,1])
+                with col_scan1:
+                    qr_code = qrcode_scanner(key='qr_commerce_unique')
+                with col_scan2:
+                    recherche_manuelle = st.text_input("🔎 Recherche manuelle", placeholder="Tape le nom...", key="search_man_c")
+                if qr_code and qr_code!= st.session_state.last_qr:
+                    st.session_state.last_qr = qr_code
+                    st.rerun()
+
+                df_articles_filtre = df_articles[df_articles['stock'] > 0].copy()
+                if qr_code:
+                    qr_clean = str(qr_code).strip().upper()
+                    df_articles_filtre = df_articles_filtre[df_articles_filtre['code_qr'].astype(str).str.strip().str.upper() == qr_clean]
+                elif recherche_manuelle:
+                    mask = df_articles_filtre['nom_article'].str.contains(recherche_manuelle, case=False, na=False)
+                    df_articles_filtre = df_articles_filtre[mask]
+
+                if not df_articles_filtre.empty:
+                    options_articles = []
+                    for _, p in df_articles_filtre.iterrows():
+                        qr_txt = f" | QR:{p['code_qr']}" if 'code_qr' in p and p['code_qr'] else ""
+                        prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if 'prix_vente_usd' in p else ""
+                        options_articles.append(f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}")
+                    article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
+                    if article_choisi:
+                        id_choisi = int(article_choisi.split("ID:")[1])
+                        p = df_articles_filtre[df_articles_filtre['id'] == id_choisi].iloc[0]
+                        c1, c2, c3 = st.columns(3)
+                        qte_max = int(p['stock'])
+                        qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
+                        c2.metric("Stock dispo", qte_max)
+                        c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
+                        if st.button("🛒 AJOUTER AU PANIER", type="primary", width="stretch", key="add_article_unique"):
+                            existant = next((item for item in st.session_state.panier_commerce if item['id'] == int(p['id'])), None)
+                            if existant:
+                                if existant['qte'] + qte <= qte_max:
+                                    existant['qte'] += qte
+                                    st.success(f"Panier mis à jour: {existant['qte']}x")
+                            else:
+                                st.session_state.panier_commerce.append({"id": int(p['id']), "nom": str(p['nom_article']), "pu": float(p['prix_vente']), "qte": int(qte), "code_qr": p.get('code_qr',''), "stock_max": qte_max})
+                                st.success("Ajouté au panier")
+                            st.rerun()
+    
         with col_droite:
             st.subheader("🛒 Panier")
             if st.session_state.vente_finie and st.session_state.pdf_data:
