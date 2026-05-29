@@ -400,7 +400,7 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === ACCUEIL 6 BOUTONS CLIQUABLES ===
+# === ACCUEIL 6 BOUTONS CLIQUABLES SUR LE CERCLE ===
 if st.session_state.selected_module is None:
     st.markdown("""
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -414,61 +414,61 @@ if st.session_state.selected_module is None:
             </div>
         </div>
     </div>
-    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
-    """, unsafe_allow_html=True)
-    
-    # Boutons Streamlit placés au-dessus du HTML avec CSS
-    st.markdown("""
     <style>
-    div[data-testid="stButton"] button {position:absolute!important; width:60px!important; height:60px!important; 
+    @keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+    div[data-testid="stButton"] button{position:absolute!important; width:60px!important; height:60px!important; 
     border:3px solid #FFD700!important; border-radius:50%!important; background:#fff!important; 
-    box-shadow:0 0 25px #FFD700!important; font-size:11px!important; font-weight:bold!important; color:#000!important;}
+    box-shadow:0 0 25px #FFD700!important; font-size:11px!important; font-weight:bold!important; color:#000!important; z-index:999!important;}
     </style>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
-    with col1:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("🏪\nCommerce", key="btn_commerce"):
-            st.query_params["module"] = "Commerce"
+    # Container pour superposer les boutons sur le cercle
+    container = st.container()
+    with container:
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+        with c1:
+            st.markdown('<div style="position:absolute;top:calc(50% - 190px);left:calc(50% + 0px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("🏠\nImmo", key="btn_immo"):
+                st.query_params["module"] = "Immo"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div style="position:absolute;top:calc(50% - 95px);left:calc(50% + 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("🧾\nFact", key="btn_fact"):
+                st.query_params["module"] = "Factures"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c3:
+            st.markdown('<div style="position:absolute;top:calc(50% + 95px);left:calc(50% + 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("🚚\nAuto", key="btn_auto"):
+                st.query_params["module"] = "Auto"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c4:
+            st.markdown('<div style="position:absolute;top:calc(50% + 190px);left:calc(50% + 0px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("🏪\nCom", key="btn_com"):
+                st.query_params["module"] = "Commerce"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c5:
+            st.markdown('<div style="position:absolute;top:calc(50% + 95px);left:calc(50% - 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("📦\nStoc", key="btn_stock"):
+                st.query_params["module"] = "Stock"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c6:
+            st.markdown('<div style="position:absolute;top:calc(50% - 95px);left:calc(50% - 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+            if st.button("📊\nCom", key="btn_compta"):
+                st.query_params["module"] = "Compta"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div style="position:absolute;top:calc(50% - 190px);left:calc(50% - 220px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+        if st.button("🚪\nDéco", key="btn_deco"):
+            st.session_state.clear()
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("🚚\nAuto", key="btn_auto"):
-            st.query_params["module"] = "Auto"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("🧾\nFactures", key="btn_factures"):
-            st.query_params["module"] = "Factures"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("🏠\nImmo", key="btn_immo"):
-            st.query_params["module"] = "Immo"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col5:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("📦\nStock", key="btn_stock"):
-            st.query_params["module"] = "Stock"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col6:
-        st.markdown('<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);z-index:999;">', unsafe_allow_html=True)
-        if st.button("📊\nCompta", key="btn_compta"):
-            st.query_params["module"] = "Compta"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    if st.button("🚪 Déconnexion"):
-        st.session_state.clear()
-        st.rerun()
 # === MODULES SIMPLES ===
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
