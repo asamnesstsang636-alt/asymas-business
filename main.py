@@ -1045,516 +1045,524 @@ else:
                                         st.rerun()
 
     if "🏠 Immobilier" in tab_map:
-        with tab_map["🏠 Immobilier"]:
-            st.markdown("## 🏠 Immobilier - Générer Facture")
-            nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
-            tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
-                adresse = st.text_input("Adresse", key="adresse_bien")
-            with col2:
-                prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
-                electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
-            with col3:
-                eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
-                duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
-            total_mensuel = float(prix) + float(electricite) + float(eau)
-            st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
-            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
-                if nom_client and adresse:
-                    details_list = [
-                        {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Duree: {duree_contrat}", "qte": 1, "pu": prix},
-                        {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "pu": electricite},
-                        {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "pu": eau}
-                    ]
-                    details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Duree Contrat: {duree_contrat} | Loyer: {prix} $ | Electricite: {electricite} $ | Eau: {eau} $"
-                    periode = date.today().strftime("%B %Y")
-                    num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode, "Proforma")
-                    st.success(f"✅ Facture générée : {num_fact}")
-                    st.download_button(
-                        label="📥 Télécharger Facture PDF",
-                        data=bytes(pdf_bytes),
-                        file_name=f"{num_fact}.pdf",
-                        mime="application/pdf",
-                        width="stretch",
-                        key="dl_facture_immo"
-                    )
-                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LA FACTURE
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
-                    st.cache_data.clear()
-                else:
-                    st.error("Nom client + Adresse obligatoires")
-      if "🚗 Automobile" in tab_map:
-        with tab_map["🚗 Automobile"]:
-            st.markdown("## 🚗 Automobile - Générer Facture")
-            nom_client = st.text_input("👤 Nom du client", key="nom_client_voiture")
-            tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_voiture")
-            col1, col2 = st.columns(2)
-            with col1:
-                type_service = st.selectbox("Type Service", ["Location", "Achat", "Réparation"], key="type_service_auto")
-                vehicule = st.text_input("Véhicule", placeholder="Ex: Toyota Hilux", key="vehicule_auto")
-            with col2:
-                montant = st.number_input("💰 Montant USD", min_value=0.0, key="montant_auto")
-                periode = st.text_input("📅 Période", placeholder="Ex: Janvier 2025", key="periode_auto")
-            if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_auto"):
-                if nom_client and vehicule:
-                    details_list = [{"nom": f"{type_service} {vehicule} | Période: {periode}", "qte": 1, "pu": montant}]
-                    details_text = f"{type_service} | Vehicule: {vehicule} | Periode: {periode} | Montant: {montant} $"
-                    num_fact, pdf_bytes = creer_facture_auto(type_service, nom_client, details_text, montant, "$", details_list, tel_client, periode, "Proforma")
-                    st.success(f"✅ Facture générée : {num_fact}")
-                    st.download_button(label="📥 Télécharger Facture PDF", data=bytes(pdf_bytes), file_name=f"{num_fact}.pdf", mime="application/pdf", width="stretch", key="dl_facture_auto")
-                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LA FACTURE
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
-                    st.cache_data.clear()
-                else:
-                    st.error("Nom client + Véhicule obligatoires")
+    with tab_map["🏠 Immobilier"]:
+        st.markdown("## 🏠 Immobilier - Générer Facture")
+        nom_client = st.text_input("👤 Nom du client", key="nom_client_bien")
+        tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_bien")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            type_bien = st.selectbox("Type", ["Maison", "Appartement", "Bureau", "Terrain"], key="type_bien")
+            adresse = st.text_input("Adresse", key="adresse_bien")
+        with col2:
+            prix = st.number_input("💰 Loyer USD", min_value=0.0, key="prix_bien")
+            electricite = st.number_input("⚡ Électricité USD", min_value=0.0, key="elec_bien")
+        with col3:
+            eau = st.number_input("💧 Eau USD", min_value=0.0, key="eau_bien")
+            duree_contrat = st.text_input("📅 Durée", placeholder="Ex: 6 mois", key="duree_bien")
 
-    if "🚘 Gestion Parc" in tab_map:
-        with tab_map["🚘 Gestion Parc"]:
-            st.markdown("## 🚘 Gestion Parc Automobile")
-            st.info("Module en cours de développement - Utilise Automobile pour générer les factures location/achat")
+        total_mensuel = float(prix) + float(electricite) + float(eau)
+        st.info(f"💎 **TOTAL : {total_mensuel:,.2f} USD**")
 
-    if "💰 Comptabilité" in tab_map:
-        with tab_map["💰 Comptabilité"]:
-            st.markdown("## 💰 Comptabilité ASYMAS")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                date_debut = st.date_input("Date début", value=date.today().replace(day=1))
-            with col2:
-                date_fin = st.date_input("Date fin", value=date.today())
-            with col3:
-                type_filter = st.selectbox("Type", ["Tous", "Revenu", "Dépense"])
+        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_immo"):
+            if nom_client and adresse:
+                details_list = [
+                    {"nom": f"Loyer {type_bien} | Adresse: {adresse} | Duree: {duree_contrat}", "qte": 1, "pu": prix},
+                    {"nom": f"Electricite | {type_bien} - {adresse}", "qte": 1, "pu": electricite},
+                    {"nom": f"Eau | {type_bien} - {adresse}", "qte": 1, "pu": eau}
+                ]
+                details_text = f"LOUER: {type_bien} | Adresse: {adresse} | Duree Contrat: {duree_contrat} | Loyer: {prix} $ | Electricite: {electricite} $ | Eau: {eau} $"
+                periode = date.today().strftime("%B %Y")
+                num_fact, pdf_bytes = creer_facture_auto("Loyer", nom_client, details_text, total_mensuel, "$", details_list, tel_client, periode, "Proforma")
 
-            df_filtre = df_compta.copy()
-            if not df_filtre.empty and 'date' in df_filtre.columns:
-                df_filtre = df_filtre[(df_filtre['date'].dt.date >= date_debut) & (df_filtre['date'].dt.date <= date_fin)]
-            if type_filter!= "Tous":
-                df_filtre = df_filtre[df_filtre['type'] == type_filter]
+                st.success(f"✅ Facture générée : {num_fact}")
+                st.download_button(
+                    label="📥 Télécharger Facture PDF",
+                    data=pdf_bytes,
+                    file_name=f"{num_fact}.pdf",
+                    mime="application/pdf",
+                    width="stretch",
+                    key="dl_facture_immo"
+                )
 
-            if not df_filtre.empty:
-                total_rev = df_filtre[df_filtre['type']=='Revenu']['montant'].sum()
-                total_dep = df_filtre[df_filtre['type']=='Dépense']['montant'].sum()
-                solde = total_rev - total_dep
-                col1, col2, col3 = st.columns(3)
-                col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
-                col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
-                col3.metric("💎 Solde", f"{solde:,.0f} FC")
-
-                excel_data = generer_excel_pro(df_filtre, f"Relevé {date_debut} au {date_fin}", total_rev, total_dep, solde)
-                st.download_button("📥 Télécharger Excel Pro", data=excel_data, file_name=f"releve_compta_{date_debut}_{date_fin}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
-                st.dataframe(df_filtre, use_container_width=True, hide_index=True)
+                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
+                st.cache_data.clear()
             else:
-                st.info("Aucune donnée sur cette période")
+                st.error("Nom client + Adresse obligatoires")
 
-    if "📄 Factures" in tab_map:
-        with tab_map["📄 Factures"]:
-            st.markdown("## 📄 Gestion Factures & Proformas")
-            st.subheader("Historique Factures")
-            if df_factures.empty:
-                st.info("Aucune facture générée")
-            else:
-                st.dataframe(df_factures, use_container_width=True, hide_index=True)
-
-    if "📋 Devis" in tab_map:
-        with tab_map["📋 Devis"]:
-            st.markdown("## 📋 Devis ASYMAS Consulting")
-            tab_devis_ind, tab_devis_bat = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
-
-            with tab_devis_ind:
-                st.subheader("Devis Industriel")
-                client_ind = st.text_input("Client", key="client_ind")
-                titre_ind = st.text_input("Titre Projet", key="titre_ind")
-                if st.button("📄 Générer Devis Industriel", type="primary"):
-                    if client_ind and titre_ind:
-                        num_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        sections = [{"numero": "1", "titre": titre_ind, "items": [{"num": "1.1", "designation": "Prestation industrielle", "unite": "Forfait", "qte": 1, "pu": 0}]}]
-                        pdf_bytes = generer_pdf_devis_consulting(num_devis, "Industriel", client_ind, titre_ind, "", sections)
-                        st.success(f"✅ Devis {num_devis} généré")
-                        st.download_button("📥 Télécharger Devis", data=bytes(pdf_bytes), file_name=f"{num_devis}.pdf", mime="application/pdf")
-
-            with tab_devis_bat:
-                st.subheader("Devis Bâtiment")
-                client_bat = st.text_input("Client", key="client_bat")
-                titre_bat = st.text_input("Titre Projet", key="titre_bat")
-                if st.button("📄 Générer Devis Bâtiment", type="primary"):
-                    if client_bat and titre_bat:
-                        num_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        sections = [{"numero": "1", "titre": titre_bat, "items": [{"num": "1.1", "designation": "Prestation bâtiment", "unite": "Forfait", "qte": 1, "pu": 0}]}]
-                        pdf_bytes = generer_pdf_devis_consulting(num_devis, "Bâtiment", client_bat, titre_bat, "", sections)
-                        st.success(f"✅ Devis {num_devis} généré")
-                        st.download_button("📥 Télécharger Devis", data=bytes(pdf_bytes), file_name=f"{num_devis}.pdf", mime="application/pdf")
-
-    if "👥 Utilisateurs" in tab_map:
-        with tab_map["👥 Utilisateurs"]:
-            st.markdown("## 👥 Gestion Utilisateurs")
-            st.divider()
-            st.subheader("📋 Liste des Utilisateurs")
-            if df_utilisateurs.empty:
-                st.info("Aucun utilisateur")
-            else:
-                for _, user in df_utilisateurs.iterrows():
-                    current_perms = user.get('permissions', {})
-                    if isinstance(current_perms, str):
-                        try:
-                            current_perms = json.loads(current_perms)
-                        except:
-                            current_perms = {}
-
-                    with st.expander(f"{user['nom']} - {user['role']}"):
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            st.write("**Onglets :**")
-                            if current_perms.get('dashboard'): st.write("✅ Dashboard")
-                            if current_perms.get('commerce'): st.write("✅ Commerce")
-                            if current_perms.get('stock'): st.write("✅ Stock")
-                            if current_perms.get('immobilier'): st.write("✅ Immobilier")
-                            if current_perms.get('automobile'): st.write("✅ Automobile")
-                            if current_perms.get('parc'): st.write("✅ Parc")
-                            if current_perms.get('comptabilite'): st.write("✅ Comptabilité")
-                            if current_perms.get('factures'): st.write("✅ Factures")
-                            if current_perms.get('users'): st.write("✅ Utilisateurs")
-                            if current_perms.get('supprimer'): st.write("✅ Supprimer")
-                        with c2:
-                            st.write("**Devis Industriel :**")
-                            if current_perms.get('devis_industriel'): st.write("✅ Créer")
-                            if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
-                            if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
-                        with c3:
-                            st.write("**Devis Bâtiment :**")
-                            if current_perms.get('devis_batiment'): st.write("✅ Créer")
-                            if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
-                            if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
-                            if current_perms.get('devis_historique'): st.write("✅ Historique")
-
-                        st.divider()
-
-                        if st.session_state.user_role == "PDG":
-                            st.markdown("**✏️ Modifier les autorisations :**")
-                            with st.form(f"edit_user_{user['id']}"):
-                                col1, col2, col3, col4 = st.columns(4)
-                                perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
-                                perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
-                                perm_stock = col3.checkbox("Gestion Stock", value=current_perms.get('stock', False), key=f"edit_stock_{user['id']}")
-                                perm_immobilier = col4.checkbox("Immobilier", value=current_perms.get('immobilier', False), key=f"edit_immo_{user['id']}")
-                                perm_automobile = col1.checkbox("Automobile", value=current_perms.get('automobile', False), key=f"edit_auto_{user['id']}")
-                                perm_parc = col2.checkbox("Gestion Parc", value=current_perms.get('parc', False), key=f"edit_parc_{user['id']}")
-                                perm_comptabilite = col3.checkbox("Comptabilité", value=current_perms.get('comptabilite', False), key=f"edit_comp_{user['id']}")
-                                perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
-                                perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
-                                perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
-
-                                st.markdown("**📋 Devis Industriel :**")
-                                col_i1, col_i2, col_i3 = st.columns(3)
-                                perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
-                                perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
-                                perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
-
-                                st.markdown("**📋 Devis Bâtiment :**")
-                                col_b1, col_b2, col_b3, col_b4 = st.columns(4)
-                                perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
-                                perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
-                                perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
-                                perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
-
-                                col_btn1, col_btn2 = st.columns(2)
-                                if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
-                                    new_perms = {
-                                        "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
-                                        "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
-                                        "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
-                                        "users": perm_users, "devis_industriel": perm_devis_ind,
-                                        "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
-                                        "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
-                                        "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
-                                    }
-                                    try:
-                                        supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
-                                        st.success(f"Permissions de {user['nom']} mises à jour")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error("Erreur modification")
-                                        st.code(repr(e))
-
-                            if user['nom']!= st.session_state.user_name:
-                                if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
-                                    try:
-                                        supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
-                                        st.success(f"Utilisateur {user['nom']} supprimé")
-                                        st.cache_data.clear()
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error("Erreur suppression")
-                                        st.code(repr(e))
-                            else:
-                                st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
-                        else:
-                            st.info("🔒 Seul le PDG peut modifier les autorisations")
-
-    # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-    import difflib
-    import re
-    import urllib.parse
-    import json
-    import requests
-
-    class FLOKI:
-        def __init__(self, supabase_client, dataframes):
-            self.supabase = supabase_client
-            self.df = dataframes
-            self.system_knowledge = self._get_supabase_schema()
-
-        def _get_supabase_schema(self):
-            schema = {}
-            tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
-            for t in tables:
-                try:
-                    result = self.supabase.table(t).select("*").limit(1).execute()
-                    schema[t] = list(result.data[0].keys()) if result.data else []
-                except:
-                    schema[t] = []
-            return schema
-
-        def ask(self, question):
-            q = question.lower().strip()
-            log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
-
-            if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-                return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
-
-            if "envoie" in q and "message" in q and "numero" in q:
-                result = self._action_send_whatsapp(question)
-                log_entry.update({"action": "whatsapp_send", "reponse": result})
-                self._log_action(log_entry)
-                return result
-
-            if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
-                result = self._action_rediger(question)
-                log_entry.update({"action": "redaction", "reponse": result})
-                self._log_action(log_entry)
-                return result
-
-            if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
-                result = self._action_conseil(q)
-                log_entry.update({"action": "conseil", "reponse": result})
-                self._log_action(log_entry)
-                return result
-
-            q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
-            rep = self._search_asymas(q_clean)
-            if rep:
-                log_entry.update({"source": "ASYMAS", "reponse": rep})
-                self._log_action(log_entry)
-                return rep + "\n\nSource: ASYMAS"
-
-            web_rep = self._search_web(question)
-            log_entry.update({"source": "WEB", "reponse": web_rep})
-            self._log_action(log_entry)
-            return web_rep + "\n\nSource: WEB"
-
-        def _search_asymas(self, q):
-            if "voiture" in q and ("moins cher" in q or "prix" in q):
-                return self._get_voiture_moins_cher()
-            if "voiture" in q and ("liste" in q or "donne" in q):
-                return self._get_voitures_stock()
-            rep = self._search_product(q)
-            if rep: return rep
-            if "perte" in q and "commerce" in q:
-                return self._get_pertes_commerce()
-            if any(k in q for k in ["stock bas", "rupture", "manque"]):
-                return self._stock_bas()
-            if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
-                return self._chiffre_affaires()
-            return None
-
-        def _get_voiture_moins_cher(self):
-            if self.df['voitures'].empty:
-                return "Pas de données voitures chef."
-            prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
-            if not prix_col:
-                return "Chef, je ne trouve pas la colonne prix dans voitures."
-            dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
-            if dispo.empty:
-                return "Aucune voiture en stock chef."
-            moins_chere = dispo.loc[dispo[prix_col].idxmin()]
-            modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
-            prix = float(moins_chere[prix_col])
-            return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
-
-        def _get_voitures_stock(self):
-            if self.df['voitures'].empty:
-                return "Pas de données voitures chef."
-            dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
-            if dispo.empty:
-                return "Aucune voiture en stock chef."
-            txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
-            return f"Voitures en stock:\n{txt}"
-
-        def _get_pertes_commerce(self):
-            try:
-                result = self.supabase.table("mouvements_stock").select("*").eq("type", "perte").eq("categorie", "commerce").order("date", desc=True).limit(10).execute()
-                if not result.data:
-                    return "Aucune perte commerce enregistrée chef."
-                txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
-                return f"Dernières pertes commerce:\n{txt}"
-            except Exception as e:
-                return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
-
-        def _search_product(self, q):
-            if self.df['articles'].empty:
-                return None
-            articles = self.df['articles'].copy()
-            articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-            q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-            mots_q = [w for w in q_clean.split() if len(w) > 2]
-            if mots_q:
-                for _, r in articles.iterrows():
-                    if all(word in r['nom_clean'] for word in mots_q):
-                        return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-            noms = articles['nom_clean'].tolist()
-            closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
-            if closest:
-                r = articles[articles['nom_clean'] == closest[0]].iloc[0]
-                return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-            return None
-
-        def _stock_bas(self):
-            if self.df['articles'].empty:
-                return "Pas d'articles chef."
-            low = self.df['articles'][self.df['articles']['stock'] < 5]
-            if low.empty:
-                return "Stock OK chef. Rien en dessous de 5 unités."
-            txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-            return f"Attention chef, stock bas:\n{txt}"
-
-        def _chiffre_affaires(self):
-            if self.df['compta'].empty:
-                return "Pas de données compta chef."
-            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-            dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
-            return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
-
-        def _search_web(self, q):
-            try:
-                url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
-                r = requests.get(url, timeout=4)
-                data = r.json()
-                if data.get('AbstractText'):
-                    return f"Info vérifiée: {data['AbstractText']}"
-                return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
-            except:
-                return "Le web ne répond pas chef."
-
-        def _action_rediger(self, question):
-            if "relance" in question.lower():
-                return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
-            if "convocation" in question.lower():
-                return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
-            return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
-
-        def _action_send_whatsapp(self, question):
-            nums = re.findall(r'\+?\d{9,15}', question)
-            if not nums:
-                return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
-            numero = nums[0].replace("+", "")
-            message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
-            url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-            return f"Lien WhatsApp prêt: {url}"
-
-        def notify_internal(self, message):
-            try:
-                self.supabase.table("notifications").insert({
-                    "message": f"[{st.session_state.get('user_name', 'PDG')}]: {message}",
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-                return "Notification envoyée à l’équipe chef."
-            except Exception as e:
-                return f"Échec notification: {e}"
-
-        def _action_conseil(self, q):
-            if not self.df['articles'].empty and not self.df['compta'].empty:
-                stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
-                rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-                return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
-            return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
-
-        def _log_action(self, log_entry):
-            try:
-                self.supabase.table("floki_logs").insert(log_entry).execute()
-            except:
-                pass
-
-    if 'floki' not in st.session_state:
-        dataframes = {
-            "articles": df_articles,
-            "compta": df_compta,
-            "biens": df_biens,
-            "voitures": df_voitures
-        }
-        st.session_state.floki = FLOKI(supabase, dataframes)
-
-    with st.sidebar:
-        st.divider()
-        st.markdown("### 🤖 FLOKI")
-        st.caption("Conseiller du PDG - Comprend le système ASYMAS")
-
-        q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                          placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
-
-        st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
-
+if "🚗 Automobile" in tab_map:
+    with tab_map["🚗 Automobile"]:
+        st.markdown("## 🚗 Automobile - Générer Facture")
+        nom_client = st.text_input("👤 Nom du client", key="nom_client_voiture")
+        tel_client = st.text_input("Téléphone Client", value="+243...", key="tel_client_voiture")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Exécuter", type="primary", use_container_width=True):
-                if q:
-                    with st.spinner("FLOKI réfléchit..."):
-                        rep = st.session_state.floki.ask(q)
-                        st.session_state.floki_rep = rep
-
+            type_service = st.selectbox("Type Service", ["Location", "Achat", "Réparation"], key="type_service_auto")
+            vehicule = st.text_input("Véhicule", placeholder="Ex: Toyota Hilux", key="vehicule_auto")
         with col2:
-            if st.button("Notifier équipe", use_container_width=True):
-                if q:
-                    msg = st.session_state.floki.notify_internal(q)
-                    st.toast(msg)
+            montant = st.number_input("💰 Montant USD", min_value=0.0, key="montant_auto")
+            periode = st.text_input("📅 Période", placeholder="Ex: Janvier 2025", key="periode_auto")
 
-        if 'floki_rep' in st.session_state:
-            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-            st.components.v1.html(f"""
-                <script>
-                if ('speechSynthesis' in window) {{
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                    msg.lang = 'fr-FR';
-                    msg.rate = 1;
-                    window.speechSynthesis.speak(msg);
-                }}
-                </script>
-            """, height=0)
-            st.success(st.session_state.floki_rep)
+        if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="btn_facture_auto"):
+            if nom_client and vehicule:
+                details_list = [{"nom": f"{type_service} {vehicule} | Période: {periode}", "qte": 1, "pu": montant}]
+                details_text = f"{type_service} | Vehicule: {vehicule} | Periode: {periode} | Montant: {montant} $"
+                num_fact, pdf_bytes = creer_facture_auto(type_service, nom_client, details_text, montant, "$", details_list, tel_client, periode, "Proforma")
+
+                st.success(f"✅ Facture générée : {num_fact}")
+                st.download_button(label="📥 Télécharger Facture PDF", data=pdf_bytes, file_name=f"{num_fact}.pdf", mime="application/pdf", width="stretch", key="dl_facture_auto")
+
+                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                st.components.v1.html(f"""
+                    <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
+                        🖨️ IMPRIMER LA FACTURE
+                    </button>
+                    <script>
+                    function printPDF() {{
+                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                        const win = window.open('', '_blank');
+                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                        win.document.close();
+                        setTimeout(() => {{ win.print(); }}, 1000);
+                    }}
+                    </script>
+                """, height=60)
+                st.cache_data.clear()
+            else:
+                st.error("Nom client + Véhicule obligatoires")
+
+if "🚘 Gestion Parc" in tab_map:
+    with tab_map["🚘 Gestion Parc"]:
+        st.markdown("## 🚘 Gestion Parc Automobile")
+        st.info("Module en cours de développement - Utilise Automobile pour générer les factures location/achat")
+
+if "💰 Comptabilité" in tab_map:
+    with tab_map["💰 Comptabilité"]:
+        st.markdown("## 💰 Comptabilité ASYMAS")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            date_debut = st.date_input("Date début", value=date.today().replace(day=1))
+        with col2:
+            date_fin = st.date_input("Date fin", value=date.today())
+        with col3:
+            type_filter = st.selectbox("Type", ["Tous", "Revenu", "Dépense"])
+
+        df_filtre = df_compta.copy()
+        if not df_filtre.empty and 'date' in df_filtre.columns:
+            df_filtre = df_filtre[(df_filtre['date'].dt.date >= date_debut) & (df_filtre['date'].dt.date <= date_fin)]
+        if type_filter!= "Tous":
+            df_filtre = df_filtre[df_filtre['type'] == type_filter]
+
+        if not df_filtre.empty:
+            total_rev = df_filtre[df_filtre['type']=='Revenu']['montant'].sum()
+            total_dep = df_filtre[df_filtre['type']=='Dépense']['montant'].sum()
+            solde = total_rev - total_dep
+            col1, col2, col3 = st.columns(3)
+            col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
+            col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
+            col3.metric("💎 Solde", f"{solde:,.0f} FC")
+
+            excel_data = generer_excel_pro(df_filtre, f"Relevé {date_debut} au {date_fin}", total_rev, total_dep, solde)
+            st.download_button("📥 Télécharger Excel Pro", data=excel_data, file_name=f"releve_compta_{date_debut}_{date_fin}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
+            st.dataframe(df_filtre, use_container_width=True, hide_index=True)
+        else:
+            st.info("Aucune donnée sur cette période")
+
+if "📄 Factures" in tab_map:
+    with tab_map["📄 Factures"]:
+        st.markdown("## 📄 Gestion Factures & Proformas")
+        st.subheader("Historique Factures")
+        if df_factures.empty:
+            st.info("Aucune facture générée")
+        else:
+            st.dataframe(df_factures, use_container_width=True, hide_index=True)
+
+if "📋 Devis" in tab_map:
+    with tab_map["📋 Devis"]:
+        st.markdown("## 📋 Devis ASYMAS Consulting")
+        tab_devis_ind, tab_devis_bat = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
+
+        with tab_devis_ind:
+            st.subheader("Devis Industriel")
+            client_ind = st.text_input("Client", key="client_ind")
+            titre_ind = st.text_input("Titre Projet", key="titre_ind")
+            if st.button("📄 Générer Devis Industriel", type="primary"):
+                if client_ind and titre_ind:
+                    num_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    sections = [{"numero": "1", "titre": titre_ind, "items": [{"num": "1.1", "designation": "Prestation industrielle", "unite": "Forfait", "qte": 1, "pu": 0}]}]
+                    pdf_bytes = generer_pdf_devis_consulting(num_devis, "Industriel", client_ind, titre_ind, "", sections)
+                    st.success(f"✅ Devis {num_devis} généré")
+                    st.download_button("📥 Télécharger Devis", data=bytes(pdf_bytes), file_name=f"{num_devis}.pdf", mime="application/pdf")
+
+        with tab_devis_bat:
+            st.subheader("Devis Bâtiment")
+            client_bat = st.text_input("Client", key="client_bat")
+            titre_bat = st.text_input("Titre Projet", key="titre_bat")
+            if st.button("📄 Générer Devis Bâtiment", type="primary"):
+                if client_bat and titre_bat:
+                    num_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    sections = [{"numero": "1", "titre": titre_bat, "items": [{"num": "1.1", "designation": "Prestation bâtiment", "unite": "Forfait", "qte": 1, "pu": 0}]}]
+                    pdf_bytes = generer_pdf_devis_consulting(num_devis, "Bâtiment", client_bat, titre_bat, "", sections)
+                    st.success(f"✅ Devis {num_devis} généré")
+                    st.download_button("📥 Télécharger Devis", data=bytes(pdf_bytes), file_name=f"{num_devis}.pdf", mime="application/pdf")
+
+if "👥 Utilisateurs" in tab_map:
+    with tab_map["👥 Utilisateurs"]:
+        st.markdown("## 👥 Gestion Utilisateurs")
+        st.divider()
+        st.subheader("📋 Liste des Utilisateurs")
+        if df_utilisateurs.empty:
+            st.info("Aucun utilisateur")
+        else:
+            for _, user in df_utilisateurs.iterrows():
+                current_perms = user.get('permissions', {})
+                if isinstance(current_perms, str):
+                    try:
+                        current_perms = json.loads(current_perms)
+                    except:
+                        current_perms = {}
+
+                with st.expander(f"{user['nom']} - {user['role']}"):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.write("**Onglets :**")
+                        if current_perms.get('dashboard'): st.write("✅ Dashboard")
+                        if current_perms.get('commerce'): st.write("✅ Commerce")
+                        if current_perms.get('stock'): st.write("✅ Stock")
+                        if current_perms.get('immobilier'): st.write("✅ Immobilier")
+                        if current_perms.get('automobile'): st.write("✅ Automobile")
+                        if current_perms.get('parc'): st.write("✅ Parc")
+                        if current_perms.get('comptabilite'): st.write("✅ Comptabilité")
+                        if current_perms.get('factures'): st.write("✅ Factures")
+                        if current_perms.get('users'): st.write("✅ Utilisateurs")
+                        if current_perms.get('supprimer'): st.write("✅ Supprimer")
+                    with c2:
+                        st.write("**Devis Industriel :**")
+                        if current_perms.get('devis_industriel'): st.write("✅ Créer")
+                        if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
+                    with c3:
+                        st.write("**Devis Bâtiment :**")
+                        if current_perms.get('devis_batiment'): st.write("✅ Créer")
+                        if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
+                        if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
+                        if current_perms.get('devis_historique'): st.write("✅ Historique")
+
+                    st.divider()
+
+                    if st.session_state.user_role == "PDG":
+                        st.markdown("**✏️ Modifier les autorisations :**")
+                        with st.form(f"edit_user_{user['id']}"):
+                            col1, col2, col3, col4 = st.columns(4)
+                            perm_dashboard = col1.checkbox("Dashboard", value=current_perms.get('dashboard', False), key=f"edit_dash_{user['id']}")
+                            perm_commerce = col2.checkbox("Commerce", value=current_perms.get('commerce', False), key=f"edit_com_{user['id']}")
+                            perm_stock = col3.checkbox("Gestion Stock", value=current_perms.get('stock', False), key=f"edit_stock_{user['id']}")
+                            perm_immobilier = col4.checkbox("Immobilier", value=current_perms.get('immobilier', False), key=f"edit_immo_{user['id']}")
+                            perm_automobile = col1.checkbox("Automobile", value=current_perms.get('automobile', False), key=f"edit_auto_{user['id']}")
+                            perm_parc = col2.checkbox("Gestion Parc", value=current_perms.get('parc', False), key=f"edit_parc_{user['id']}")
+                            perm_comptabilite = col3.checkbox("Comptabilité", value=current_perms.get('comptabilite', False), key=f"edit_comp_{user['id']}")
+                            perm_factures = col4.checkbox("Factures", value=current_perms.get('factures', False), key=f"edit_fact_{user['id']}")
+                            perm_supprimer = col1.checkbox("🗑️ Peut Supprimer", value=current_perms.get('supprimer', False), key=f"edit_sup_{user['id']}")
+                            perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
+
+                            st.markdown("**📋 Devis Industriel :**")
+                            col_i1, col_i2, col_i3 = st.columns(3)
+                            perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
+                            perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
+                            perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
+
+                            st.markdown("**📋 Devis Bâtiment :**")
+                            col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+                            perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
+                            perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
+                            perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
+                            perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
+
+                            col_btn1, col_btn2 = st.columns(2)
+                            if col_btn1.form_submit_button("💾 Enregistrer Modifications", type="primary", width="stretch"):
+                                new_perms = {
+                                    "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
+                                    "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
+                                    "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
+                                    "users": perm_users, "devis_industriel": perm_devis_ind,
+                                    "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
+                                    "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
+                                    "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
+                                }
+                                try:
+                                    supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
+                                    st.success(f"Permissions de {user['nom']} mises à jour")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur modification")
+                                    st.code(repr(e))
+
+                        if user['nom']!= st.session_state.user_name:
+                            if st.button("🗑️ Supprimer cet utilisateur", key=f"del_user_{user['id']}", type="secondary", width="stretch"):
+                                try:
+                                    supabase.table("utilisateurs").delete().eq("id", int(user['id'])).execute()
+                                    st.success(f"Utilisateur {user['nom']} supprimé")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erreur suppression")
+                                    st.code(repr(e))
+                        else:
+                            st.info("🔒 Vous ne pouvez pas supprimer votre propre compte")
+                    else:
+                        st.info("🔒 Seul le PDG peut modifier les autorisations")
+
+# === FLOKI SOLDAT COMPLET - VERSION PDG ===
+import difflib
+import re
+import urllib.parse
+import json
+import requests
+
+class FLOKI:
+    def __init__(self, supabase_client, dataframes):
+        self.supabase = supabase_client
+        self.df = dataframes
+        self.system_knowledge = self._get_supabase_schema()
+
+    def _get_supabase_schema(self):
+        schema = {}
+        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
+        for t in tables:
+            try:
+                result = self.supabase.table(t).select("*").limit(1).execute()
+                schema[t] = list(result.data[0].keys()) if result.data else []
+            except:
+                schema[t] = []
+        return schema
+
+    def ask(self, question):
+        q = question.lower().strip()
+        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
+
+        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
+            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
+
+        if "envoie" in q and "message" in q and "numero" in q:
+            result = self._action_send_whatsapp(question)
+            log_entry.update({"action": "whatsapp_send", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
+        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
+            result = self._action_rediger(question)
+            log_entry.update({"action": "redaction", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
+        if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
+            result = self._action_conseil(q)
+            log_entry.update({"action": "conseil", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
+        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
+        rep = self._search_asymas(q_clean)
+        if rep:
+            log_entry.update({"source": "ASYMAS", "reponse": rep})
+            self._log_action(log_entry)
+            return rep + "\n\nSource: ASYMAS"
+
+        web_rep = self._search_web(question)
+        log_entry.update({"source": "WEB", "reponse": web_rep})
+        self._log_action(log_entry)
+        return web_rep + "\n\nSource: WEB"
+
+    def _search_asymas(self, q):
+        if "voiture" in q and ("moins cher" in q or "prix" in q):
+            return self._get_voiture_moins_cher()
+        if "voiture" in q and ("liste" in q or "donne" in q):
+            return self._get_voitures_stock()
+        rep = self._search_product(q)
+        if rep: return rep
+        if "perte" in q and "commerce" in q:
+            return self._get_pertes_commerce()
+        if any(k in q for k in ["stock bas", "rupture", "manque"]):
+            return self._stock_bas()
+        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
+            return self._chiffre_affaires()
+        return None
+
+    def _get_voiture_moins_cher(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
+        if not prix_col:
+            return "Chef, je ne trouve pas la colonne prix dans voitures."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
+        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
+        prix = float(moins_chere[prix_col])
+        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
+
+    def _get_voitures_stock(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
+        return f"Voitures en stock:\n{txt}"
+
+    def _get_pertes_commerce(self):
+        try:
+            result = self.supabase.table("mouvements_stock").select("*").eq("type", "perte").eq("categorie", "commerce").order("date", desc=True).limit(10).execute()
+            if not result.data:
+                return "Aucune perte commerce enregistrée chef."
+            txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
+            return f"Dernières pertes commerce:\n{txt}"
+        except Exception as e:
+            return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
+
+    def _search_product(self, q):
+        if self.df['articles'].empty:
+            return None
+        articles = self.df['articles'].copy()
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
+        mots_q = [w for w in q_clean.split() if len(w) > 2]
+        if mots_q:
+            for _, r in articles.iterrows():
+                if all(word in r['nom_clean'] for word in mots_q):
+                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        noms = articles['nom_clean'].tolist()
+        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
+        if closest:
+            r = articles[articles['nom_clean'] == closest[0]].iloc[0]
+            return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        return None
+
+    def _stock_bas(self):
+        if self.df['articles'].empty:
+            return "Pas d'articles chef."
+        low = self.df['articles'][self.df['articles']['stock'] < 5]
+        if low.empty:
+            return "Stock OK chef. Rien en dessous de 5 unités."
+        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
+        return f"Attention chef, stock bas:\n{txt}"
+
+    def _chiffre_affaires(self):
+        if self.df['compta'].empty:
+            return "Pas de données compta chef."
+        rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
+        dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
+        return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+
+    def _search_web(self, q):
+        try:
+            url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
+            r = requests.get(url, timeout=4)
+            data = r.json()
+            if data.get('AbstractText'):
+                return f"Info vérifiée: {data['AbstractText']}"
+            return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
+        except:
+            return "Le web ne répond pas chef."
+
+    def _action_rediger(self, question):
+        if "relance" in question.lower():
+            return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
+        if "convocation" in question.lower():
+            return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
+        return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
+
+    def _action_send_whatsapp(self, question):
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if not nums:
+            return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
+        numero = nums[0].replace("+", "")
+        message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
+        url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
+        return f"Lien WhatsApp prêt: {url}"
+
+    def notify_internal(self, message):
+        try:
+            self.supabase.table("notifications").insert({
+                "message": f"[{st.session_state.get('user_name', 'PDG')}]: {message}",
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            return "Notification envoyée à l’équipe chef."
+        except Exception as e:
+            return f"Échec notification: {e}"
+
+    def _action_conseil(self, q):
+        if not self.df['articles'].empty and not self.df['compta'].empty:
+            stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
+            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
+            return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
+        return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
+
+    def _log_action(self, log_entry):
+        try:
+            self.supabase.table("floki_logs").insert(log_entry).execute()
+        except:
+            pass
+
+if 'floki' not in st.session_state:
+    dataframes = {
+        "articles": df_articles,
+        "compta": df_compta,
+        "biens": df_biens,
+        "voitures": df_voitures
+    }
+    st.session_state.floki = FLOKI(supabase, dataframes)
+
+with st.sidebar:
+    st.divider()
+    st.markdown("### 🤖 FLOKI")
+    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
+
+    q = st.text_input("Ordre pour FLOKI", key="floki_input",
+                      placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
+
+    st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Exécuter", type="primary", use_container_width=True):
+            if q:
+                with st.spinner("FLOKI réfléchit..."):
+                    rep = st.session_state.floki.ask(q)
+                    st.session_state.floki_rep = rep
+
+    with col2:
+        if st.button("Notifier équipe", use_container_width=True):
+            if q:
+                msg = st.session_state.floki.notify_internal(q)
+                st.toast(msg)
+
+    if 'floki_rep' in st.session_state:
+        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
+        st.components.v1.html(f"""
+            <script>
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("{rep_clean}");
+                msg.lang = 'fr-FR';
+                msg.rate = 1;
+                window.speechSynthesis.speak(msg);
+            }}
+            </script>
+        """, height=0)
+        st.success(st.session_state.floki_rep)
