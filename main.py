@@ -456,7 +456,7 @@ elif st.session_state.selected_module:
 
 # === CHARGEMENT GLOBAL ===
 else:
-    # Si on est sur l'accueil, on n'affiche que le cercle avec les 6 boutons
+    # Si on est sur l'accueil, on n'affiche que le cercle
     if st.session_state.selected_module is None:
         html_buttons = """
         <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -486,7 +486,7 @@ else:
             st.rerun()
         st.stop()
 
-    # Sinon on charge les données et on affiche les tabs pour le module choisi
+    # === A PARTIR D'ICI : on est dans un module, pas sur l'accueil ===
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
         st.markdown(f"**Rôle : {st.session_state.user_role}**")
@@ -510,7 +510,6 @@ else:
     df_devis = load_table("devis")
     df_utilisateurs = load_table("utilisateurs")
 
-    # Sécurité si table vide
     if df_compta.empty:
         df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
     if 'montant' not in df_compta.columns:
@@ -535,7 +534,7 @@ else:
         except:
             perms = {}
 
-    # Ici tu gardes ton code des tabs pour les modules
+    # Vérification permission module
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
     perm_key = perm_map.get(st.session_state.selected_module, "")
     if not check_perm(perm_key):
@@ -545,6 +544,7 @@ else:
             st.query_params.clear()
             st.rerun()
         st.stop()
+
     st.divider()
     col1, col2 = st.columns([6,1])
     with col1:
@@ -555,10 +555,10 @@ else:
             st.session_state.selected_module = None
             st.query_params.clear()
             st.rerun()
+
     table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
-
 if "📊 Dashboard" in tab_map:
     with tab_map["📊 Dashboard"]:
         st.markdown("## 📊 Dashboard ASYMAS")
