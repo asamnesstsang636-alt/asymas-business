@@ -479,38 +479,24 @@ else:
     df_devis = load_table("devis")
     df_utilisateurs = load_table("utilisateurs")
 
+    # Sécurité si une table est vide ou n’existe pas
+    if df_compta.empty:
+        df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
+
     if 'montant' not in df_compta.columns:
         df_compta['montant'] = 0
     if 'type' not in df_compta.columns:
         df_compta['type'] = 'Inconnu'
-if 'date' in df_compta.columns:
-df_biens = load_table("biens")
-df_articles = load_table("articles")
-df_voitures = load_table("voitures")
-df_compta = load_table("compta")
-df_factures = load_table("factures_proforma")
-df_devis = load_table("devis")
-df_utilisateurs = load_table("utilisateurs")
+    if 'date' in df_compta.columns:
+        df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
+        df_compta = df_compta.sort_values('date', ascending=False)
 
-# Sécurité si une table est vide ou n’existe pas
-if df_compta.empty:
-    df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
-
-if 'montant' not in df_compta.columns:
-    df_compta['montant'] = 0
-if 'type' not in df_compta.columns:
-    df_compta['type'] = 'Inconnu'
-if 'date' in df_compta.columns:
-    df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
-    df_compta = df_compta.sort_values('date', ascending=False)
-    
-
-perms = st.session_state.perms
-if isinstance(perms, str):
-    try:
-        perms = json.loads(perms)
-    except:
-        perms = {}
+    perms = st.session_state.perms
+    if isinstance(perms, str):
+        try:
+            perms = json.loads(perms)
+        except:
+            perms = {}
 
 tabs_dispo = []
 if st.session_state.user_role == "PDG" or perms.get('dashboard', True):
