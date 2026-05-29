@@ -13,10 +13,13 @@ from streamlit_qrcode_scanner import qrcode_scanner
 # === SESSION STATE ===
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+    st.session_state.user_role = ""
+    st.session_state.user_name = ""
+    st.session_state.perms = {}
 if 'selected_module' not in st.session_state:
     st.session_state.selected_module = None
 
-# Récupère module depuis URL si présent
+# Récupère module depuis URL
 if 'module' in st.query_params and st.session_state.selected_module is None:
     st.session_state.selected_module = st.query_params['module']
     st.rerun()
@@ -44,7 +47,7 @@ def load_table(table_name):
     except:
         return pd.DataFrame()
 
-# === LOGIN ===
+# === LOGIN HOLOGRAMME ===
 if not st.session_state.logged_in:
     st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -65,12 +68,26 @@ if not st.session_state.logged_in:
     """, unsafe_allow_html=True)
 
     pwd = st.text_input("", type="password", placeholder="Mot de passe ASYMAS")
-    if pwd == "asymas2025":
-        st.session_state.logged_in = True
-        st.session_state.user_role = "PDG"
-        st.session_state.user_name = "PDG"
-        st.rerun()
+    if pwd:
+        result = supabase.table("utilisateurs").select("*").eq("password", pwd).execute()
+        if result.data:
+            u = result.data[0]
+            st.session_state.logged_in = True
+            st.session_state.user_role = u['role']
+            st.session_state.user_name = u['nom']
+            st.session_state.perms = u.get('permissions', {})
+            st.rerun()
+        elif pwd == "asymas2025": # backdoor PDG
+            st.session_state.logged_in = True
+            st.session_state.user_role = "PDG"
+            st.session_state.user_name = "PDG"
+            st.session_state.perms = {}
+            st.rerun()
     st.stop()
+
+# === FONCTION VERIF DROIT ===
+def check_perm(key):
+    return st.session_state.user_role == "PDG" or st.session_state.perms.get(key, False)
 
 # === ACCUEIL AVEC 6 BOUTONS CLIQUABLES ===
 if st.session_state.selected_module is None:
@@ -96,15 +113,28 @@ if st.session_state.selected_module is None:
     @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
-
     components.html(html_buttons, height=700)
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
 
-# === AFFICHAGE MODULE UNIQUE ===
+# === VERIFICATION DROIT AVANT AFFICHAGE MODULE ===
 elif st.session_state.selected_module:
+    perm_map = {
+        "Commerce": "commerce", "Stock": "stock", "Immo": "immobilier",
+        "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"
+    }
+    perm_key = perm_map.get(st.session_state.selected_module, "")
+
+    if not check_perm(perm_key):
+        st.error(f"⛔ Vous n'avez pas l'autorisation d'accéder au module {st.session_state.selected_module}")
+        if st.button("← Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        st.stop()
+
     st.divider()
     col1, col2 = st.columns([6,1])
     with col1:
@@ -123,30 +153,22 @@ elif st.session_state.selected_module:
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
 
-# === TON ANCIEN CODE TABS ===
+# === TABS COMPLETS ===
 else:
-    st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-    st.markdown("### Agriculture • Commerce • Immobilier • Automobile • Beni RDC")
-
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
         st.markdown(f"**Rôle : {st.session_state.user_role}**")
-        st.info("ASYMAS BUSINESS v3.0 Hologram")
-        if 'theme_choisi' not in st.session_state:
-            st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🔄 Actualiser", key="btn_save"):
+        st.info("ASYMAS BUSINESS v3.0")
+        if st.button("🏠 Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        if st.button("🔄 Actualiser"):
             st.cache_data.clear()
             st.rerun()
-
-    if theme=="Sombre ASYMAS":
-        st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Bleu Pro":
-        st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Vert Agri":
-        st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
-    elif theme=="Noir Luxe":
-        st.markdown("""<style>.stApp{background:#000;color:#FFF}h1,h2,h3{color:#FFD700!important}</style>""",unsafe_allow_html=True)
+        if st.button("🔒 Déconnexion"):
+            st.session_state.clear()
+            st.rerun()
 
     df_biens = load_table("biens")
     df_articles = load_table("articles")
@@ -174,14 +196,11 @@ else:
         col1.metric("🏠 Biens", len(df_biens))
         col2.metric("📦 Articles", len(df_articles))
         col3.metric("🚗 Voitures", len(df_voitures))
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-        st.divider()
+        revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
+        col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
         if not df_compta.empty:
             st.subheader("📈 Dernières transactions")
             st.dataframe(df_compta.head(10), use_container_width=True)
 
-    # ... garde tout ton code des autres tabs ici tel quel ...
+    # Colle ici tes autres tabs Commerce, Stock, Immo, Auto, Compta, Factures, Devis, Users
+    # Ils s'afficheront tous, mais l'accès via le cercle sera bloqué si pas de droit
