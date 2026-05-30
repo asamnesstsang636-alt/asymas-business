@@ -87,7 +87,7 @@ if st.session_state.logged_in:
         st.session_state.clear()
         st.rerun()
 
-    if not st.session_state.selected_module:
+    if st.session_state.selected_module is None:
         st.markdown("Cliquez sur un module pour démarrer l'opération. Seules les actions autorisées sont accessibles.")
         clicked = components.html(html_buttons, height=720)
         if clicked:
@@ -124,11 +124,12 @@ else:
     st.markdown("# ASYMAS BUSINESS")
     st.markdown("### Accès sécurisé")
     pwd = st.text_input("Code d'accès", type="password", placeholder="Entrez votre mot de passe", key="access_pwd")
-    if pwd:
+    if st.button("Accéder", key="login_button"):
         if pwd == "asymas2025":
             st.session_state.logged_in = True
             st.session_state.user_role = "PDG"
             st.session_state.user_name = "PDG"
+            st.session_state.selected_module = None
             st.rerun()
         else:
             st.error("Code incorrect. Réessayez.")
