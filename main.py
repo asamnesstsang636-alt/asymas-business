@@ -235,3 +235,81 @@ else:
     with tab_map["👥 Utilisateurs"]:
         st.markdown("## 👥 Gestion Utilisateurs")
         st.dataframe(df_utilisateurs, use_container_width=True, hide_index=True)
+# ==================== FLOKI SOLDAT COMPLET ====================
+class FLOKI:
+    def __init__(self, supabase_client, dataframes):
+        self.supabase = supabase_client
+        self.df = dataframes
+
+    def ask(self, question):
+        q = question.lower().strip()
+        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
+            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
+        if "voiture" in q and ("moins cher" in q or "prix" in q):
+            return self._get_voiture_moins_cher()
+        if "voiture" in q and ("liste" in q or "donne" in q):
+            return self._get_voitures_stock()
+        rep = self._search_product(q)
+        if rep: 
+            return rep + "\n\nSource: ASYMAS"
+        return f"Négatif chef. Rien de vérifiable pour '{question}'."
+
+    def _get_voiture_moins_cher(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
+        if not prix_col:
+            return "Chef, je ne trouve pas la colonne prix dans voitures."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
+        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
+        prix = float(moins_chere[prix_col])
+        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
+
+    def _get_voitures_stock(self):
+        if self.df['voitures'].empty:
+            return "Pas de données voitures chef."
+        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
+        if dispo.empty:
+            return "Aucune voiture en stock chef."
+        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
+        return f"Voitures en stock:\n{txt}"
+
+    def _search_product(self, q):
+        if self.df['articles'].empty:
+            return None
+        articles = self.df['articles'].copy()
+        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
+        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
+        mots_q = [w for w in q_clean.split() if len(w) > 2]
+        if mots_q:
+            for _, r in articles.iterrows():
+                if all(word in r['nom_clean'] for word in mots_q):
+                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
+        return None
+
+# ==================== INIT FLOKI APRÈS CHARGEMENT DATA ====================
+if 'floki' not in st.session_state:
+    dataframes = {
+        "articles": df_articles if not df_articles.empty else pd.DataFrame(),
+        "compta": df_compta if not df_compta.empty else pd.DataFrame(),
+        "biens": df_biens if not df_biens.empty else pd.DataFrame(),
+        "voitures": df_voitures if not df_voitures.empty else pd.DataFrame()
+    }
+    st.session_state.floki = FLOKI(supabase, dataframes)
+
+# ==================== SIDEBAR FLOKI ====================
+with st.sidebar:
+    st.divider()
+    st.markdown("### 🤖 FLOKI")
+    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
+    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
+    if st.button("Exécuter", type="primary", use_container_width=True):
+        if q:
+            with st.spinner("FLOKI réfléchit..."):
+                rep = st.session_state.floki.ask(q)
+                st.session_state.floki_rep = rep
+    if 'floki_rep' in st.session_state:
+        st.success(st.session_state.floki_rep)
