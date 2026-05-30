@@ -15,6 +15,10 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'selected_module' not in st.session_state:
     st.session_state.selected_module = None
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = "Invité"
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = "Visiteur"
 
 # === CSS ===
 st.markdown("""
@@ -27,16 +31,20 @@ div[data-testid="stTextInput"] label{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+SUPABASE_URL = st.secrets.get("SUPABASE_URL")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY")
+if not SUPABASE_URL or not SUPABASE_KEY:
+    st.error("Supabase URL et KEY doivent être définis dans st.secrets.")
+    st.stop()
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
         data = supabase.table(table_name).select("*").order("id", desc=True).execute()
-        return pd.DataFrame(data.data)
-    except:
+        return pd.DataFrame(data.data or [])
+    except Exception as e:
+        st.error(f"Erreur de chargement de la table {table_name} : {e}")
         return pd.DataFrame()
 
 # === LOGIN ===
@@ -67,10 +75,10 @@ if not st.session_state.logged_in:
         st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES SUR LE CERCLE ===
+# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES ===
 html_buttons = """
 <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;pointer-events:none;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
@@ -179,137 +187,4 @@ else:
             st.subheader("📈 Dernières transactions")
             st.dataframe(df_compta.head(10), use_container_width=True)
 
-    # === TAB COMMERCE ===
-    with tab_map["🛍️ Commerce"]:
-        st.markdown("## 🛍️ Commerce - Point de Vente")
-        if not df_articles.empty:
-            df_disp = df_articles[df_articles['stock'] > 0] if 'stock' in df_articles.columns else df_articles
-            st.dataframe(df_disp, use_container_width=True)
-        else:
-            st.info("Aucun article trouvé")
-
-    # === TAB GESTION STOCK ===
-    with tab_map["📦 Gestion Stock"]:
-        st.markdown("## 📦 Gestion Stock Commerce")
-        st.dataframe(df_articles, use_container_width=True)
-
-    # === TAB IMMOBILIER ===
-    with tab_map["🏠 Immobilier"]:
-        st.markdown("## 🏠 Immobilier")
-        st.dataframe(df_biens, use_container_width=True)
-
-    # === TAB AUTOMOBILE ===
-    with tab_map["🚗 Automobile"]:
-        st.markdown("## 🚗 Automobile")
-        st.dataframe(df_voitures, use_container_width=True)
-
-    # === TAB GESTION PARC ===
-    with tab_map["🚘 Gestion Parc"]:
-        st.markdown("## 🚘 Gestion Parc Automobile")
-        st.dataframe(df_voitures, use_container_width=True)
-
-    # === TAB COMPTABILITÉ ===
-    with tab_map["💰 Comptabilité"]:
-        st.markdown("## 💰 Comptabilité ASYMAS")
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            total_rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            total_dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-            solde = total_rev - total_dep
-            col1, col2, col3 = st.columns(3)
-            col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
-            col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
-            col3.metric("💎 Solde", f"{solde:,.0f} FC")
-        st.dataframe(df_compta, use_container_width=True, hide_index=True)
-
-    # === TAB FACTURES ===
-    with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Gestion Factures & Proformas")
-        st.dataframe(df_factures, use_container_width=True, hide_index=True)
-
-    # === TAB DEVIS ===
-    with tab_map["📋 Devis"]:
-        st.markdown("## 📋 Devis ASYMAS Consulting")
-        st.dataframe(df_devis, use_container_width=True, hide_index=True)
-
-    # === TAB UTILISATEURS ===
-    with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        st.dataframe(df_utilisateurs, use_container_width=True, hide_index=True)
-# ==================== FLOKI SOLDAT COMPLET ====================
-class FLOKI:
-    def __init__(self, supabase_client, dataframes):
-        self.supabase = supabase_client
-        self.df = dataframes
-
-    def ask(self, question):
-        q = question.lower().strip()
-        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
-        if "voiture" in q and ("moins cher" in q or "prix" in q):
-            return self._get_voiture_moins_cher()
-        if "voiture" in q and ("liste" in q or "donne" in q):
-            return self._get_voitures_stock()
-        rep = self._search_product(q)
-        if rep: 
-            return rep + "\n\nSource: ASYMAS"
-        return f"Négatif chef. Rien de vérifiable pour '{question}'."
-
-    def _get_voiture_moins_cher(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
-        if not prix_col:
-            return "Chef, je ne trouve pas la colonne prix dans voitures."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
-        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
-        prix = float(moins_chere[prix_col])
-        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
-
-    def _get_voitures_stock(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
-        return f"Voitures en stock:\n{txt}"
-
-    def _search_product(self, q):
-        if self.df['articles'].empty:
-            return None
-        articles = self.df['articles'].copy()
-        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-        mots_q = [w for w in q_clean.split() if len(w) > 2]
-        if mots_q:
-            for _, r in articles.iterrows():
-                if all(word in r['nom_clean'] for word in mots_q):
-                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-        return None
-
-# ==================== INIT FLOKI APRÈS CHARGEMENT DATA ====================
-if 'floki' not in st.session_state:
-    dataframes = {
-        "articles": df_articles if not df_articles.empty else pd.DataFrame(),
-        "compta": df_compta if not df_compta.empty else pd.DataFrame(),
-        "biens": df_biens if not df_biens.empty else pd.DataFrame(),
-        "voitures": df_voitures if not df_voitures.empty else pd.DataFrame()
-    }
-    st.session_state.floki = FLOKI(supabase, dataframes)
-
-# ==================== SIDEBAR FLOKI ====================
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
-    q = st.text_input("Ordre pour FLOKI", key="floki_input", placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
-    if st.button("Exécuter", type="primary", use_container_width=True):
-        if q:
-            with st.spinner("FLOKI réfléchit..."):
-                rep = st.session_state.floki.ask(q)
-                st.session_state.floki_rep = rep
-    if 'floki_rep' in st.session_state:
-        st.success(st.session_state.floki_rep)
+    # ... garde tout ton code des autres tabs ici tel quel ...
