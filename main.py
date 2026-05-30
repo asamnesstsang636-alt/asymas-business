@@ -400,13 +400,12 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === PAGE D'ACCUEIL AVEC BOUTONS SUR LE CERCLE ===
+# === ACCUEIL - BOUTONS COLLÉS SUR LE CERCLE ===
 if st.session_state.selected_module is None:
-    
-    # Cercle en fond
     st.markdown("""
-    <div style="position:relative;width:100%;height:750px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+    <div id="asymas-container" style="position:relative;width:100%;height:750px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
+        <!-- Le cercle -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;pointer-events:none;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
@@ -425,48 +424,46 @@ if st.session_state.selected_module is None:
         border:3px solid #FFD700!important; border-radius:50%!important; 
         background:#fff!important; box-shadow:0 0 25px #FFD700!important; 
         font-size:11px!important; font-weight:bold!important; color:#000!important; 
-        cursor:pointer!important;
+        cursor:pointer!important; position:absolute!important; z-index:999!important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Boutons en overlay absolu
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown('<div style="position:absolute;top:185px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
-        if st.button("🏠\nImmo", key="btn_immo"):
-            st.session_state.selected_module = "Immo"; st.query_params["module"]="Immo"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:280px;left:calc(50% + 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        if st.button("🧾\nFact", key="btn_fact"):
-            st.session_state.selected_module = "Factures"; st.query_params["module"]="Factures"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:470px;left:calc(50% + 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        if st.button("🚚\nAuto", key="btn_auto"):
-            st.session_state.selected_module = "Auto"; st.query_params["module"]="Auto"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:565px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
-        if st.button("🏪\nCom", key="btn_com"):
-            st.session_state.selected_module = "Commerce"; st.query_params["module"]="Commerce"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:470px;left:calc(50% - 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        if st.button("📦\nStoc", key="btn_stock"):
-            st.session_state.selected_module = "Stock"; st.query_params["module"]="Stock"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:280px;left:calc(50% - 165px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        if st.button("📊\nCom", key="btn_compta"):
-            st.session_state.selected_module = "Compta"; st.query_params["module"]="Compta"; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:185px;left:calc(50% - 220px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        if st.button("🚪\nDéco", key="btn_deco"):
-            st.session_state.clear(); st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Boutons avec positionnement absolu par rapport au centre de l'écran
+    st.markdown('<div style="position:absolute;top:200px;left:50%;transform:translateX(-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("🏠\nImm", key="btn_immo"): 
+        st.session_state.selected_module="Immo"; st.query_params["module"]="Immo"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:290px;left:calc(50% + 190px);transform:translate(-50%,-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("🧾\nFact", key="btn_fact"): 
+        st.session_state.selected_module="Factures"; st.query_params["module"]="Factures"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:460px;left:calc(50% + 190px);transform:translate(-50%,-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("🚚\nAuto", key="btn_auto"): 
+        st.session_state.selected_module="Auto"; st.query_params["module"]="Auto"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:550px;left:50%;transform:translateX(-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("🏪\nCom", key="btn_com"): 
+        st.session_state.selected_module="Commerce"; st.query_params["module"]="Commerce"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:460px;left:calc(50% - 190px);transform:translate(-50%,-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("📦\nStoc", key="btn_stock"): 
+        st.session_state.selected_module="Stock"; st.query_params["module"]="Stock"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:290px;left:calc(50% - 190px);transform:translate(-50%,-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("📊\nCom", key="btn_compta"): 
+        st.session_state.selected_module="Compta"; st.query_params["module"]="Compta"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:200px;left:calc(50% - 250px);transform:translate(-50%,-50%);z-index:999;">', unsafe_allow_html=True)
+    if st.button("🚪\nDéco", key="btn_deco"): 
+        st.session_state.clear(); st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 # === MODULES SIMPLES ===
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
