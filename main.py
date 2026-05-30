@@ -178,3 +178,60 @@ else:
         if not df_compta.empty:
             st.subheader("📈 Dernières transactions")
             st.dataframe(df_compta.head(10), use_container_width=True)
+
+    # === TAB COMMERCE ===
+    with tab_map["🛍️ Commerce"]:
+        st.markdown("## 🛍️ Commerce - Point de Vente")
+        if not df_articles.empty:
+            df_disp = df_articles[df_articles['stock'] > 0] if 'stock' in df_articles.columns else df_articles
+            st.dataframe(df_disp, use_container_width=True)
+        else:
+            st.info("Aucun article trouvé")
+
+    # === TAB GESTION STOCK ===
+    with tab_map["📦 Gestion Stock"]:
+        st.markdown("## 📦 Gestion Stock Commerce")
+        st.dataframe(df_articles, use_container_width=True)
+
+    # === TAB IMMOBILIER ===
+    with tab_map["🏠 Immobilier"]:
+        st.markdown("## 🏠 Immobilier")
+        st.dataframe(df_biens, use_container_width=True)
+
+    # === TAB AUTOMOBILE ===
+    with tab_map["🚗 Automobile"]:
+        st.markdown("## 🚗 Automobile")
+        st.dataframe(df_voitures, use_container_width=True)
+
+    # === TAB GESTION PARC ===
+    with tab_map["🚘 Gestion Parc"]:
+        st.markdown("## 🚘 Gestion Parc Automobile")
+        st.dataframe(df_voitures, use_container_width=True)
+
+    # === TAB COMPTABILITÉ ===
+    with tab_map["💰 Comptabilité"]:
+        st.markdown("## 💰 Comptabilité ASYMAS")
+        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+            total_rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+            total_dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
+            solde = total_rev - total_dep
+            col1, col2, col3 = st.columns(3)
+            col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
+            col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
+            col3.metric("💎 Solde", f"{solde:,.0f} FC")
+        st.dataframe(df_compta, use_container_width=True, hide_index=True)
+
+    # === TAB FACTURES ===
+    with tab_map["📄 Factures"]:
+        st.markdown("## 📄 Gestion Factures & Proformas")
+        st.dataframe(df_factures, use_container_width=True, hide_index=True)
+
+    # === TAB DEVIS ===
+    with tab_map["📋 Devis"]:
+        st.markdown("## 📋 Devis ASYMAS Consulting")
+        st.dataframe(df_devis, use_container_width=True, hide_index=True)
+
+    # === TAB UTILISATEURS ===
+    with tab_map["👥 Utilisateurs"]:
+        st.markdown("## 👥 Gestion Utilisateurs")
+        st.dataframe(df_utilisateurs, use_container_width=True, hide_index=True)
