@@ -400,60 +400,68 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === ACCUEIL AVEC 6 BOUTONS SUR LE CERCLE ===
+# === ACCUEIL - CERCLE + BOUTONS CLIQUABLES ===
 if st.session_state.selected_module is None:
     
-    # Container unique qui contient le cercle + les boutons
-    container = st.container()
-    with container:
-        st.markdown("""
-        <div style="position:relative;width:100%;height:750px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;pointer-events:none;">
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
-                    <div style="font-size:50px;">🛒</div>
-                    <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
-                </div>
+    # 1. On affiche le cercle
+    st.markdown("""
+    <div id="circle-bg" style="position:relative;width:100%;height:750px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);border-radius:50%;box-shadow:0 0 100px #FFD700;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:pulseCart 2s ease-in-out infinite;">
+                <div style="font-size:50px;">🛒</div>
+                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
-        <style>
-        @keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-        @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-        @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
-        button[kind="primary"]{position:absolute!important;width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 25px #FFD700!important;font-size:11px!important;font-weight:bold!important;color:#000!important;z-index:999!important;}
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Boutons en position absolue par rapport au container
-        st.markdown('<div style="position:absolute;top:200px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
-        st.button("🏠\nImm", key="btn_immo", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Immo'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:290px;left:calc(50% + 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        st.button("🧾\nFact", key="btn_fact", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Factures'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:460px;left:calc(50% + 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        st.button("🚚\nAuto", key="btn_auto", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Auto'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:550px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
-        st.button("🏪\nCom", key="btn_com", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Commerce'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:460px;left:calc(50% - 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        st.button("📦\nStoc", key="btn_stock", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Stock'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:290px;left:calc(50% - 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        st.button("📊\nCom", key="btn_compta", type="primary", on_click=lambda: setattr(st.session_state, 'selected_module', 'Compta'))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="position:absolute;top:200px;left:calc(50% - 250px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
-        st.button("🚪\nDéco", key="btn_deco", type="primary", on_click=lambda: st.session_state.clear())
-        st.markdown('</div>', unsafe_allow_html=True)
+    </div>
+    <style>
+    @keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
+    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+    div[data-testid="stButton"]{position:absolute!important;}
+    div[data-testid="stButton"] button{width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 2. On pose les boutons aux coordonnées exactes du cercle
+    # Top = 200px, Right = 290px+190px, etc. = rayon 190px autour du centre
+    
+    st.markdown('<div style="position:absolute;top:200px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
+    if st.button("🏠\nImm", key="immo"): 
+        st.session_state.selected_module = "Immo"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:290px;left:calc(50% + 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+    if st.button("🧾\nFact", key="fact"): 
+        st.session_state.selected_module = "Factures"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:460px;left:calc(50% + 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+    if st.button("🚚\nAuto", key="auto"): 
+        st.session_state.selected_module = "Auto"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:550px;left:50%;transform:translateX(-50%);">', unsafe_allow_html=True)
+    if st.button("🏪\nCom", key="com"): 
+        st.session_state.selected_module = "Commerce"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:460px;left:calc(50% - 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+    if st.button("📦\nStoc", key="stock"): 
+        st.session_state.selected_module = "Stock"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:290px;left:calc(50% - 190px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+    if st.button("📊\nCom", key="compta"): 
+        st.session_state.selected_module = "Compta"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="position:absolute;top:200px;left:calc(50% - 250px);transform:translate(-50%,-50%);">', unsafe_allow_html=True)
+    if st.button("🚪\nDéco", key="deco"): 
+        st.session_state.clear(); st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 # === MODULES SIMPLES ===
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
