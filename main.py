@@ -24,6 +24,11 @@ if 'logged_in' not in st.session_state:
 if 'selected_module' not in st.session_state:
     st.session_state.selected_module = None
 
+# LIT L'URL?module=Commerce ET OUVRE LE MODULE
+if 'module' in st.query_params and st.session_state.selected_module is None:
+    st.session_state.selected_module = st.query_params['module']
+    st.rerun()
+
 # === CSS ===
 st.markdown("""
 <style>
@@ -396,8 +401,7 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# REMPLACE TOUT LE BLOC "ACCUEIL : CERCLE CLIQUABLE" PAR ÇA :
-
+# === ACCUEIL : CERCLE CLIQUABLE APRÈS ACCÈS ===
 if st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -421,14 +425,13 @@ if st.session_state.selected_module is None:
     @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
-    components.html(html_buttons, height=700)  # PAS de key=, PAS de =clicked
+    components.html(html_buttons, height=700)
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
 
-# ET REMPLACE LE BLOC "MODULE : OUVERTURE SEULE" PAR ÇA :
-
+# === MODULE : OUVERTURE SEULE DE L'OPÉRATION CHOISIE ===
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
     perm_key = perm_map.get(st.session_state.selected_module, "")
@@ -457,26 +460,3 @@ elif st.session_state.selected_module:
     table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
-# === MODULE : OUVERTURE SEULE DE L'OPÉRATION CHOISIE ===
-elif st.session_state.selected_module:
-    perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
-    perm_key = perm_map.get(st.session_state.selected_module, "")
-    if not check_perm(perm_key):
-        st.error(f"⛔ Pas d'autorisation pour {st.session_state.selected_module}")
-        if st.button("← Retour Accueil"):
-            st.session_state.selected_module = None
-            st.rerun()
-        st.stop()
-
-    st.divider()
-    col1, col2 = st.columns([6,1])
-    with col1:
-        st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-        st.markdown(f"### {st.session_state.selected_module}")
-    with col2:
-        if st.button("← Retour Accueil"):
-            st.session_state.selected_module = None
-            st.rerun()
-        if st.button("🚪 Déconnexion"):
-            st.session_state.clear()
-            st.rerun()
