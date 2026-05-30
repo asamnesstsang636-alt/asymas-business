@@ -682,11 +682,24 @@ class FLOKI:
                     return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
         return None
 
-# Initialisation FLOKI dans session_state
-if 'floki' not in st.session_state:
-    dataframes = {"articles": df_articles, "compta": df_compta, "biens": df_biens, "voitures": df_voitures}
-    st.session_state.floki = FLOKI(supabase, dataframes)
+# Chargement des dataframes AVANT FLOKI
+df_biens = load_table("biens")
+df_articles = load_table("articles") 
+df_voitures = load_table("voitures")
+df_compta = load_table("compta")
+df_factures = load_table("factures_proforma")
+df_devis = load_table("devis")
+df_utilisateurs = load_table("utilisateurs")
 
+# Puis seulement après, init FLOKI
+if 'floki' not in st.session_state:
+    dataframes = {
+        "articles": df_articles if not df_articles.empty else pd.DataFrame(),
+        "compta": df_compta if not df_compta.empty else pd.DataFrame(),
+        "biens": df_biens if not df_biens.empty else pd.DataFrame(),
+        "voitures": df_voitures if not df_voitures.empty else pd.DataFrame()
+    }
+    st.session_state.floki = FLOKI(supabase, dataframes)
 # === SIDEBAR FLOKI ===
 with st.sidebar:
     st.divider()
