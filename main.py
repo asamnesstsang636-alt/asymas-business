@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
-st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="auto")
-st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
-
 from supabase import create_client, Client
 from datetime import date, datetime
 from fpdf import FPDF
 import tempfile, os, json, qrcode
 from streamlit_qrcode_scanner import qrcode_scanner
+
+st.set_page_config(page_title="ASYMAS BUSINESS", page_icon="🌾", layout="wide", initial_sidebar_state="auto")
+st.markdown("""<meta name="mobile-web-app-capable" content="yes">""", unsafe_allow_html=True)
 
 # === SESSION STATE ===
 if 'logged_in' not in st.session_state:
@@ -31,6 +31,7 @@ div[data-testid="stTextInput"] label{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
+# === SUPABASE ===
 SUPABASE_URL = st.secrets.get("SUPABASE_URL")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY")
 if not SUPABASE_URL or not SUPABASE_KEY:
@@ -44,10 +45,10 @@ def load_table(table_name):
         data = supabase.table(table_name).select("*").order("id", desc=True).execute()
         return pd.DataFrame(data.data or [])
     except Exception as e:
-        st.error(f"Erreur de chargement de la table {table_name} : {e}")
+        st.error(f"Erreur de chargement de la table {table_name} : {e}")
         return pd.DataFrame()
 
-# === ACCUEIL AVEC 6 BOUTONS CLIQUABLES ===
+# === HTML BOUTONS CLIQUABLES ===
 html_buttons = """
 <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
@@ -102,6 +103,7 @@ module_authorizations = {
 def is_authorized(module_name: str) -> bool:
     return module_name in module_authorizations.get(st.session_state.user_role, [])
 
+# === APP PRINCIPALE ===
 if st.session_state.logged_in:
     st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
     st.markdown("### Page d'accueil")
@@ -112,7 +114,7 @@ if st.session_state.logged_in:
 
     if st.session_state.selected_module is None:
         st.markdown("Cliquez sur un module pour démarrer l'opération. Seules les actions autorisées sont accessibles.")
-        clicked = components.html(html_buttons, height=720)
+        clicked = components.html(html_buttons, height=720, key="home_circle")
         if clicked:
             if is_authorized(clicked):
                 st.session_state.selected_module = clicked
@@ -147,7 +149,7 @@ else:
     st.markdown("# ASYMAS BUSINESS")
     st.markdown("### Accès sécurisé")
     st.markdown("Entrez le mot de passe ci-dessous pour activer les boutons du cercle.")
-    components.html(html_buttons_locked, height=720)
+    components.html(html_buttons_locked, height=720, key="locked_circle")
     pwd = st.text_input("Code d'accès", type="password", placeholder="Entrez votre mot de passe", key="access_pwd")
     if st.button("Accéder", key="login_button"):
         if pwd == "asymas2025":
