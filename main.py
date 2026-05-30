@@ -14,7 +14,7 @@ from openpyxl.utils import get_column_letter
 from streamlit_qrcode_scanner import qrcode_scanner
 import difflib, re, urllib.parse, requests
 
-# === SESSION STATE ===
+# ==================== SESSION STATE ====================
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_role = ""
@@ -28,7 +28,7 @@ if 'module' in st.query_params and st.session_state.selected_module is None:
     st.session_state.selected_module = st.query_params['module']
     st.rerun()
 
-# === CSS ===
+# ==================== CSS GLOBAL ====================
 st.markdown("""
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
@@ -38,17 +38,20 @@ div[data-testid="stTextInput"] input{background:rgba(0,0,0,0.9)!important; borde
 div[data-testid="stTextInput"] label{display:none!important;}
 #MainMenu, header,.stAppToolbar, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stHeader"], footer,.stDeployButton, [data-testid="stStatusWidget"] {display: none!important; visibility: hidden!important;}
 div[data-testid="stButton"]{position:absolute!important;}
-div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 25px #FFD700!important;font-size:11px!important;font-weight:bold!important;color:#000!important;cursor:pointer!important;z-index:999!important;}
+div[data-testid="stButton"] button{width:60px!important;height:60px!important;border:3px solid #FFD700!important;border-radius:50%!important;background:#fff!important;box-shadow:0 0 25px #FFD700!important;font-size:11px!important;font-weight:bold!important;color:#000!important;cursor:pointer!important;z-index:999!important;transition:all 0.2s;}
+div[data-testid="stButton"] button:hover{transform:scale(1.1)!important;box-shadow:0 0 35px #FFD700!important;}
 h1, h2, h3 {color: #FFD700!important; font-size: 2.2rem!important; font-weight: 900!important; padding: 10px 0!important; border-bottom: 3px solid #FFD700!important; margin-bottom: 20px!important;}
 div[data-testid="stMetricValue"] {color: #FFD700!important;}
 .stButton>button {background-color: #FFD700!important; color: black!important; font-weight: bold; border: none;}
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== SUPABASE INIT ====================
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ==================== FONCTIONS UTILES ====================
 @st.cache_data(ttl=60)
 def load_table(table_name):
     try:
@@ -85,6 +88,10 @@ def safe_pdf_txt(txt):
     txt = ''.join(c if ord(c) < 128 else '?' for c in txt)
     return txt.replace('\n', ' ').replace('\r', '').strip()
 
+def check_perm(key):
+    return st.session_state.user_role == "PDG" or st.session_state.perms.get(key, False)
+
+# ==================== PDF FACTURE ====================
 def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, tel_client="+243...", periode="", type_facture="Simple"):
     pdf = FPDF()
     pdf.add_page()
@@ -197,6 +204,7 @@ def generer_pdf_facture(numero, type_op, client, details_list, montant, devise, 
     os.unlink(qr_path)
     return bytes(pdf.output(dest='S'))
 
+# ==================== PDF DEVIS ====================
 def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
     pdf = FPDF()
     pdf.add_page()
@@ -306,6 +314,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parce
     pdf.cell(30, 8, f"{grand_total:,.0f}", 1, 1, 'R', True)
     return bytes(pdf.output(dest='S'))
 
+# ==================== CREATION FACTURE ====================
 def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode="", type_facture="Simple"):
     numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     if details_list is None:
@@ -320,6 +329,7 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
         st.code(repr(e))
     return numero_facture, pdf_bytes
 
+# ==================== EXCEL PRO ====================
 def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -360,15 +370,12 @@ def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_
             worksheet.column_dimensions[get_column_letter(col)].width = 18
     return output.getvalue()
 
-def check_perm(key):
-    return st.session_state.user_role == "PDG" or st.session_state.perms.get(key, False)
-
-# === LOGIN ===
+# ==================== LOGIN ====================
 if not st.session_state.logged_in:
     st.markdown("""
     <div style="position:relative;width:100vw;height:100vh;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:340px;height:170px;background:linear-gradient(145deg,#2d2d2d,#1a1a1a);border-radius:45px;box-shadow:0 35px 70px rgba(0,0,0,0.9);border:3px solid #444;"></div>
-        <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
+        <div style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;pointer-events:none;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px dotted rgba(255,215,0,0.9);border-radius:50%;animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid #FFD700;border-radius:50%;box-shadow:0 0 90px #FFD700;"></div>
@@ -402,7 +409,7 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === ACCUEIL - CERCLE + BOUTONS CLIQUABLES ===
+# ==================== ACCUEIL - CERCLE + 6 BOUTONS ====================
 if st.session_state.selected_module is None:
     st.markdown("""
     <div id="circle-bg" style="position:relative;width:100%;height:750px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);">
@@ -458,7 +465,7 @@ if st.session_state.selected_module is None:
         st.session_state.clear(); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# === MODULES SIMPLES ===
+# ==================== MODULES AVEC TABS ====================
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
     perm_key = perm_map.get(st.session_state.selected_module, "")
@@ -469,6 +476,7 @@ elif st.session_state.selected_module:
             st.query_params.clear()
             st.rerun()
         st.stop()
+
     st.divider()
     col1, col2 = st.columns([6,1])
     with col1:
@@ -479,9 +487,6 @@ elif st.session_state.selected_module:
             st.session_state.selected_module = None
             st.query_params.clear()
             st.rerun()
-    table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
-    df = load_table(table_map.get(st.session_state.selected_module, "articles"))
-    st.dataframe(df, use_container_width=True)
 
     # Construction des tabs selon les permissions
     tabs_dispo = []
@@ -498,116 +503,116 @@ elif st.session_state.selected_module:
     if st.session_state.user_role == "PDG" or st.session_state.perms.get('parc', False):
         tabs_dispo.append("🚘 Gestion Parc")
     if st.session_state.user_role == "PDG" or st.session_state.perms.get('comptabilite', False):
-    tabs_dispo.append("💰 Comptabilité")
-if st.session_state.user_role == "PDG" or st.session_state.perms.get('factures', False):
-    tabs_dispo.append("📄 Factures")
-if st.session_state.user_role == "PDG" or st.session_state.perms.get('devis_industriel', False) or st.session_state.perms.get('devis_batiment', False):
-    tabs_dispo.append("📋 Devis")
-if st.session_state.user_role == "PDG" or st.session_state.perms.get('users', False):
-    tabs_dispo.append("👥 Utilisateurs")
+        tabs_dispo.append("💰 Comptabilité")
+    if st.session_state.user_role == "PDG" or st.session_state.perms.get('factures', False):
+        tabs_dispo.append("📄 Factures")
+    if st.session_state.user_role == "PDG" or st.session_state.perms.get('devis_industriel', False) or st.session_state.perms.get('devis_batiment', False):
+        tabs_dispo.append("📋 Devis")
+    if st.session_state.user_role == "PDG" or st.session_state.perms.get('users', False):
+        tabs_dispo.append("👥 Utilisateurs")
 
-if not tabs_dispo:
-    tabs_dispo = ["📊 Dashboard"]
+    if not tabs_dispo:
+        tabs_dispo = ["📊 Dashboard"]
 
-tabs = st.tabs(tabs_dispo)
-tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
+    tabs = st.tabs(tabs_dispo)
+    tab_map = {name: tab for name, tab in zip(tabs_dispo, tabs)}
 
-# Chargement des dataframes une fois pour tous les tabs
-df_biens = load_table("biens")
-df_articles = load_table("articles")
-df_voitures = load_table("voitures")
-df_compta = load_table("compta")
-df_factures = load_table("factures_proforma")
-df_devis = load_table("devis")
-df_utilisateurs = load_table("utilisateurs")
+    # Chargement des dataframes une fois pour tous les tabs
+    df_biens = load_table("biens")
+    df_articles = load_table("articles")
+    df_voitures = load_table("voitures")
+    df_compta = load_table("compta")
+    df_factures = load_table("factures_proforma")
+    df_devis = load_table("devis")
+    df_utilisateurs = load_table("utilisateurs")
 
-if df_compta.empty:
-    df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
-if 'montant' not in df_compta.columns:
-    df_compta['montant'] = 0
-if 'type' not in df_compta.columns:
-    df_compta['type'] = 'Inconnu'
-if 'date' in df_compta.columns:
-    df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
-    df_compta = df_compta.sort_values('date', ascending=False)
+    if df_compta.empty:
+        df_compta = pd.DataFrame(columns=['montant', 'type', 'date', 'utilisateur'])
+    if 'montant' not in df_compta.columns:
+        df_compta['montant'] = 0
+    if 'type' not in df_compta.columns:
+        df_compta['type'] = 'Inconnu'
+    if 'date' in df_compta.columns:
+        df_compta['date'] = pd.to_datetime(df_compta['date'], errors='coerce')
+        df_compta = df_compta.sort_values('date', ascending=False)
 
-# === TAB DASHBOARD ===
-if "📊 Dashboard" in tab_map:
-    with tab_map["📊 Dashboard"]:
-        st.markdown("## 📊 Dashboard ASYMAS")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🏠 Biens", len(df_biens))
-        col2.metric("📦 Articles", len(df_articles))
-        col3.metric("🚗 Voitures", len(df_voitures))
-        if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
-            revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
-        elif not df_compta.empty:
-            col4.metric("💰 Écritures", len(df_compta))
-        else:
-            col4.metric("💰 Revenus", "0 FC")
-        st.divider()
-        if not df_compta.empty:
-            st.subheader("📈 Dernières transactions")
-            st.dataframe(df_compta.head(10), use_container_width=True)
+    # === TAB DASHBOARD ===
+    if "📊 Dashboard" in tab_map:
+        with tab_map["📊 Dashboard"]:
+            st.markdown("## 📊 Dashboard ASYMAS")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("🏠 Biens", len(df_biens))
+            col2.metric("📦 Articles", len(df_articles))
+            col3.metric("🚗 Voitures", len(df_voitures))
+            if not df_compta.empty and 'type' in df_compta.columns and 'montant' in df_compta.columns:
+                revenus = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+                col4.metric("💰 Revenus", f"{revenus:,.0f} FC")
+            elif not df_compta.empty:
+                col4.metric("💰 Écritures", len(df_compta))
+            else:
+                col4.metric("💰 Revenus", "0 FC")
+            st.divider()
+            if not df_compta.empty:
+                st.subheader("📈 Dernières transactions")
+                st.dataframe(df_compta.head(10), use_container_width=True)
 
-# === TAB COMMERCE ===
-if "🛍️ Commerce" in tab_map:
-    with tab_map["🛍️ Commerce"]:
-        st.markdown("## 🛍️ Commerce - Point de Vente")
-        st.dataframe(df_articles[df_articles['stock'] > 0] if not df_articles.empty else df_articles, use_container_width=True)
+    # === TAB COMMERCE ===
+    if "🛍️ Commerce" in tab_map:
+        with tab_map["🛍️ Commerce"]:
+            st.markdown("## 🛍️ Commerce - Point de Vente")
+            st.dataframe(df_articles[df_articles['stock'] > 0] if not df_articles.empty else df_articles, use_container_width=True)
 
-# === TAB GESTION STOCK ===
-if "📦 Gestion Stock" in tab_map:
-    with tab_map["📦 Gestion Stock"]:
-        st.markdown("## 📦 Gestion Stock Commerce")
-        st.dataframe(df_articles, use_container_width=True)
+    # === TAB GESTION STOCK ===
+    if "📦 Gestion Stock" in tab_map:
+        with tab_map["📦 Gestion Stock"]:
+            st.markdown("## 📦 Gestion Stock Commerce")
+            st.dataframe(df_articles, use_container_width=True)
 
-# === TAB IMMOBILIER ===
-if "🏠 Immobilier" in tab_map:
-    with tab_map["🏠 Immobilier"]:
-        st.markdown("## 🏠 Immobilier")
-        st.dataframe(df_biens, use_container_width=True)
+    # === TAB IMMOBILIER ===
+    if "🏠 Immobilier" in tab_map:
+        with tab_map["🏠 Immobilier"]:
+            st.markdown("## 🏠 Immobilier")
+            st.dataframe(df_biens, use_container_width=True)
 
-# === TAB AUTOMOBILE ===
-if "🚗 Automobile" in tab_map:
-    with tab_map["🚗 Automobile"]:
-        st.markdown("## 🚗 Automobile")
-        st.dataframe(df_voitures, use_container_width=True)
+    # === TAB AUTOMOBILE ===
+    if "🚗 Automobile" in tab_map:
+        with tab_map["🚗 Automobile"]:
+            st.markdown("## 🚗 Automobile")
+            st.dataframe(df_voitures, use_container_width=True)
 
-# === TAB COMPTABILITE ===
-if "💰 Comptabilité" in tab_map:
-    with tab_map["💰 Comptabilité"]:
-        st.markdown("## 💰 Comptabilité ASYMAS")
-        if not df_compta.empty:
-            total_rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            total_dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-            solde = total_rev - total_dep
-            col1, col2, col3 = st.columns(3)
-            col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
-            col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
-            col3.metric("💎 Solde", f"{solde:,.0f} FC")
-        st.dataframe(df_compta, use_container_width=True, hide_index=True)
+    # === TAB COMPTABILITE ===
+    if "💰 Comptabilité" in tab_map:
+        with tab_map["💰 Comptabilité"]:
+            st.markdown("## 💰 Comptabilité ASYMAS")
+            if not df_compta.empty:
+                total_rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+                total_dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
+                solde = total_rev - total_dep
+                col1, col2, col3 = st.columns(3)
+                col1.metric("💰 Revenus", f"{total_rev:,.0f} FC")
+                col2.metric("💸 Dépenses", f"{total_dep:,.0f} FC")
+                col3.metric("💎 Solde", f"{solde:,.0f} FC")
+            st.dataframe(df_compta, use_container_width=True, hide_index=True)
 
-# === TAB FACTURES ===
-if "📄 Factures" in tab_map:
-    with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Gestion Factures & Proformas")
-        st.dataframe(df_factures, use_container_width=True, hide_index=True)
+    # === TAB FACTURES ===
+    if "📄 Factures" in tab_map:
+        with tab_map["📄 Factures"]:
+            st.markdown("## 📄 Gestion Factures & Proformas")
+            st.dataframe(df_factures, use_container_width=True, hide_index=True)
 
-# === TAB DEVIS ===
-if "📋 Devis" in tab_map:
-    with tab_map["📋 Devis"]:
-        st.markdown("## 📋 Devis ASYMAS Consulting")
-        st.dataframe(df_devis, use_container_width=True, hide_index=True)
+    # === TAB DEVIS ===
+    if "📋 Devis" in tab_map:
+        with tab_map["📋 Devis"]:
+            st.markdown("## 📋 Devis ASYMAS Consulting")
+            st.dataframe(df_devis, use_container_width=True, hide_index=True)
 
-# === TAB UTILISATEURS ===
-if "👥 Utilisateurs" in tab_map:
-    with tab_map["👥 Utilisateurs"]:
-        st.markdown("## 👥 Gestion Utilisateurs")
-        st.dataframe(df_utilisateurs, use_container_width=True, hide_index=True)
+    # === TAB UTILISATEURS ===
+    if "👥 Utilisateurs" in tab_map:
+        with tab_map["👥 Utilisateurs"]:
+            st.markdown("## 👥 Gestion Utilisateurs")
+            st.dataframe(df_utilisateurs, use_container_width=True, hide_index=True)
 
-# === FLOKI SOLDAT COMPLET - VERSION PDG ===
+# ==================== FLOKI SOLDAT COMPLET ====================
 class FLOKI:
     def __init__(self, supabase_client, dataframes):
         self.supabase = supabase_client
@@ -661,7 +666,7 @@ class FLOKI:
                     return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
         return None
 
-# === CHARGER LES DATAFRAMES AVANT FLOKI ===
+# ==================== CHARGER DATA AVANT FLOKI ====================
 df_biens = load_table("biens")
 df_articles = load_table("articles") 
 df_voitures = load_table("voitures")
@@ -670,7 +675,6 @@ df_factures = load_table("factures_proforma")
 df_devis = load_table("devis")
 df_utilisateurs = load_table("utilisateurs")
 
-# === PUIS SEULEMENT APRES INIT FLOKI ===
 if 'floki' not in st.session_state:
     dataframes = {
         "articles": df_articles if not df_articles.empty else pd.DataFrame(),
@@ -680,7 +684,7 @@ if 'floki' not in st.session_state:
     }
     st.session_state.floki = FLOKI(supabase, dataframes)
 
-# === SIDEBAR FLOKI ===
+# ==================== SIDEBAR FLOKI ====================
 with st.sidebar:
     st.divider()
     st.markdown("### 🤖 FLOKI")
@@ -693,3 +697,4 @@ with st.sidebar:
                 st.session_state.floki_rep = rep
     if 'floki_rep' in st.session_state:
         st.success(st.session_state.floki_rep)
+    
