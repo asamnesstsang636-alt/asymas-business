@@ -403,7 +403,31 @@ if not st.session_state.logged_in:
 
 # === ACCUEIL : CERCLE CLIQUABLE APRÈS ACCÈS ===
 if st.session_state.selected_module is None:
-    html_buttons = """
+
+    # Détermine quels modules sont autorisés selon le rôle + perms
+    perms = st.session_state.perms if isinstance(st.session_state.perms, dict) else {}
+    authorized = {
+        "Commerce": st.session_state.user_role == "PDG" or perms.get("commerce", False),
+        "Auto": st.session_state.user_role == "PDG" or perms.get("automobile", False),
+        "Factures": st.session_state.user_role == "PDG" or perms.get("factures", False),
+        "Immo": st.session_state.user_role == "PDG" or perms.get("immobilier", False),
+        "Stock": st.session_state.user_role == "PDG" or perms.get("stock", False),
+        "Compta": st.session_state.user_role == "PDG" or perms.get("comptabilite", False),
+    }
+
+    def btn_html(module, angle, emoji, label):
+        if authorized[module]:
+            return f"""<button onclick="window.location.href='?module={module}'"
+                style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);
+                width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;
+                font-size:11px;font-weight:bold;color:#000;cursor:pointer;">{emoji}<br>{label}</button>"""
+        else:
+            return f"""<button disabled
+                style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate({angle}deg) translate(190px) rotate(-{angle}deg);
+                width:60px;height:60px;border:3px solid #555;border-radius:50%;background:#222;box-shadow:0 0 10px #555;
+                font-size:11px;font-weight:bold;color:#666;cursor:not-allowed;opacity:0.4;">{emoji}<br>{label}</button>"""
+
+    html_buttons = f"""
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:450px;height:450px;">
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;border:2px solid rgba(255,215,0,0.5);border-radius:50%;box-shadow:0 0 80px rgba(255,215,0,0.8);animation:pulseRing 3s ease-in-out infinite;"></div>
@@ -414,49 +438,22 @@ if st.session_state.selected_module is None:
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
-        <button onclick="window.location.href='?module=Commerce'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏪<br>Commerce</button>
-        <button onclick="window.location.href='?module=Auto'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🚚<br>Auto</button>
-        <button onclick="window.location.href='?module=Factures'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🧾<br>Factures</button>
-        <button onclick="window.location.href='?module=Immo'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏠<br>Immo</button>
-        <button onclick="window.location.href='?module=Stock'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📦<br>Stock</button>
-        <button onclick="window.location.href='?module=Compta'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📊<br>Compta</button>
+        {btn_html("Commerce", 90, "🏪", "Commerce")}
+        {btn_html("Auto", 30, "🚚", "Auto")}
+        {btn_html("Factures", -30, "🧾", "Factures")}
+        {btn_html("Immo", -90, "🏠", "Immo")}
+        {btn_html("Stock", -150, "📦", "Stock")}
+        {btn_html("Compta", 150, "📊", "Compta")}
     </div>
-    <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
-    @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
+    <style>@keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
+    @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
+    @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}</style>
     """
     components.html(html_buttons, height=700)
 
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
-
-# === MODULE : OUVERTURE SEULE DE L'OPÉRATION CHOISIE ===
-elif st.session_state.selected_module:
-    perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
-    perm_key = perm_map.get(st.session_state.selected_module, "")
-    if not check_perm(perm_key):
-        st.error(f"⛔ Pas d'autorisation pour {st.session_state.selected_module}")
-        if st.button("← Retour Accueil"):
-            st.session_state.selected_module = None
-            st.query_params.clear()
-            st.rerun()
-        st.stop()
-
-    st.divider()
-    col1, col2 = st.columns([6,1])
-    with col1:
-        st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-        st.markdown(f"### {st.session_state.selected_module}")
-    with col2:
-        if st.button("← Retour Accueil"):
-            st.session_state.selected_module = None
-            st.query_params.clear()
-            st.rerun()
-        if st.button("🚪 Déconnexion"):
-            st.session_state.clear()
-            st.rerun()
-
     table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
     df = load_table(table_map.get(st.session_state.selected_module, "articles"))
     st.dataframe(df, use_container_width=True)
