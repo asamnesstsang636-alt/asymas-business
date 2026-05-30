@@ -396,7 +396,8 @@ if not st.session_state.logged_in:
             st.rerun()
     st.stop()
 
-# === ACCUEIL : CERCLE CLIQUABLE APRÈS ACCÈS ===
+# REMPLACE TOUT LE BLOC "ACCUEIL : CERCLE CLIQUABLE" PAR ÇA :
+
 if st.session_state.selected_module is None:
     html_buttons = """
     <div style="position:relative;width:100%;height:700px;background:radial-gradient(ellipse at center 55%, rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);overflow:hidden;">
@@ -409,25 +410,53 @@ if st.session_state.selected_module is None:
                 <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Commerce'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏪<br>Commerce</button>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Auto'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🚚<br>Auto</button>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Factures'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🧾<br>Factures</button>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Immo'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏠<br>Immo</button>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Stock'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📦<br>Stock</button>
-        <button onclick="window.parent.postMessage({type:'streamlit:setComponentValue', value:'Compta'}, '*')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📊<br>Compta</button>
+        <button onclick="window.location.href='?module=Commerce'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏪<br>Commerce</button>
+        <button onclick="window.location.href='?module=Auto'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🚚<br>Auto</button>
+        <button onclick="window.location.href='?module=Factures'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🧾<br>Factures</button>
+        <button onclick="window.location.href='?module=Immo'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">🏠<br>Immo</button>
+        <button onclick="window.location.href='?module=Stock'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📦<br>Stock</button>
+        <button onclick="window.location.href='?module=Compta'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);width:60px;height:60px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:11px;font-weight:bold;color:#000;cursor:pointer;">📊<br>Compta</button>
     </div>
     <style>@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
     @keyframes pulseCart{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.18);}}
     @keyframes rotate{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}</style>
     """
-    clicked = components.html(html_buttons, height=700, key="circle_home")
-    if clicked:
-        st.session_state.selected_module = clicked
-        st.rerun()
+    components.html(html_buttons, height=700)  # PAS de key=, PAS de =clicked
+
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
 
+# ET REMPLACE LE BLOC "MODULE : OUVERTURE SEULE" PAR ÇA :
+
+elif st.session_state.selected_module:
+    perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
+    perm_key = perm_map.get(st.session_state.selected_module, "")
+    if not check_perm(perm_key):
+        st.error(f"⛔ Pas d'autorisation pour {st.session_state.selected_module}")
+        if st.button("← Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        st.stop()
+
+    st.divider()
+    col1, col2 = st.columns([6,1])
+    with col1:
+        st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+        st.markdown(f"### {st.session_state.selected_module}")
+    with col2:
+        if st.button("← Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        if st.button("🚪 Déconnexion"):
+            st.session_state.clear()
+            st.rerun()
+
+    table_map = {"Commerce": "articles", "Stock": "articles", "Immo": "biens", "Auto": "voitures", "Compta": "compta", "Factures": "factures_proforma"}
+    df = load_table(table_map.get(st.session_state.selected_module, "articles"))
+    st.dataframe(df, use_container_width=True)
 # === MODULE : OUVERTURE SEULE DE L'OPÉRATION CHOISIE ===
 elif st.session_state.selected_module:
     perm_map = {"Commerce": "commerce", "Stock": "stock", "Immo": "immobilier", "Auto": "automobile", "Compta": "comptabilite", "Factures": "factures"}
