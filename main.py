@@ -1732,7 +1732,7 @@ if "📋 Devis" in tab_map:
                     st.session_state.devis_sections = [
                         {
                             "numero": "A",
-                            "titre": "ELECTRICITE",
+                            "titre": "INDUSTRIAL",
                             "items": [
                                 {"type": "cable", "designation": "Câble 2.5mm²", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 1, "pu": 1.2},
                                 {"type": "interrupteur", "designation": "Interrupteur", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 5, "pu": 3.5},
