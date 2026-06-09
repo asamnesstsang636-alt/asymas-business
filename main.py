@@ -2113,8 +2113,17 @@ if "📋 Devis" in tab_map:
                                 st.cache_data.clear()
                                 st.rerun()
                         except Exception as e:
-                            st.error("Erreur enregistrement")
-                            st.code(repr(e))
+                          st.error("Erreur enregistrement")
+                          st.exception(e)  # <-- ça t’affiche la vraie erreur Supabase
+
+                        st.divider()
+
+                        if st.button("🔄 Nouveau devis", key="reset_devis"):
+                          st.session_state.devis_sections = []
+                          st.cache_data.clear()
+                          st.rerun()
+                            
+                            
                     else:
                         st.error("Client, Titre et au moins 1 section requis")
                     
