@@ -1694,6 +1694,8 @@ if "📄 Factures" in tab_map:
                                 col_f.write("❌")
                                 col_g.write("❌")
 import json # <-- ajoute ça en haut du fichier avec tes autres imports
+import base64
+from datetime import datetime
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
@@ -1903,7 +1905,7 @@ if "📋 Devis" in tab_map:
                                 "titre": titre_devis,
                                 "parcelle": parcelle_devis,
                                 "localisation": localisation_devis,
-                                "sections": st.session_state.devis_sections,
+                                "sections": json.dumps(st.session_state.devis_sections, ensure_ascii=False), # FIX: convertit liste en JSON string
                                 "main_oeuvre": main_oeuvre,
                                 "total": cout_total_ind,
                                 "devise": devise_devis,
@@ -1958,12 +1960,14 @@ if "📋 Devis" in tab_map:
                                 # FIX: conversion JSON string -> liste Python
                                 sections = d.get('sections')
                                 if isinstance(sections, str):
-                                    sections = json.loads(sections) if sections else []
+                                    try:
+                                        sections = json.loads(sections) if sections else []
+                                    except:
+                                        sections = []
                                 elif sections is None:
                                     sections = []
 
                                 if peut_telecharger_ind:
-                                    
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         numero, "Industriel", client, d.get('titre',''),
                                         d.get('parcelle',''), d.get('localisation',''), sections,
@@ -2194,7 +2198,7 @@ if "📋 Devis" in tab_map:
                                     "titre": st.session_state.devis_bat_titre,
                                     "parcelle": parcelle_devis_bat,
                                     "localisation": localisation_devis_bat,
-                                    "sections": st.session_state.devis_bat_sections,
+                                    "sections": json.dumps(st.session_state.devis_bat_sections, ensure_ascii=False), # FIX: convertit liste en JSON string
                                     "main_oeuvre": st.session_state.devis_bat_main_oeuvre,
                                     "total": cout_total,
                                     "devise": devise_devis_bat,
@@ -2237,107 +2241,6 @@ if "📋 Devis" in tab_map:
                         if 'pdf_devis_bat' in st.session_state:
                             del st.session_state.pdf_devis_bat
                         st.rerun()
-
-                if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat:
-                    pdf_b64 = base64.b64encode(st.session_state.pdf_devis_bat).decode()
-                    st.components.v1.html(f"""
-                        <button onclick="printPDF()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
-                            🖨️ IMPRIMER LE DEVIS
-                        </button>
-                        <script>
-                        function printPDF() {{
-                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                            const win = window.open('', '_blank');
-                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                            win.document.close();
-                            setTimeout(() => {{ win.print(); }}, 1000);
-                        }}
-                        </script>
-                    """, height=60)
-            else:
-                st.info("🔒 Vous n'avez pas l'autorisation de créer des devis bâtiment")
-
-            peut_telecharger_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_download', False)
-            peut_imprimer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_print', False)
-
-            if peut_telecharger_bat or peut_imprimer_bat:
-                st.divider()
-                st.subheader("📚 Devis Bâtiment Enregistrés")
-
-                try:
-                    devis_bat_list = supabase.table('devis').select("*").eq("type", "Bâtiment").order("created_at", desc=True).limit(5).execute().data
-                except:
-                    devis_bat_list = []
-
-                if not devis_bat_list:
-                    st.info("Aucun devis bâtiment enregistré")
-                else:
-                    for d in devis_bat_list:
-                        numero = d.get('numero', 'N/A')
-                        client = d.get('client', 'N/A')
-                        total = d.get('total', 0)
-                        devise = d.get('devise', 'USD')
-
-                        col1, col2, col3, col4 = st.columns([3,2,1,1])
-                        with col1:
-                            st.write(f"**{numero}** - {client}")
-                        with col2:
-                            st.write(f"{total:,.0f} {devise}")
-                        with col3:
-                            if peut_telecharger_bat:
-                                # FIX: conversion JSON string -> liste Python
-                                sections = d.get('sections')
-                                if isinstance(sections, str):
-                                    sections = json.loads(sections) if sections else []
-                                elif sections is None:
-                                    sections = []
-                                    
-                                pdf_bytes = generer_pdf_devis_consulting(
-                                    numero, "Bâtiment", client, d.get('titre',''),
-                                    d.get('parcelle',''), d.get('localisation',''), sections,
-                                    devise, d.get('telephone',''), d.get('main_oeuvre',0)
-                                )
-                                st.download_button(
-                                    label="📥",
-                                    data=pdf_bytes,
-                                    file_name=f"{numero}.pdf",
-                                    mime="application/pdf",
-                                    key=f"dl_bat_bas_{numero}"
-                                )
-                            else:
-                                st.write("🔒")
-                        with col4:
-                            if peut_imprimer_bat:
-                                # FIX: conversion JSON string -> liste Python
-                                sections = d.get('sections')
-                                if isinstance(sections, str):
-                                    sections = json.loads(sections) if sections else []
-                                elif sections is None:
-                                    sections = []
-                                    
-                                pdf_bytes = generer_pdf_devis_consulting(
-                                    numero, "Bâtiment", client, d.get('titre',''),
-                                    d.get('parcelle',''), d.get('localisation',''), sections,
-                                    devise, d.get('telephone',''), d.get('main_oeuvre',0)
-                                )
-                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                safe_id = numero.replace('-', '_')
-                                st.components.v1.html(f"""
-                                    <button onclick="printPDF_{safe_id}()" style="width:100%; padding:6px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
-                                        🖨️
-                                    </button>
-                                    <script>
-                                    function printPDF_{safe_id}() {{
-                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                        const win = window.open('', '_blank');
-                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                        win.document.close();
-                                        setTimeout(() => {{ win.print(); }}, 1000);
-                                    }}
-                                    </script>
-                                """, height=40)
-                            else:
-                                st.write("🔒")
                     
                         
                         
