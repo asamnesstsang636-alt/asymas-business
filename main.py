@@ -1698,6 +1698,7 @@ from datetime import datetime
 from fpdf import FPDF
 import streamlit as st
 
+# ===== FONCTION GENERATION PDF =====
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
                                  sections, devise, telephone, main_oeuvre,
                                  ing_nom="SAMY TSANGYA", ing_tel="+243 995 105 623",
@@ -1705,9 +1706,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # 1. EN-TETE VERT TRES FONCE comme sur ton image
+    # EN-TETE VERT FONCE + TEXTE BLANC comme ta 1ère image
     y_start = pdf.get_y()
-    pdf.set_fill_color(30, 70, 60) # vert foncé/noir-vert
+    pdf.set_fill_color(30, 70, 60) # vert très foncé
     pdf.rect(10, y_start, 190, 32, 'F')
 
     pdf.set_xy(10, y_start + 2)
@@ -1725,10 +1726,6 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.set_x(10)
     pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
-
-    pdf.set_x(10)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
 
     pdf.set_text_color(0, 0, 0) # remettre noir
     pdf.ln(5)
@@ -1754,9 +1751,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # 2. EN-TETE TABLEAU GRIS CLAIR
+        # EN-TETE TABLEAU GRIS 200 comme ta 1ère image
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(200, 200, 200) # gris clair
+        pdf.set_fill_color(200, 200, 200)
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
         pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
         pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
@@ -1764,13 +1761,13 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
         pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
 
-        # 3. Ligne section GRIS MOYEN pour "INDUSTRIAL", "BLOC ET IMPREVUS"
+        # Ligne section GRIS 230 comme "A INDUSTRIAL" et "BLOC ET IMPREVUS"
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(230, 230, 230) # gris moyen
+        pdf.set_fill_color(230, 230, 230)
         pdf.cell(10, 6, section.get('numero', 'A'), 1, 0, 'C', True)
         pdf.cell(170, 6, section.get('titre', 'INDUSTRIAL'), 1, 1, 'L', True)
 
-        # Lignes articles : fond blanc
+        # Articles fond blanc
         pdf.set_font("Arial", size=10)
         pdf.set_fill_color(255, 255, 255)
         sous_total_sec = 0
@@ -1786,24 +1783,19 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
             pdf.cell(25, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
             pdf.cell(30, 6, f"{pt:,.2f}", 1, 1, 'R')
 
-        # Sous total : GRIS MOYEN
+        # Sous Total GRIS 230
         pdf.set_font("Arial", 'B', 10)
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(150, 7, "Sous Total", 1, 0, 'R', True)
         pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R', True)
-        pdf.ln(3)
+        pdf.ln(1)
         total_general += sous_total_sec
 
-    # Main d'oeuvre : GRIS MOYEN
+    # TOTAL GENERAL JAUNE 255,200,0
     if pdf.get_y() > 230:
         pdf.add_page()
     pdf.set_font("Arial", 'B', 11)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(150, 8, "MAIN D'OEUVRE:", 1, 0, 'R', True)
-    pdf.cell(30, 8, f"{main_oeuvre:,.2f} {devise}", 1, 1, 'R', True)
-
-    # 4. TOTAL GENERAL : BANDE JAUNE
-    pdf.set_fill_color(255, 200, 0) # jaune
+    pdf.set_fill_color(255, 200, 0)
     pdf.cell(150, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
     pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
 
@@ -1821,25 +1813,20 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
     pdf.cell(0, 6, f"Adresse: {adresse}", ln=True)
     pdf.ln(8)
-    pdf.set_text_color(0, 150, 0) # vert pour la note finale
+    pdf.set_text_color(0, 150, 0)
     pdf.set_font("Arial", 'I', 9)
     pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align='C')
 
     out = pdf.output(dest='S')
     return bytes(out)
 
+# ===== INTERFACE STREAMLIT =====
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
 
         if 'devis_sections' not in st.session_state:
             st.session_state.devis_sections = []
-        if 'devis_bat_sections' not in st.session_state:
-            st.session_state.devis_bat_sections = []
-        if 'devis_bat_titre' not in st.session_state:
-            st.session_state.devis_bat_titre = "TRAITEMENT ET PRODUCTION EAUX MINERALE"
-        if 'devis_bat_main_oeuvre' not in st.session_state:
-            st.session_state.devis_bat_main_oeuvre = 0
 
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
@@ -1850,15 +1837,17 @@ if "📋 Devis" in tab_map:
                 st.session_state.devis_type = "Industriel"
                 st.subheader("🏭 Nouveau Devis Industriel")
 
+                # Infos ingénieur
                 col_ing1, col_ing2 = st.columns(2)
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
                 with col_ing2:
                     ing_tel = st.text_input("📞 Tél Ingénieur", value="+243 995 105 623", key="ing_tel_ind")
 
+                # Infos client
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    client_devis = st.text_input("👤 Client", value="EMPIRE TECHONOLOGY", key="client_devis_ind")
+                    client_devis = st.text_input("👤 Client", value="EMPIRE TECHNOLOGY", key="client_devis_ind")
                     tel_client_devis = st.text_input("📞 Téléphone", value="+243971409712", key="tel_devis_ind")
                 with col2:
                     titre_devis = st.text_input("📋 Titre Projet", value="TRAITEMENT ET PRODUCTION EAUX MINERALE", key="titre_devis_ind")
@@ -1868,40 +1857,23 @@ if "📋 Devis" in tab_map:
                     devise_devis = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_ind")
 
                 st.divider()
-                st.markdown("### 📊 Tableau Complet Éditable")
 
+                # Initialiser sections si vide
                 if not st.session_state.devis_sections:
-                    items_vides = [
-                        {"num": "1", "designation": "OZONEUR", "type": "autre", "unite": "pc", "qte": 1.00, "pu": 450, "spec": ""},
-                        {"num": "2", "designation": "LAMPE UV", "type": "autre", "unite": "pc", "qte": 2.00, "pu": 200, "spec": ""},
-                        {"num": "3", "designation": "DECAPELLE", "type": "autre", "unite": "pc", "qte": 3.00, "pu": 120, "spec": ""},
-                    ] + [{"num": str(i+4), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(7)]
-                    st.session_state.devis_sections = [{"numero": "A", "titre": "INDUSTRIAL", "items": items_vides}]
+                    items = [
+                        {"num": "1", "designation": "OZONEUR", "unite": "pc", "qte": 1.00, "pu": 450},
+                        {"num": "2", "designation": "LAMPE UV", "unite": "pc", "qte": 2.00, "pu": 200},
+                        {"num": "3", "designation": "DECAPELLE", "unite": "pc", "qte": 3.00, "pu": 120},
+                    ] + [{"num": str(i+4), "designation": "", "unite": "pc", "qte": 0, "pu": 0} for i in range(7)]
+                    st.session_state.devis_sections = [{"numero": "A", "titre": "INDUSTRIAL", "items": items}]
 
+                # Tableau éditable
                 total_general_ind = 0
-                col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7, col_h8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
-                col_h1.markdown("**N°**")
-                col_h2.markdown("**Désignation**")
-                col_h3.markdown("**Type/Marque**")
-                col_h4.markdown("**Spécifications**")
-                col_h5.markdown("**Qté**")
-                col_h6.markdown("**PU**")
-                col_h7.markdown("**Total**")
-                col_h8.markdown("")
-                st.divider()
-
                 for idx, section in enumerate(st.session_state.devis_sections):
-                    col_titre, col_del_sec = st.columns([5, 1])
-                    with col_titre:
-                        st.markdown(f"**{section['numero']}. {section['titre']}**")
-                    with col_del_sec:
-                        if st.button("🗑️ Supprimer Section", key=f"del_sec_ind_{idx}"):
-                            st.session_state.devis_sections.pop(idx)
-                            st.rerun()
-
+                    st.markdown(f"**{section['numero']}. {section['titre']}**")
                     sous_total_sec = 0
                     for i, item in enumerate(section['items']):
-                        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
+                        col1, col2, col3, col4, col5, col6 = st.columns([0.5, 3, 1, 1, 1, 1])
                         with col1:
                             new_num = st.text_input("N°", value=str(item.get('num', '')), key=f"num_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['num'] = new_num
@@ -1909,82 +1881,34 @@ if "📋 Devis" in tab_map:
                             new_des = st.text_input("Désignation", value=item.get('designation', ''), key=f"des_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['designation'] = new_des
                         with col3:
-                            type_item = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"],
-                                                    index=["cable", "interrupteur", "prise", "disjoncteur", "autre"].index(item.get('type', 'autre')),
-                                                    key=f"type_ind_{idx}_{i}", label_visibility="collapsed")
-                            section['items'][i]['type'] = type_item
-                        with col4:
-                            spec = st.text_input("Détails", value=item.get('spec', ''), key=f"spec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Détails")
-                            section['items'][i]['spec'] = spec
-                        with col5:
-                            unite = st.selectbox("Unité", ["m", "pc", "kg", "lot", "m²", "m³"],
-                                               index=["m", "pc", "kg", "lot", "m²", "m³"].index(item.get('unite', 'pc')) if item.get('unite') in ["m", "pc", "kg", "lot", "m²", "m³"] else 1,
-                                               key=f"unit_ind_{idx}_{i}", label_visibility="collapsed")
-                            new_qte = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['unite'] = unite
+                        with col4:
+                            new_qte = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['qte'] = new_qte
-                        with col6:
+                        with col5:
                             new_pu = st.number_input("PU", value=float(item.get('pu', 0)), min_value=0.0, key=f"pu_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['pu'] = new_pu
-                        with col7:
+                        with col6:
                             pt = new_qte * new_pu
                             st.markdown(f"**{pt:,.2f}**")
                             sous_total_sec += pt
-                        with col8:
-                            if st.button("❌", key=f"del_item_ind_{idx}_{i}", help="Supprimer"):
-                                section['items'].pop(i)
-                                st.rerun()
 
-                    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
-                    with col1:
-                        num_item = st.text_input("N°", key=f"num_ind_{idx}_new", label_visibility="collapsed", placeholder="N°")
-                    with col2:
-                        design = st.text_input("Désignation", key=f"des_ind_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
-                    with col3:
-                        type_new = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"], key=f"type_ind_{idx}_new", label_visibility="collapsed")
-                    with col4:
-                        spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
-                    with col5:
-                        unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
-                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
-                    with col6:
-                        pu = st.number_input("PU", min_value=0.0, key=f"pu_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
-                    with col7:
-                        st.markdown(f"**{qte*pu:,.2f}**")
-                    with col8:
-                        if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
-                            if design:
-                                new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu, "spec": spec_new}
-                                section['items'].append(new_item)
-                                st.rerun()
-
-                    col_st1, col_st2, col_st3 = st.columns([7.5, 1, 0.5])
-                    col_st1.markdown(f"**Sous-total {section['titre']}**")
-                    col_st2.markdown(f"**{sous_total_sec:,.2f}**")
                     total_general_ind += sous_total_sec
+                    st.markdown(f"**Sous-total: {sous_total_sec:,.2f}**")
                     st.divider()
 
-                col_add1, col_add2, col_add3 = st.columns([1,4,1])
-                with col_add1:
-                    new_section_num = st.text_input("N° Section", placeholder="B", key="new_sec_num_ind", label_visibility="collapsed")
-                with col_add2:
-                    new_section_titre = st.text_input("Titre Section", placeholder="BLOC ET IMPREVUS", key="new_sec_titre_ind", label_visibility="collapsed")
-                with col_add3:
-                    if st.button("➕ Section", key="add_section_ind", width="stretch"):
-                        if new_section_titre:
-                            items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(5)]
-                            st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": items_vides})
-                            st.rerun()
-
-                st.divider()
+                # Main d'oeuvre et total
                 main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, value=0.0, key="mo_devis_ind")
                 cout_total_ind = total_general_ind + main_oeuvre
                 st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis}")
 
+                # Bouton génération PDF
                 if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
                     if client_devis and titre_devis and st.session_state.devis_sections:
                         numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         try:
+                            # Sauvegarde Supabase si tu l'utilises
                             data_devis = {
                                 "numero": numero_devis,
                                 "type": "Industriel",
@@ -2002,6 +1926,7 @@ if "📋 Devis" in tab_map:
                             }
                             supabase.table('devis').insert(data_devis).execute()
 
+                            # Génération PDF
                             pdf_bytes = generer_pdf_devis_consulting(
                                 numero_devis, "Industriel", client_devis, titre_devis,
                                 parcelle_devis, localisation_devis, st.session_state.devis_sections,
@@ -2025,7 +1950,6 @@ if "📋 Devis" in tab_map:
                 st.divider()
                 if st.button("🔄 Nouveau devis", key="reset_devis"):
                     st.session_state.devis_sections = []
-                    st.cache_data.clear()
                     st.rerun()
                         
                         
