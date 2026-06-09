@@ -1929,9 +1929,9 @@ if "📋 Devis" in tab_map:
                             if design:
                                 new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
                                 if type_new == "cable":
-                new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
+                                new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
                                 elif type_new == "interrupteur":
-                new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new, "spec": f"{marque_new} - {couleur_new} - {qualite_new}"})
+                                new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new, "spec": f"{marque_new} - {couleur_new} - {qualite_new}"})
                                 else:
                                      new_item.update({"spec": spec_new})
             
