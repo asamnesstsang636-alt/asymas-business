@@ -1694,24 +1694,24 @@ if "📄 Factures" in tab_map:
                                 col_f.write("❌")
                                 col_g.write("❌")
 import json
-import base64
 from datetime import datetime
 from fpdf import FPDF
+import streamlit as st
 
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
                                  sections, devise, telephone, main_oeuvre,
-                                 ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
+                                 ing_nom="SAMY TSANGYA", ing_tel="+243 995 105 623",
                                  email="asamnesstsang636@gmail.com", adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE avec fond VERT qui couvre TOUTE la zone
+    # 1. EN-TETE VERT TRES FONCE comme sur ton image
     y_start = pdf.get_y()
-    pdf.set_fill_color(144, 238, 144) # vert pomme comme ton PDF
-    pdf.rect(10, y_start, 190, 32, 'F') # 32mm de haut = couvre tout le bloc
+    pdf.set_fill_color(30, 70, 60) # vert foncé/noir-vert
+    pdf.rect(10, y_start, 190, 32, 'F')
 
     pdf.set_xy(10, y_start + 2)
-    pdf.set_text_color(0, 0, 0) # texte noir
+    pdf.set_text_color(255, 255, 255) # texte blanc
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
@@ -1736,16 +1736,17 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
 
+    # Titre centré
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 8, titre.upper(), ln=True, align='C')
+    pdf.ln(3)
+
     # Infos client
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(95, 7, f"CLIENT: {client}", 0, 0)
-    pdf.cell(0, 7, f"Titre: {titre}", 0, 1)
+    pdf.cell(0, 7, f"LOCALISATION: {localisation}", ln=True)
+    pdf.cell(0, 7, f"CLIENT: {client}", ln=True)
     if telephone and telephone!= "+243...":
-        pdf.cell(95, 7, f"TEL: {telephone}", 0, 0)
-    if localisation:
-        pdf.cell(0, 7, f"Localisation: {localisation}", 0, 1)
-    if parcelle:
-        pdf.cell(0, 7, f"Parcelle: {parcelle}", 0, 1)
+        pdf.cell(0, 7, f"TEL: {telephone}", ln=True)
     pdf.ln(5)
 
     total_general = 0
@@ -1753,9 +1754,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # En-tête tableau : même VERT POMME
+        # 2. EN-TETE TABLEAU GRIS CLAIR
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(144, 238, 144)
+        pdf.set_fill_color(200, 200, 200) # gris clair
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
         pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
         pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
@@ -1763,7 +1764,13 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
         pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
 
-        # Lignes
+        # 3. Ligne section GRIS MOYEN pour "INDUSTRIAL", "BLOC ET IMPREVUS"
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_fill_color(230, 230, 230) # gris moyen
+        pdf.cell(10, 6, section.get('numero', 'A'), 1, 0, 'C', True)
+        pdf.cell(170, 6, section.get('titre', 'INDUSTRIAL'), 1, 1, 'L', True)
+
+        # Lignes articles : fond blanc
         pdf.set_font("Arial", size=10)
         pdf.set_fill_color(255, 255, 255)
         sous_total_sec = 0
@@ -1779,23 +1786,24 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
             pdf.cell(25, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
             pdf.cell(30, 6, f"{pt:,.2f}", 1, 1, 'R')
 
-        # Sous total : GRIS
+        # Sous total : GRIS MOYEN
         pdf.set_font("Arial", 'B', 10)
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(150, 7, "Sous Total", 1, 0, 'R', True)
         pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R', True)
-        pdf.ln(5)
+        pdf.ln(3)
         total_general += sous_total_sec
 
-    # Main d'oeuvre
+    # Main d'oeuvre : GRIS MOYEN
     if pdf.get_y() > 230:
         pdf.add_page()
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(150, 8, "MAIN D'OEUVRE:", 1, 0, 'R')
-    pdf.cell(30, 8, f"{main_oeuvre:,.2f} {devise}", 1, 1, 'R')
+    pdf.set_fill_color(230, 230, 230)
+    pdf.cell(150, 8, "MAIN D'OEUVRE:", 1, 0, 'R', True)
+    pdf.cell(30, 8, f"{main_oeuvre:,.2f} {devise}", 1, 1, 'R', True)
 
-    # TOTAL GENERAL : BANDE JAUNE
-    pdf.set_fill_color(255, 220, 0)
+    # 4. TOTAL GENERAL : BANDE JAUNE
+    pdf.set_fill_color(255, 200, 0) # jaune
     pdf.cell(150, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
     pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
 
@@ -1812,6 +1820,10 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
     pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
     pdf.cell(0, 6, f"Adresse: {adresse}", ln=True)
+    pdf.ln(8)
+    pdf.set_text_color(0, 150, 0) # vert pour la note finale
+    pdf.set_font("Arial", 'I', 9)
+    pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align='C')
 
     out = pdf.output(dest='S')
     return bytes(out)
@@ -1825,9 +1837,9 @@ if "📋 Devis" in tab_map:
         if 'devis_bat_sections' not in st.session_state:
             st.session_state.devis_bat_sections = []
         if 'devis_bat_titre' not in st.session_state:
-            st.session_state.devis_bat_titre = "DEVIS DE MATERIAUX POUR LA CONSTRUCTION DE CLOTURE DE 23.5m"
+            st.session_state.devis_bat_titre = "TRAITEMENT ET PRODUCTION EAUX MINERALE"
         if 'devis_bat_main_oeuvre' not in st.session_state:
-            st.session_state.devis_bat_main_oeuvre = 1173.0
+            st.session_state.devis_bat_main_oeuvre = 0
 
         tab_industriel, tab_batiment = st.tabs(["🏭 Devis Industriel", "🏗️ Devis Bâtiment"])
 
@@ -1842,25 +1854,29 @@ if "📋 Devis" in tab_map:
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
                 with col_ing2:
-                    ing_tel = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
+                    ing_tel = st.text_input("📞 Tél Ingénieur", value="+243 995 105 623", key="ing_tel_ind")
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    client_devis = st.text_input("👤 Client", key="client_devis_ind")
-                    tel_client_devis = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_ind")
+                    client_devis = st.text_input("👤 Client", value="EMPIRE TECHONOLOGY", key="client_devis_ind")
+                    tel_client_devis = st.text_input("📞 Téléphone", value="+243971409712", key="tel_devis_ind")
                 with col2:
-                    titre_devis = st.text_input("📋 Titre Projet", key="titre_devis_ind")
+                    titre_devis = st.text_input("📋 Titre Projet", value="TRAITEMENT ET PRODUCTION EAUX MINERALE", key="titre_devis_ind")
                     parcelle_devis = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_ind")
                 with col3:
-                    localisation_devis = st.text_input("📍 Localisation", key="loc_devis_ind")
+                    localisation_devis = st.text_input("📍 Localisation", value="BENI-DRCONGO", key="loc_devis_ind")
                     devise_devis = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_ind")
 
                 st.divider()
                 st.markdown("### 📊 Tableau Complet Éditable")
 
                 if not st.session_state.devis_sections:
-                    items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(10)]
-                    st.session_state.devis_sections = [{"numero": "A", "titre": "ELECTRICITE", "items": items_vides}]
+                    items_vides = [
+                        {"num": "1", "designation": "OZONEUR", "type": "autre", "unite": "pc", "qte": 1.00, "pu": 450, "spec": ""},
+                        {"num": "2", "designation": "LAMPE UV", "type": "autre", "unite": "pc", "qte": 2.00, "pu": 200, "spec": ""},
+                        {"num": "3", "designation": "DECAPELLE", "type": "autre", "unite": "pc", "qte": 3.00, "pu": 120, "spec": ""},
+                    ] + [{"num": str(i+4), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(7)]
+                    st.session_state.devis_sections = [{"numero": "A", "titre": "INDUSTRIAL", "items": items_vides}]
 
                 total_general_ind = 0
                 col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7, col_h8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
@@ -1898,29 +1914,8 @@ if "📋 Devis" in tab_map:
                                                     key=f"type_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['type'] = type_item
                         with col4:
-                            if type_item == "cable":
-                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
-                                section_cable = st.text_input("Section", value=item.get('section', ''), key=f"sec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="2.5mm²")
-                                longueur = st.number_input("Long", value=float(item.get('longueur', 0)), key=f"long_ind_{idx}_{i}", label_visibility="collapsed", format="%.1f")
-                                section['items'][i]['marque'] = marque
-                                section['items'][i]['section'] = section_cable
-                                section['items'][i]['longueur'] = longueur
-                                section['items'][i]['spec'] = f"{marque} - {section_cable} - {longueur}m"
-                            elif type_item == "interrupteur":
-                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_int_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
-                                couleur = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"],
-                                                      index=["Blanc", "Noir", "Gris", "Beige"].index(item.get('couleur', 'Blanc')) if item.get('couleur') in ["Blanc", "Noir", "Gris", "Beige"] else 0,
-                                                      key=f"coul_int_{idx}_{i}", label_visibility="collapsed")
-                                qualite = st.selectbox("Qualité", ["Standard", "Premium", "Pro"],
-                                                      index=["Standard", "Premium", "Pro"].index(item.get('qualite', 'Standard')) if item.get('qualite') in ["Standard", "Premium", "Pro"] else 0,
-                                                      key=f"qual_int_{idx}_{i}", label_visibility="collapsed")
-                                section['items'][i]['marque'] = marque
-                                section['items'][i]['couleur'] = couleur
-                                section['items'][i]['qualite'] = qualite
-                                section['items'][i]['spec'] = f"{marque} - {couleur} - {qualite}"
-                            else:
-                                spec = st.text_input("Détails", value=item.get('spec', ''), key=f"spec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Détails")
-                                section['items'][i]['spec'] = spec
+                            spec = st.text_input("Détails", value=item.get('spec', ''), key=f"spec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Détails")
+                            section['items'][i]['spec'] = spec
                         with col5:
                             unite = st.selectbox("Unité", ["m", "pc", "kg", "lot", "m²", "m³"],
                                                index=["m", "pc", "kg", "lot", "m²", "m³"].index(item.get('unite', 'pc')) if item.get('unite') in ["m", "pc", "kg", "lot", "m²", "m³"] else 1,
@@ -1948,16 +1943,7 @@ if "📋 Devis" in tab_map:
                     with col3:
                         type_new = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"], key=f"type_ind_{idx}_new", label_visibility="collapsed")
                     with col4:
-                        if type_new == "cable":
-                            marque_new = st.text_input("Marque", key=f"marque_ind_{idx}_new", label_visibility="collapsed", placeholder="Marque")
-                            section_new = st.text_input("Section", key=f"sec_ind_{idx}_new", label_visibility="collapsed", placeholder="2.5mm²")
-                            longueur_new = st.number_input("Long", min_value=0.0, key=f"long_ind_{idx}_new", label_visibility="collapsed", format="%.1f")
-                        elif type_new == "interrupteur":
-                            marque_new = st.text_input("Marque", key=f"marque_int_{idx}_new", label_visibility="collapsed", placeholder="Marque")
-                            couleur_new = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"], key=f"coul_int_{idx}_new", label_visibility="collapsed")
-                            qualite_new = st.selectbox("Qualité", ["Standard", "Premium", "Pro"], key=f"qual_int_{idx}_new", label_visibility="collapsed")
-                        else:
-                            spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
+                        spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
                     with col5:
                         unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
                         qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
@@ -1968,13 +1954,7 @@ if "📋 Devis" in tab_map:
                     with col8:
                         if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
                             if design:
-                                new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
-                                if type_new == "cable":
-                                    new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
-                                elif type_new == "interrupteur":
-                                    new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new, "spec": f"{marque_new} - {couleur_new} - {qualite_new}"})
-                                else:
-                                    new_item.update({"spec": spec_new})
+                                new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu, "spec": spec_new}
                                 section['items'].append(new_item)
                                 st.rerun()
 
@@ -1988,16 +1968,16 @@ if "📋 Devis" in tab_map:
                 with col_add1:
                     new_section_num = st.text_input("N° Section", placeholder="B", key="new_sec_num_ind", label_visibility="collapsed")
                 with col_add2:
-                    new_section_titre = st.text_input("Titre Section", placeholder="Nouvelle section...", key="new_sec_titre_ind", label_visibility="collapsed")
+                    new_section_titre = st.text_input("Titre Section", placeholder="BLOC ET IMPREVUS", key="new_sec_titre_ind", label_visibility="collapsed")
                 with col_add3:
                     if st.button("➕ Section", key="add_section_ind", width="stretch"):
                         if new_section_titre:
-                            items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(10)]
+                            items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(5)]
                             st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": items_vides})
                             st.rerun()
 
                 st.divider()
-                main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, key="mo_devis_ind")
+                main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, value=0.0, key="mo_devis_ind")
                 cout_total_ind = total_general_ind + main_oeuvre
                 st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis}")
 
