@@ -1697,6 +1697,8 @@ import json
 from datetime import datetime
 from fpdf import FPDF
 import streamlit as st
+import qrcode
+from io import BytesIO
 
 # ===== FONCTION GENERATION PDF =====
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
@@ -1812,10 +1814,39 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(163, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
     pdf.cell(27, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
 
-    # Signature
-    if pdf.get_y() > 220:
+    # ===== QR CODE =====
+    # Données encodées dans le QR
+    qr_data = {
+        "numero": numero,
+        "client": client,
+        "titre": titre,
+        "total": total_general + main_oeuvre,
+        "devise": devise,
+        "date": datetime.now().strftime('%d/%m/%Y'),
+        "verif": f"https://asymas.com/verifier/{numero}" # change par ton URL
+    }
+    qr = qrcode.QRCode(version=1, box_size=3, border=1)
+    qr.add_data(json.dumps(qr_data))
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Insérer QR en mémoire
+    buf = BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+
+    y_pos = pdf.get_y() + 10
+    if y_pos > 220: # nouvelle page si pas de place
         pdf.add_page()
-    pdf.ln(15)
+        y_pos = 20
+
+    pdf.image(buf, x=160, y=y_pos, w=35) # QR en bas à droite
+    pdf.set_xy(160, y_pos + 36)
+    pdf.set_font("Arial", 'I', 7)
+    pdf.cell(35, 4, "Scan pour vérifier", align='C')
+
+    # Signature à gauche
+    pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
     pdf.ln(15)
@@ -1951,7 +1982,7 @@ if "📋 Devis" in tab_map:
                             )
 
                             st.download_button(
-                                label="⬇️ Télécharger le Devis PDF",
+                                label="⬇️ Télécharger le Devis PDF avec QR",
                                 data=pdf_bytes,
                                 file_name=f"{numero_devis}.pdf",
                                 mime="application/pdf",
