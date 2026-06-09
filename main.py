@@ -2038,7 +2038,7 @@ if "📋 Devis" in tab_map:
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         numero, "Industriel", client, d.get('titre',''),
                                         d.get('parcelle',''), d.get('localisation',''), sections,
-                                        devise, d.get('telephone',''),
+                                        devise, d.get('telephone',''), 
                                         d.get('ing_nom','SAMY TSANGYA'),
                                         d.get('ing_tel','+256766515428'),
                                         d.get('main_oeuvre',0)
