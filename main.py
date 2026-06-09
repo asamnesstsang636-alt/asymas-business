@@ -2007,8 +2007,7 @@ if "📋 Devis" in tab_map:
                                 "type": "Industriel",
                                 "client": client_devis,
                                 "telephone": tel_client_devis,
-                                "ing_nom": ing_nom,
-                                "ing_tel": ing_tel,
+                                
                                 "titre": titre_devis,
                                 "parcelle": parcelle_devis,
                                 "localisation": localisation_devis,
