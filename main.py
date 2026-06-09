@@ -1953,42 +1953,55 @@ if "📋 Devis" in tab_map:
                                 st.write(f"**TOTAL:** {total:,.0f} {devise}")
                                 st.write(f"**Par:** {d.get('created_by','N/A')}")
                             with col3:
-                                if peut_telecharger_ind:
-                                    pdf_bytes = generer_pdf_devis_consulting(
-                                        numero, "Industriel", client, d.get('titre',''),
-                                        d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
-                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
-                                    )
-                                    st.download_button(
-                                        label="📥 Télécharger",
-                                        data=pdf_bytes,
-                                        file_name=f"{numero}.pdf",
-                                        mime="application/pdf",
-                                        key=f"dl_ind_hist_{numero}",
-                                        width="stretch"
-                                    )
-                                if peut_imprimer_ind:
-                                    pdf_bytes = generer_pdf_devis_consulting(
-                                        numero, "Industriel", client, d.get('titre',''),
-                                        d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
-                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
-                                    )
-                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                    safe_id = numero.replace('-', '_')
-                                    st.components.v1.html(f"""
-                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
-                                            🖨️ Imprimer
-                                        </button>
-                                        <script>
-                                        function printPDF_{safe_id}() {{
-                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                            const win = window.open('', '_blank');
-                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                            win.document.close();
-                                            setTimeout(() => {{ win.print(); }}, 1000);
-                                        }}
-                                        </script>
-                                    """, height=45)
+                                import json
+
+sections = d.get('sections')
+if isinstance(sections, str):
+    sections = json.loads(sections) if sections else []
+elif sections is None:
+    sections = []
+
+if peut_telecharger_ind:
+    pdf_bytes = generer_pdf_devis_consulting(
+        numero, "Industriel", client, d.get('titre',''),
+        d.get('parcelle',''), d.get('localisation',''), sections,
+        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+    )
+    st.download_button(
+        label="📥 Télécharger",
+        data=pdf_bytes,
+        file_name=f"{numero}.pdf",
+        mime="application/pdf",
+        key=f"dl_ind_hist_{numero}",
+        width="stretch"
+    )
+
+if peut_imprimer_ind:
+    pdf_bytes = generer_pdf_devis_consulting(
+        numero, "Industriel", client, d.get('titre',''),
+        d.get('parcelle',''), d.get('localisation',''), sections,
+        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+    )
+    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+    safe_id = numero.replace('-', '_')
+    st.components.v1.html(f"""
+        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
+            🖨️ Imprimer
+        </button>
+        <script>
+        function printPDF_{safe_id}() {{
+            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+            const win = window.open('', '_blank');
+            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+            win.document.close();
+            setTimeout(() => {{ win.print(); }}, 1000);
+        }}
+        </script>
+    """, height=45)
+                                    
+                                        
+                                        
+                                        
                                 if st.session_state.user_role == "PDG":
                                     if st.button("🗑️ Supprimer", key=f"del_ind_{numero}", width="stretch"):
                                         supabase.table('devis').delete().eq("numero", numero).execute()
