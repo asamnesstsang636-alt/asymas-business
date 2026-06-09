@@ -1705,12 +1705,13 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE avec fond VERT POMME sur toute la zone
+    # EN-TETE avec fond VERT qui couvre TOUTE la zone
     y_start = pdf.get_y()
-    pdf.set_fill_color(144, 238, 144) # vert pomme fort
-    pdf.rect(10, y_start, 190, 28, 'F') # rectangle vert sur toute la largeur
+    pdf.set_fill_color(144, 238, 144) # vert pomme comme ton PDF
+    pdf.rect(10, y_start, 190, 32, 'F') # 32mm de haut = couvre tout le bloc
 
     pdf.set_xy(10, y_start + 2)
+    pdf.set_text_color(0, 0, 0) # texte noir
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
@@ -1729,7 +1730,8 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.set_font("Arial", size=9)
     pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
 
-    pdf.ln(3)
+    pdf.set_text_color(0, 0, 0) # remettre noir
+    pdf.ln(5)
     pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
