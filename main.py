@@ -1705,22 +1705,32 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE
+    # EN-TETE avec fond VERT sur toute la zone
+    y_start = pdf.get_y()
+    pdf.set_fill_color(200, 255, 200) # vert clair
+    pdf.rect(10, y_start, 190, 28, 'F') # rectangle vert sur toute la largeur
+
+    pdf.set_xy(10, y_start + 2)
     pdf.set_font("Arial", 'B', 18)
-    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0)
+    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "DEVIS N", 0, 1, 'R')
+    pdf.cell(0, 10, "DEVIS N", 0, 1, 'R', True)
 
+    pdf.set_x(10)
     pdf.set_font("Arial", size=10)
-    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0)
-    pdf.cell(0, 6, f"{numero}", 0, 1, 'R')
+    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True)
+    pdf.cell(0, 6, f"{numero}", 0, 1, 'R', True)
 
-    pdf.cell(130, 6, f"Email: {email}", 0, 0)
-    pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R')
-    pdf.ln(2)
+    pdf.set_x(10)
+    pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
+    pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
+
+    pdf.set_x(10)
     pdf.set_font("Arial", size=9)
-    pdf.cell(0, 5, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C')
+    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
+
     pdf.ln(3)
+    pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
 
