@@ -1738,9 +1738,14 @@ if "📋 Devis" in tab_map:
                             "numero": "A",
                             "titre": "INDUSTRIAL",
                             "items": [
-                                {"type": "cable", "designation": "Câble 2.5mm²", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 1, "pu": 1.2},
-                                {"type": "interrupteur", "designation": "Interrupteur", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 5, "pu": 3.5},
-                                {"type": "autre", "designation": "Goulotte 25x16", "unite": "m", "qte": 10, "pu": 2.5, "spec": ""}
+                                {"num": "1", "designation": "Câble 2.5mm²", "type": "cable", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 100, "pu": 1.2},
+                                {"num": "2", "designation": "Câble 4mm²", "type": "cable", "marque": "Nexans", "section": "4mm²", "longueur": 100, "unite": "m", "qte": 80, "pu": 1.8},
+                                {"num": "3", "designation": "Interrupteur simple", "type": "interrupteur", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 10, "pu": 3.5},
+                                {"num": "4", "designation": "Prise de courant", "type": "prise", "marque": "Legrand", "unite": "pc", "qte": 15, "pu": 4.0, "spec": ""},
+                                {"num": "5", "designation": "Disjoncteur 16A", "type": "disjoncteur", "marque": "Schneider", "unite": "pc", "qte": 6, "pu": 12.0, "spec": ""},
+                                {"num": "6", "designation": "Goulotte 25x16", "type": "autre", "unite": "m", "qte": 50, "pu": 2.5, "spec": "PVC"},
+                                {"num": "7", "designation": "Boîte de dérivation", "type": "autre", "unite": "pc", "qte": 8, "pu": 2.0, "spec": "Encastrée"},
+                                {"num": "8", "designation": "Lampe LED 18W", "type": "autre", "unite": "pc", "qte": 12, "pu": 5.5, "spec": "Blanc froid"}
                             ]
                         }
                     ]
@@ -1905,7 +1910,7 @@ if "📋 Devis" in tab_map:
                                 "titre": titre_devis,
                                 "parcelle": parcelle_devis,
                                 "localisation": localisation_devis,
-                                "sections": json.dumps(st.session_state.devis_sections, ensure_ascii=False), # FIX: convertit liste en JSON string
+                                "sections": json.dumps(st.session_state.devis_sections, ensure_ascii=False),
                                 "main_oeuvre": main_oeuvre,
                                 "total": cout_total_ind,
                                 "devise": devise_devis,
@@ -1957,7 +1962,6 @@ if "📋 Devis" in tab_map:
                                 st.write(f"**TOTAL:** {total:,.0f} {devise}")
                                 st.write(f"**Par:** {d.get('created_by','N/A')}")
                             with col3:
-                                # FIX: conversion JSON string -> liste Python
                                 sections = d.get('sections')
                                 if isinstance(sections, str):
                                     try:
@@ -2198,7 +2202,7 @@ if "📋 Devis" in tab_map:
                                     "titre": st.session_state.devis_bat_titre,
                                     "parcelle": parcelle_devis_bat,
                                     "localisation": localisation_devis_bat,
-                                    "sections": json.dumps(st.session_state.devis_bat_sections, ensure_ascii=False), # FIX: convertit liste en JSON string
+                                    "sections": json.dumps(st.session_state.devis_bat_sections, ensure_ascii=False),
                                     "main_oeuvre": st.session_state.devis_bat_main_oeuvre,
                                     "total": cout_total,
                                     "devise": devise_devis_bat,
@@ -2241,6 +2245,93 @@ if "📋 Devis" in tab_map:
                         if 'pdf_devis_bat' in st.session_state:
                             del st.session_state.pdf_devis_bat
                         st.rerun()
+            else:
+                st.info("🔒 Vous n'avez pas l'autorisation de créer des devis bâtiment")
+
+            peut_telecharger_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_download', False)
+            peut_imprimer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment_print', False)
+
+            if peut_telecharger_bat or peut_imprimer_bat:
+                st.divider()
+                st.subheader("📚 Devis Bâtiment Enregistrés")
+                try:
+                    devis_bat_list = supabase.table('devis').select("*").eq("type", "Bâtiment").order("created_at", desc=True).limit(10).execute().data
+                except:
+                    devis_bat_list = []
+
+                if not devis_bat_list:
+                    st.info("Aucun devis bâtiment enregistré")
+                else:
+                    for d in devis_bat_list:
+                        numero = d.get('numero', 'N/A')
+                        client = d.get('client', 'N/A')
+                        total = d.get('total', 0)
+                        devise = d.get('devise', 'USD')
+                        date_crea = d.get('created_at', '')[:10] if d.get('created_at') else 'N/A'
+
+                        with st.expander(f"{numero} - {client} - {total:,.0f} {devise} - {date_crea}"):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.write(f"**Projet:** {d.get('titre','N/A')}")
+                                st.write(f"**Parcelle:** {d.get('parcelle','N/A')}")
+                                st.write(f"**Localisation:** {d.get('localisation','N/A')}")
+                            with col2:
+                                st.write(f"**Main d'oeuvre:** {d.get('main_oeuvre',0):,.0f} {devise}")
+                                st.write(f"**TOTAL:** {total:,.0f} {devise}")
+                                st.write(f"**Par:** {d.get('created_by','N/A')}")
+                            with col3:
+                                sections = d.get('sections')
+                                if isinstance(sections, str):
+                                    try:
+                                        sections = json.loads(sections) if sections else []
+                                    except:
+                                        sections = []
+                                elif sections is None:
+                                    sections = []
+
+                                if peut_telecharger_bat:
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        numero, "Bâtiment", client, d.get('titre',''),
+                                        d.get('parcelle',''), d.get('localisation',''), sections,
+                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                    )
+                                    st.download_button(
+                                        label="📥 Télécharger",
+                                        data=pdf_bytes,
+                                        file_name=f"{numero}.pdf",
+                                        mime="application/pdf",
+                                        key=f"dl_bat_hist_{numero}",
+                                        width="stretch"
+                                    )
+
+                                if peut_imprimer_bat:
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        numero, "Bâtiment", client, d.get('titre',''),
+                                        d.get('parcelle',''), d.get('localisation',''), sections,
+                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                    )
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = numero.replace('-', '_')
+                                    st.components.v1.html(f"""
+                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
+                                            🖨️ Imprimer
+                                        </button>
+                                        <script>
+                                        function printPDF_{safe_id}() {{
+                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                            const win = window.open('', '_blank');
+                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                            win.document.close();
+                                            setTimeout(() => {{ win.print(); }}, 1000);
+                                        }}
+                                        </script>
+                                    """, height=45)
+
+                            if st.session_state.user_role == "PDG":
+                                if st.button("🗑️ Supprimer", key=f"del_bat_{numero}", width="stretch"):
+                                    supabase.table('devis').delete().eq("numero", numero).execute()
+                                    st.success("Supprimé")
+                                    st.rerun()
                     
                         
                         
