@@ -1918,7 +1918,7 @@ if "📋 Devis" in tab_map:
                         else:
                             spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
                     with col5:
-    unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
+                       unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
     qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
 with col6:
     pu = st.number_input("PU", min_value=0.0, key=f"pu_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
