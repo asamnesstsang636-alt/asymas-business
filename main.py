@@ -1963,8 +1963,7 @@ if "📋 Devis" in tab_map:
                                     sections = []
 
                                 if peut_telecharger_ind:
-                                    st.write("DEBUG: nb items =", sum(len(s.get('items',[])) for s in sections))
-                                    st.stop()
+                                    
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         numero, "Industriel", client, d.get('titre',''),
                                         d.get('parcelle',''), d.get('localisation',''), sections,
