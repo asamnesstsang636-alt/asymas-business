@@ -1710,7 +1710,6 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         pdf.cell(200, 8, txt=f"TEL CLIENT: {telephone}", ln=True)
     pdf.ln(5)
 
-    # Tableau des items
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(10, 8, "N°", 1)
     pdf.cell(80, 8, "Désignation", 1)
@@ -1740,7 +1739,6 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(135, 8, "TOTAL GENERAL:", 1)
     pdf.cell(25, 8, f"{total + main_oeuvre:,.2f} {devise}", 1)
 
-    # Bloc signature ingénieur - ton +256766515428 s'affiche ici
     pdf.ln(20)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
@@ -2222,17 +2220,67 @@ if "📋 Devis" in tab_map:
                         pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
                     with col6:
                         st.markdown(f"**{qte*pu:,.2f}**")
-                    with col7:
+                                        with col7:
                         if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
-                           if design:
-                               section['items'].append({
-                                   "num": num_item,
-                                   "designation": design,
-                                   "unite": unite,
-                                   "qte": qte,
-                                   "pu": pu
-                           })
-                           st.rerun()
+                            if design:
+                                section['items'].append({
+                                    "num": num_item,
+                                    "designation": design,
+                                    "unite": unite,
+                                    "qte": qte,
+                                    "pu": pu
+                                })
+                                st.rerun()
+
+                    col_st1, col_st2 = st.columns([6, 1])
+                    col_st1.markdown(f"**Sous-total {section['titre']}**")
+                    col_st2.markdown(f"**{sous_total_sec:,.2f}**")
+                    total_general += sous_total_sec
+                    st.divider()
+
+                st.divider()
+                st.session_state.devis_bat_main_oeuvre = st.number_input(
+                    "👷 Main d'oeuvre", 
+                    min_value=0.0, 
+                    value=st.session_state.devis_bat_main_oeuvre,
+                    key="mo_devis_bat"
+                )
+                cout_total = total_general + st.session_state.devis_bat_main_oeuvre
+                st.metric("COUT TOTAL DU PROJET", f"{cout_total:,.2f} {devise_devis_bat}")
+
+                if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_bat"):
+                    if client_devis_bat and st.session_state.devis_bat_titre and st.session_state.devis_bat_sections:
+                        numero_devis = f"DEV-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        try:
+                            data_devis = {
+                                "numero": numero_devis,
+                                "type": "Bâtiment",
+                                "client": client_devis_bat,
+                                "telephone": tel_client_devis_bat,
+                                "titre": st.session_state.devis_bat_titre,
+                                "parcelle": parcelle_devis_bat,
+                                "localisation": localisation_devis_bat,
+                                "sections": json.dumps(st.session_state.devis_bat_sections, ensure_ascii=False),
+                                "main_oeuvre": st.session_state.devis_bat_main_oeuvre,
+                                "total": cout_total,
+                                "devise": devise_devis_bat,
+                                "created_by": st.session_state.user_name,
+                                "created_at": datetime.now().isoformat()
+                            }
+                            supabase.table('devis').insert(data_devis).execute()
+                            st.success(f"✅ Devis enregistré : {numero_devis}")
+                            st.session_state.devis_bat_sections = []
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+                    else:
+                        st.error("Client, Titre et au moins 1 section requis")
+                        
+                            
+                                
+                                    
                         
                     
                         
