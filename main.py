@@ -2220,7 +2220,7 @@ if "📋 Devis" in tab_map:
                         pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
                     with col6:
                         st.markdown(f"**{qte*pu:,.2f}**")
-                                        with col7:
+                    with col7:
                         if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
                             if design:
                                 section['items'].append({
