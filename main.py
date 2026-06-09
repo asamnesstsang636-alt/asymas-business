@@ -1927,7 +1927,7 @@ if "📋 Devis" in tab_map:
                     with col8:
                         if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
                             if design:
-            new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
+                                new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
                                 if type_new == "cable":
                 new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
                                 elif type_new == "interrupteur":
