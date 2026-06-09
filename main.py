@@ -1694,7 +1694,6 @@ if "📄 Factures" in tab_map:
                                 col_f.write("❌")
                                 col_g.write("❌")
 import json
-import base64
 from datetime import datetime
 from fpdf import FPDF
 
@@ -1711,87 +1710,6 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.ln(5)
 
     total_general = 0
-
-    for section in sections:
-        # Titre section
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(200, 8, txt=f"{section.get('numero','')} {section.get('titre','')}", ln=True)
-
-        # En-tête tableau
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(10, 7, "N°", 1)
-        pdf.cell(80, 7, "Désignation", 1)
-        pdf.cell(20, 7, "Qté", 1)
-        pdf.cell(25, 7, "PU", 1)
-        pdf.cell(25, 7, "Total", 1)
-        pdf.ln()
-
-        # Lignes articles
-        pdf.set_font("Arial", size=9)
-        sous_total_sec = 0
-        for item in section.get('items', []):
-            # Saut de page si on arrive en bas
-            if pdf.get_y() > 260:
-                pdf.add_page()
-
-            pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
-            sous_total_sec += pt
-            pdf.cell(10, 7, str(item.get('num', '')), 1)
-            pdf.cell(80, 7, item.get('designation', '')[:35], 1)
-            pdf.cell(20, 7, str(item.get('qte', 0)), 1)
-            pdf.cell(25, 7, f"{float(item.get('pu', 0)):,.2f}", 1)
-            pdf.cell(25, 7, f"{pt:,.2f}", 1)
-            pdf.ln()
-
-        # Sous-total section
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(135, 7, f"Sous-total {section.get('titre','')}", 1)
-        pdf.cell(25, 7, f"{sous_total_sec:,.2f}", 1)
-        pdf.ln(8)
-
-        total_general += sous_total_sec
-
-    # Main d'oeuvre + Total général
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 10)
-    pdf.cell(135, 8, "MAIN D'OEUVRE:", 1)
-    pdf.cell(25, 8, f"{main_oeuvre:,.2f}", 1)
-    pdf.ln()
-    pdf.cell(135, 8, "TOTAL GENERAL:", 1)
-    pdf.cell(25, 8, f"{total_general + main_oeuvre:,.2f} {devise}", 1)
-
-    # Signature
-    pdf.ln(20)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-    pdf.ln(12)
-    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(200, 6, txt=f"Ing. {ing_nom}", ln=True)
-    pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
-
-    return pdf.output(dest='S').encode('latin-1', errors='replace')
-
-import json
-import base64
-from datetime import datetime
-from fpdf import FPDF
-
-def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
-                                 sections, devise, telephone, ing_nom, ing_tel, main_oeuvre):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(200, 10, txt=f"DEVIS {numero}", ln=True, align='C')
-    pdf.cell(200, 8, txt=f"CLIENT: {client}", ln=True)
-    if telephone:
-        pdf.cell(200, 8, txt=f"TEL CLIENT: {telephone}", ln=True)
-    pdf.ln(5)
-
-    total_general = 0
-
     for section in sections:
         pdf.set_font("Arial", 'B', 10)
         pdf.cell(200, 8, txt=f"{section.get('numero','')} {section.get('titre','')}", ln=True)
@@ -1809,7 +1727,6 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         for item in section.get('items', []):
             if pdf.get_y() > 260:
                 pdf.add_page()
-
             pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
             sous_total_sec += pt
             pdf.cell(10, 7, str(item.get('num', '')), 1)
@@ -1844,7 +1761,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
 
     out = pdf.output(dest='S')
-    return out if isinstance(out, (bytes, bytearray)) else out.encode('latin-1', errors='replace')
+    return bytes(out)
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
@@ -1907,7 +1824,6 @@ if "📋 Devis" in tab_map:
                     ]
 
                 total_general_ind = 0
-
                 col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7, col_h8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
                 col_h1.markdown("**N°**")
                 col_h2.markdown("**Désignation**")
@@ -1929,24 +1845,19 @@ if "📋 Devis" in tab_map:
                             st.rerun()
 
                     sous_total_sec = 0
-
                     for i, item in enumerate(section['items']):
                         col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
-
                         with col1:
                             new_num = st.text_input("N°", value=str(item.get('num', '')), key=f"num_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['num'] = new_num
-
                         with col2:
                             new_des = st.text_input("Désignation", value=item.get('designation', ''), key=f"des_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['designation'] = new_des
-
                         with col3:
                             type_item = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"],
                                                     index=["cable", "interrupteur", "prise", "disjoncteur", "autre"].index(item.get('type', 'autre')),
                                                     key=f"type_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['type'] = type_item
-
                         with col4:
                             if type_item == "cable":
                                 subcol1, subcol2, subcol3 = st.columns(3)
@@ -1979,7 +1890,6 @@ if "📋 Devis" in tab_map:
                             else:
                                 spec = st.text_input("Détails", value=item.get('spec', ''), key=f"spec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Détails")
                                 section['items'][i]['spec'] = spec
-
                         with col5:
                             unite = st.selectbox("Unité", ["m", "pc", "kg", "lot", "m²", "m³"],
                                                index=["m", "pc", "kg", "lot", "m²", "m³"].index(item.get('unite', 'pc')) if item.get('unite') in ["m", "pc", "kg", "lot", "m²", "m³"] else 1,
@@ -1987,22 +1897,18 @@ if "📋 Devis" in tab_map:
                             new_qte = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['unite'] = unite
                             section['items'][i]['qte'] = new_qte
-
                         with col6:
                             new_pu = st.number_input("PU", value=float(item.get('pu', 0)), min_value=0.0, key=f"pu_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['pu'] = new_pu
-
                         with col7:
                             pt = new_qte * new_pu
                             st.markdown(f"**{pt:,.2f}**")
                             sous_total_sec += pt
-
                         with col8:
                             if st.button("❌", key=f"del_item_ind_{idx}_{i}", help="Supprimer"):
                                 section['items'].pop(i)
                                 st.rerun()
 
-                    # Ligne d'ajout
                     col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
                     with col1:
                         num_item = st.text_input("N°", key=f"num_ind_{idx}_new", label_visibility="collapsed", placeholder="N°")
@@ -2105,28 +2011,16 @@ if "📋 Devis" in tab_map:
                                 mime="application/pdf",
                                 key=f"dl_{numero_devis}"
                             )
-
                             st.success(f"✅ Devis enregistré : {numero_devis}")
-
-                            if st.button("🔄 Nouveau devis"):
-                                st.session_state.devis_sections = []
-                                st.cache_data.clear()
-                                st.rerun()
                         except Exception as e:
-                          st.error("Erreur enregistrement")
-                          st.exception(e)  # <-- ça t’affiche la vraie erreur Supabase
+                            st.error("Erreur enregistrement")
+                            st.exception(e)
 
-                        st.divider()
-
-                        if st.button("🔄 Nouveau devis", key="reset_devis"):
-                          st.session_state.devis_sections = []
-                          st.cache_data.clear()
-                          st.rerun()
-                            
-                            
-                    else:
-                        st.error("Client, Titre et au moins 1 section requis")
-                    
+                st.divider()
+                if st.button("🔄 Nouveau devis", key="reset_devis"):
+                    st.session_state.devis_sections = []
+                    st.cache_data.clear()
+                    st.rerun()
                         
                         
                         
