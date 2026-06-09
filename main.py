@@ -1701,33 +1701,37 @@ import streamlit as st
 # ===== FONCTION GENERATION PDF =====
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
                                  sections, devise, telephone, main_oeuvre,
-                                 ing_nom="SAMY TSANGYA", ing_tel="+243 995 105 623",
+                                 ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
                                  email="asamnesstsang636@gmail.com", adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE : couleur prise de ta dernière image, couvre toute la largeur
+    # EN-TETE : texte image 1 + couleur image 2 + couvre toute la largeur
     y_start = pdf.get_y()
-    pdf.set_fill_color(20, 50, 40) # vert très foncé de ton image
-    pdf.rect(0, y_start, 210, 32, 'F') # x=0, w=210 = pas de blanc en haut
+    pdf.set_fill_color(165, 210, 150) # vert sauge image 2
+    pdf.rect(0, y_start, 210, 32, 'F') # couvre toute la page, pas de blanc
 
     pdf.set_xy(10, y_start + 2)
-    pdf.set_text_color(255, 255, 255) # texte blanc sur fond foncé
+    pdf.set_text_color(0, 0, 0) # texte noir sur fond clair
     pdf.set_font("Arial", 'B', 18)
-    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
+    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True) # texte image 1
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 10, "DEVIS N", 0, 1, 'R', True)
 
     pdf.set_x(10)
     pdf.set_font("Arial", size=10)
-    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True)
+    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True) # texte image 1
     pdf.cell(0, 6, f"{numero}", 0, 1, 'R', True)
 
     pdf.set_x(10)
-    pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
+    pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True) # texte image 1
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
 
-    pdf.set_text_color(0, 0, 0) # remettre noir pour la suite
+    pdf.set_x(10)
+    pdf.set_font("Arial", size=9)
+    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True) # texte image 1
+
+    pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -1751,21 +1755,15 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # EN-TETE TABLEAU GRIS 200
+        # EN-TETE TABLEAU VERT SAUGE aussi comme image 2
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(200, 200, 200)
+        pdf.set_fill_color(165, 210, 150)
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
         pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
         pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
         pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
         pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
         pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
-
-        # Ligne section GRIS 230
-        pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(230, 230, 230)
-        pdf.cell(10, 6, section.get('numero', 'A'), 1, 0, 'C', True)
-        pdf.cell(170, 6, section.get('titre', 'INDUSTRIAL'), 1, 1, 'L', True)
 
         # Articles fond blanc
         pdf.set_font("Arial", size=10)
@@ -1842,7 +1840,7 @@ if "📋 Devis" in tab_map:
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
                 with col_ing2:
-                    ing_tel = st.text_input("📞 Tél Ingénieur", value="+243 995 105 623", key="ing_tel_ind")
+                    ing_tel = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
 
                 # Infos client
                 col1, col2, col3 = st.columns(3)
