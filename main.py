@@ -1705,9 +1705,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE avec fond VERT sur toute la zone
+    # EN-TETE avec fond VERT POMME sur toute la zone
     y_start = pdf.get_y()
-    pdf.set_fill_color(200, 255, 200) # vert clair
+    pdf.set_fill_color(144, 238, 144) # vert pomme fort
     pdf.rect(10, y_start, 190, 28, 'F') # rectangle vert sur toute la largeur
 
     pdf.set_xy(10, y_start + 2)
@@ -1751,9 +1751,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # En-tête tableau : VERT CLAIR
+        # En-tête tableau : même VERT POMME
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(200, 255, 200)
+        pdf.set_fill_color(144, 238, 144)
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
         pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
         pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
