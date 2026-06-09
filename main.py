@@ -1693,6 +1693,8 @@ if "📄 Factures" in tab_map:
                             except Exception as e:
                                 col_f.write("❌")
                                 col_g.write("❌")
+import json # <-- ajoute ça en haut du fichier avec tes autres imports
+
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
@@ -1953,60 +1955,56 @@ if "📋 Devis" in tab_map:
                                 st.write(f"**TOTAL:** {total:,.0f} {devise}")
                                 st.write(f"**Par:** {d.get('created_by','N/A')}")
                             with col3:
-                                import json
+                                # FIX: conversion JSON string -> liste Python
+                                sections = d.get('sections')
+                                if isinstance(sections, str):
+                                    sections = json.loads(sections) if sections else []
+                                elif sections is None:
+                                    sections = []
 
-sections = d.get('sections')
-if isinstance(sections, str):
-    sections = json.loads(sections) if sections else []
-elif sections is None:
-    sections = []
+                                if peut_telecharger_ind:
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        numero, "Industriel", client, d.get('titre',''),
+                                        d.get('parcelle',''), d.get('localisation',''), sections,
+                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                    )
+                                    st.download_button(
+                                        label="📥 Télécharger",
+                                        data=pdf_bytes,
+                                        file_name=f"{numero}.pdf",
+                                        mime="application/pdf",
+                                        key=f"dl_ind_hist_{numero}",
+                                        width="stretch"
+                                    )
 
-if peut_telecharger_ind:
-    pdf_bytes = generer_pdf_devis_consulting(
-        numero, "Industriel", client, d.get('titre',''),
-        d.get('parcelle',''), d.get('localisation',''), sections,
-        devise, d.get('telephone',''), d.get('main_oeuvre',0)
-    )
-    st.download_button(
-        label="📥 Télécharger",
-        data=pdf_bytes,
-        file_name=f"{numero}.pdf",
-        mime="application/pdf",
-        key=f"dl_ind_hist_{numero}",
-        width="stretch"
-    )
+                                if peut_imprimer_ind:
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        numero, "Industriel", client, d.get('titre',''),
+                                        d.get('parcelle',''), d.get('localisation',''), sections,
+                                        devise, d.get('telephone',''), d.get('main_oeuvre',0)
+                                    )
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = numero.replace('-', '_')
+                                    st.components.v1.html(f"""
+                                        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
+                                            🖨️ Imprimer
+                                        </button>
+                                        <script>
+                                        function printPDF_{safe_id}() {{
+                                            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                            const win = window.open('', '_blank');
+                                            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                            win.document.close();
+                                            setTimeout(() => {{ win.print(); }}, 1000);
+                                        }}
+                                        </script>
+                                    """, height=45)
 
-if peut_imprimer_ind:
-    pdf_bytes = generer_pdf_devis_consulting(
-        numero, "Industriel", client, d.get('titre',''),
-        d.get('parcelle',''), d.get('localisation',''), sections,
-        devise, d.get('telephone',''), d.get('main_oeuvre',0)
-    )
-    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-    safe_id = numero.replace('-', '_')
-    st.components.v1.html(f"""
-        <button onclick="printPDF_{safe_id}()" style="width:100%; padding:8px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; margin-top:5px;">
-            🖨️ Imprimer
-        </button>
-        <script>
-        function printPDF_{safe_id}() {{
-            const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-            const win = window.open('', '_blank');
-            win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-            win.document.close();
-            setTimeout(() => {{ win.print(); }}, 1000);
-        }}
-        </script>
-    """, height=45)
-                                    
-                                        
-                                        
-                                        
-                                if st.session_state.user_role == "PDG":
-                                    if st.button("🗑️ Supprimer", key=f"del_ind_{numero}", width="stretch"):
-                                        supabase.table('devis').delete().eq("numero", numero).execute()
-                                        st.success("Supprimé")
-                                        st.rerun()
+                            if st.session_state.user_role == "PDG":
+                                if st.button("🗑️ Supprimer", key=f"del_ind_{numero}", width="stretch"):
+                                    supabase.table('devis').delete().eq("numero", numero).execute()
+                                    st.success("Supprimé")
+                                    st.rerun()
 
         with tab_batiment:
             peut_creer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
@@ -2286,9 +2284,16 @@ if peut_imprimer_ind:
                             st.write(f"{total:,.0f} {devise}")
                         with col3:
                             if peut_telecharger_bat:
+                                # FIX: conversion JSON string -> liste Python
+                                sections = d.get('sections')
+                                if isinstance(sections, str):
+                                    sections = json.loads(sections) if sections else []
+                                elif sections is None:
+                                    sections = []
+                                    
                                 pdf_bytes = generer_pdf_devis_consulting(
                                     numero, "Bâtiment", client, d.get('titre',''),
-                                    d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                    d.get('parcelle',''), d.get('localisation',''), sections,
                                     devise, d.get('telephone',''), d.get('main_oeuvre',0)
                                 )
                                 st.download_button(
@@ -2302,9 +2307,16 @@ if peut_imprimer_ind:
                                 st.write("🔒")
                         with col4:
                             if peut_imprimer_bat:
+                                # FIX: conversion JSON string -> liste Python
+                                sections = d.get('sections')
+                                if isinstance(sections, str):
+                                    sections = json.loads(sections) if sections else []
+                                elif sections is None:
+                                    sections = []
+                                    
                                 pdf_bytes = generer_pdf_devis_consulting(
                                     numero, "Bâtiment", client, d.get('titre',''),
-                                    d.get('parcelle',''), d.get('localisation',''), d.get('sections',[]),
+                                    d.get('parcelle',''), d.get('localisation',''), sections,
                                     devise, d.get('telephone',''), d.get('main_oeuvre',0)
                                 )
                                 pdf_b64 = base64.b64encode(pdf_bytes).decode()
