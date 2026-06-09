@@ -1693,7 +1693,7 @@ if "📄 Factures" in tab_map:
                             except Exception as e:
                                 col_f.write("❌")
                                 col_g.write("❌")
-import json # <-- ajoute ça en haut du fichier avec tes autres imports
+import json
 import base64
 from datetime import datetime
 from fpdf import FPDF
@@ -1740,7 +1740,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(135, 8, "TOTAL GENERAL:", 1)
     pdf.cell(25, 8, f"{total + main_oeuvre:,.2f} {devise}", 1)
 
-    # Bloc signature ingénieur
+    # Bloc signature ingénieur - ton +256766515428 s'affiche ici
     pdf.ln(20)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
@@ -1751,7 +1751,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(200, 6, txt=f"Ing. {ing_nom}", ln=True)
     pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
 
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output(dest='S').encode('latin-1', errors='replace')
 
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
@@ -2040,8 +2040,10 @@ if "📋 Devis" in tab_map:
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         numero, "Industriel", client, d.get('titre',''),
                                         d.get('parcelle',''), d.get('localisation',''), sections,
-                                        devise, d.get('telephone',''), d.get('ing_nom','SAMY TSANGYA'),
-                                        d.get('ing_tel','+256766515428'), d.get('main_oeuvre',0)
+                                        devise, d.get('telephone',''),
+                                        d.get('ing_nom','SAMY TSANGYA'),
+                                        d.get('ing_tel','+256766515428'),
+                                        d.get('main_oeuvre',0)
                                     )
                                     st.download_button(
                                         label="📥 Télécharger",
@@ -2056,8 +2058,10 @@ if "📋 Devis" in tab_map:
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         numero, "Industriel", client, d.get('titre',''),
                                         d.get('parcelle',''), d.get('localisation',''), sections,
-                                        devise, d.get('telephone',''), d.get('ing_nom','SAMY TSANGYA'),
-                                        d.get('ing_tel','+256766515428'), d.get('main_oeuvre',0)
+                                        devise, d.get('telephone',''),
+                                        d.get('ing_nom','SAMY TSANGYA'),
+                                        d.get('ing_tel','+256766515428'),
+                                        d.get('main_oeuvre',0)
                                     )
                                     pdf_b64 = base64.b64encode(pdf_bytes).decode()
                                     safe_id = numero.replace('-', '_')
@@ -2082,153 +2086,153 @@ if "📋 Devis" in tab_map:
                                     st.success("Supprimé")
                                     st.rerun()
 
-with tab_batiment:
-    peut_creer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
+        with tab_batiment:
+            peut_creer_bat = st.session_state.user_role == "PDG" or perms.get('devis_batiment', False)
 
-    if peut_creer_bat:
-        st.session_state.devis_type = "Bâtiment"
-        st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
+            if peut_creer_bat:
+                st.session_state.devis_type = "Bâtiment"
+                st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
 
-        if not st.session_state.devis_bat_sections:
-            st.session_state.devis_bat_sections = [
-                {
-                    "numero": "I",
-                    "titre": "Installation chantier / Demolitions",
-                    "items": [
-                        {"num": "", "designation": "Installationchantier", "unite": "ff", "qte": 1, "pu": 200},
-                        {"num": "", "designation": "Demolitions", "unite": "ff", "qte": 1, "pu": 70}
+                if not st.session_state.devis_bat_sections:
+                    st.session_state.devis_bat_sections = [
+                        {
+                            "numero": "I",
+                            "titre": "Installation chantier / Demolitions",
+                            "items": [
+                                {"num": "", "designation": "Installationchantier", "unite": "ff", "qte": 1, "pu": 200},
+                                {"num": "", "designation": "Demolitions", "unite": "ff", "qte": 1, "pu": 70}
+                            ]
+                        },
+                        {
+                            "numero": "II",
+                            "titre": "fondation",
+                            "items": [
+                                {"num": "1", "designation": "moellon", "unite": "Canters", "qte": 9, "pu": 50},
+                                {"num": "2", "designation": "sable", "unite": "Canters", "qte": 4, "pu": 40},
+                                {"num": "3", "designation": "ciment", "unite": "sac", "qte": 23, "pu": 13.5},
+                                {"num": "4", "designation": "gravier", "unite": "Canters", "qte": 3, "pu": 80},
+                                {"num": "5", "designation": "armature de 10", "unite": "pièce", "qte": 9, "pu": 9},
+                                {"num": "", "designation": "armature de 8", "unite": "pièce", "qte": 4, "pu": 8},
+                                {"num": "6", "designation": "armature de 6", "unite": "pièce", "qte": 12, "pu": 3.5},
+                                {"num": "7", "designation": "Fil à ligature", "unite": "kg", "qte": 16, "pu": 2.5}
+                            ]
+                        },
+                        {
+                            "numero": "III",
+                            "titre": "Élévation de mur et corniche",
+                            "items": [
+                                {"num": "1", "designation": "bloc ciment", "unite": "pièce", "qte": 987, "pu": 1},
+                                {"num": "2", "designation": "sable", "unite": "Canters", "qte": 5, "pu": 40},
+                                {"num": "3", "designation": "ciment", "unite": "sac", "qte": 15, "pu": 13.5},
+                                {"num": "4", "designation": "gravier", "unite": "Canters", "qte": 0.5, "pu": 70},
+                                {"num": "5", "designation": "Barre Corniche de6", "unite": "pièce", "qte": 8, "pu": 3},
+                                {"num": "6", "designation": "Fil à ligature", "unite": "kg", "qte": 6, "pu": 2}
+                            ]
+                        },
+                        {
+                            "numero": "IV",
+                            "titre": "Coffrage Colonne, Cornice et Socle",
+                            "items": [
+                                {"num": "1", "designation": "socle et longrine", "unite": "pièce", "qte": 8, "pu": 7},
+                                {"num": "2", "designation": "Colonne", "unite": "pièce", "qte": 18, "pu": 7},
+                                {"num": "3", "designation": "Corniche", "unite": "pièce", "qte": 6, "pu": 7},
+                                {"num": "4", "designation": "clous de8", "unite": "kg", "qte": 15, "pu": 2},
+                                {"num": "5", "designation": "clous de10", "unite": "kg", "qte": 10, "pu": 2}
+                            ]
+                        },
+                        {
+                            "numero": "V",
+                            "titre": "Finissage",
+                            "items": [
+                                {"num": "", "designation": "ciment", "unite": "sac", "qte": 20, "pu": 13.5},
+                                {"num": "", "designation": "sable", "unite": "Canters", "qte": 7, "pu": 40}
+                            ]
+                        }
                     ]
-                },
-                {
-                    "numero": "II",
-                    "titre": "fondation",
-                    "items": [
-                        {"num": "1", "designation": "moellon", "unite": "Canters", "qte": 9, "pu": 50},
-                        {"num": "2", "designation": "sable", "unite": "Canters", "qte": 4, "pu": 40},
-                        {"num": "3", "designation": "ciment", "unite": "sac", "qte": 23, "pu": 13.5},
-                        {"num": "4", "designation": "gravier", "unite": "Canters", "qte": 3, "pu": 80},
-                        {"num": "5", "designation": "armature de 10", "unite": "pièce", "qte": 9, "pu": 9},
-                        {"num": "", "designation": "armature de 8", "unite": "pièce", "qte": 4, "pu": 8},
-                        {"num": "6", "designation": "armature de 6", "unite": "pièce", "qte": 12, "pu": 3.5},
-                        {"num": "7", "designation": "Fil à ligature", "unite": "kg", "qte": 16, "pu": 2.5}
-                    ]
-                },
-                {
-                    "numero": "III",
-                    "titre": "Élévation de mur et corniche",
-                    "items": [
-                        {"num": "1", "designation": "bloc ciment", "unite": "pièce", "qte": 987, "pu": 1},
-                        {"num": "2", "designation": "sable", "unite": "Canters", "qte": 5, "pu": 40},
-                        {"num": "3", "designation": "ciment", "unite": "sac", "qte": 15, "pu": 13.5},
-                        {"num": "4", "designation": "gravier", "unite": "Canters", "qte": 0.5, "pu": 70},
-                        {"num": "5", "designation": "Barre Corniche de6", "unite": "pièce", "qte": 8, "pu": 3},
-                        {"num": "6", "designation": "Fil à ligature", "unite": "kg", "qte": 6, "pu": 2}
-                    ]
-                },
-                {
-                    "numero": "IV",
-                    "titre": "Coffrage Colonne, Cornice et Socle",
-                    "items": [
-                        {"num": "1", "designation": "socle et longrine", "unite": "pièce", "qte": 8, "pu": 7},
-                        {"num": "2", "designation": "Colonne", "unite": "pièce", "qte": 18, "pu": 7},
-                        {"num": "3", "designation": "Corniche", "unite": "pièce", "qte": 6, "pu": 7},
-                        {"num": "4", "designation": "clous de8", "unite": "kg", "qte": 15, "pu": 2},
-                        {"num": "5", "designation": "clous de10", "unite": "kg", "qte": 10, "pu": 2}
-                    ]
-                },
-                {
-                    "numero": "V",
-                    "titre": "Finissage",
-                    "items": [
-                        {"num": "", "designation": "ciment", "unite": "sac", "qte": 20, "pu": 13.5},
-                        {"num": "", "designation": "sable", "unite": "Canters", "qte": 7, "pu": 40}
-                    ]
-                }
-            ]
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
-            tel_client_devis_bat = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_bat")
-        with col2:
-            st.session_state.devis_bat_titre = st.text_input("📋 Titre du Devis", value=st.session_state.devis_bat_titre, key="titre_devis_bat")
-            parcelle_devis_bat = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_bat")
-        with col3:
-            localisation_devis_bat = st.text_input("📍 Localisation", key="loc_devis_bat")
-            devise_devis_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_bat")
-
-        st.divider()
-        st.markdown("### 📊 Tableau Complet Éditable")
-
-        total_general = 0
-
-        col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
-        col_h1.markdown("**no**")
-        col_h2.markdown("**désignation**")
-        col_h3.markdown("**unité**")
-        col_h4.markdown("**quantité**")
-        col_h5.markdown("**pu USD**")
-        col_h6.markdown("**PT USD**")
-        col_h7.markdown("")
-        st.divider()
-
-        for idx, section in enumerate(st.session_state.devis_bat_sections):
-            st.markdown(f"**{section['numero']}. {section['titre']}**")
-
-            sous_total_sec = 0
-            for i, item in enumerate(section['items']):
-                col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
-                    section['items'][i]['num'] = new_num
+                    client_devis_bat = st.text_input("👤 Client", key="client_devis_bat")
+                    tel_client_devis_bat = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_bat")
                 with col2:
-                    new_des = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{i}", label_visibility="collapsed")
-                    section['items'][i]['designation'] = new_des
+                    st.session_state.devis_bat_titre = st.text_input("📋 Titre du Devis", value=st.session_state.devis_bat_titre, key="titre_devis_bat")
+                    parcelle_devis_bat = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_bat")
                 with col3:
-                    options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
-                    new_unit = st.selectbox("Unité", options_unit,
-                                           index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
-                                           key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
-                    section['items'][i]['unite'] = new_unit
-                with col4:
-                    new_qte = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
-                    section['items'][i]['qte'] = new_qte
-                with col5:
-                    new_pu = st.number_input("PU", value=float(item['pu']), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
-                    section['items'][i]['pu'] = new_pu
-                with col6:
-                    pt = new_qte * new_pu
-                    st.markdown(f"**{pt:,.2f}**")
-                    sous_total_sec += pt
-                with col7:
-                    if st.button("❌", key=f"del_item_bat_{idx}_{i}", help="Supprimer"):
-                        section['items'].pop(i)
-                        st.rerun()
+                    localisation_devis_bat = st.text_input("📍 Localisation", key="loc_devis_bat")
+                    devise_devis_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_devis_bat")
 
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
-            with col1:
-                num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
-            with col2:
-                design = st.text_input("Désignation", key=f"des_bat_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
-            with col3:
-                unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"], key=f"unit_bat_{idx}_new", label_visibility="collapsed")
-            with col4:
-                qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
-            with col5:
-                pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
-            with col6:
-                st.markdown(f"**{qte*pu:,.2f}**")
-            with col7:
-                if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
-                    if design:
-                        section['items'].append({
-                            "num": num_item,
-                            "designation": design,
-                            "unite": unite,
-                            "qte": qte,
-                            "pu": pu
-                        })
-                        st.rerun()
+                st.divider()
+                st.markdown("### 📊 Tableau Complet Éditable")
+
+                total_general = 0
+
+                col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                col_h1.markdown("**no**")
+                col_h2.markdown("**désignation**")
+                col_h3.markdown("**unité**")
+                col_h4.markdown("**quantité**")
+                col_h5.markdown("**pu USD**")
+                col_h6.markdown("**PT USD**")
+                col_h7.markdown("")
+                st.divider()
+
+                for idx, section in enumerate(st.session_state.devis_bat_sections):
+                    st.markdown(f"**{section['numero']}. {section['titre']}**")
+
+                    sous_total_sec = 0
+                    for i, item in enumerate(section['items']):
+                        col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                        with col1:
+                            new_num = st.text_input("N°", value=str(item['num']), key=f"num_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['num'] = new_num
+                        with col2:
+                            new_des = st.text_input("Désignation", value=item['designation'], key=f"des_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['designation'] = new_des
+                        with col3:
+                            options_unit = ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"]
+                            new_unit = st.selectbox("Unité", options_unit,
+                                                   index=options_unit.index(item['unite']) if item['unite'] in options_unit else 0,
+                                                   key=f"unit_bat_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['unite'] = new_unit
+                        with col4:
+                            new_qte = st.number_input("Qté", value=float(item['qte']), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['qte'] = new_qte
+                        with col5:
+                            new_pu = st.number_input("PU", value=float(item['pu']), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['pu'] = new_pu
+                        with col6:
+                            pt = new_qte * new_pu
+                            st.markdown(f"**{pt:,.2f}**")
+                            sous_total_sec += pt
+                        with col7:
+                            if st.button("❌", key=f"del_item_bat_{idx}_{i}", help="Supprimer"):
+                                section['items'].pop(i)
+                                st.rerun()
+
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                    with col1:
+                        num_item = st.text_input("N°", key=f"num_bat_{idx}_new", label_visibility="collapsed", placeholder="N°")
+                    with col2:
+                        design = st.text_input("Désignation", key=f"des_bat_{idx}_new", label_visibility="collapsed", placeholder="Ajouter article...")
+                    with col3:
+                        unite = st.selectbox("Unité", ["Canters", "sac", "pièce", "kg", "ff", "m3", "m2", "ml", "t", "barre"], key=f"unit_bat_{idx}_new", label_visibility="collapsed")
+                    with col4:
+                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col5:
+                        pu = st.number_input("PU", min_value=0.0, key=f"pu_bat_{idx}_new", label_visibility="collapsed", format="%.2f")
+                    with col6:
+                        st.markdown(f"**{qte*pu:,.2f}**")
+                    with col7:
+                        if st.button("➕", key=f"add_item_bat_{idx}", help="Ajouter"):
+                           if design:
+                               section['items'].append({
+                                   "num": num_item,
+                                   "designation": design,
+                                   "unite": unite,
+                                   "qte": qte,
+                                   "pu": pu
+                           })
+                           st.rerun()
                         
                     
                         
