@@ -1694,37 +1694,46 @@ if "📄 Factures" in tab_map:
                                 col_f.write("❌")
                                 col_g.write("❌")
 import json
+import base64
 from datetime import datetime
 from fpdf import FPDF
 
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
-                                 sections, devise, telephone, main_oeuvre, ing_nom="SAMY TSANGYA", ing_tel="+256766515428"):
+                                 sections, devise, telephone, main_oeuvre,
+                                 ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
+                                 email="asamnesstsang636@gmail.com", adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE PRO
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True, align='C')
+    # EN-TETE
+    pdf.set_font("Arial", 'B', 18)
+    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 10, "DEVIS N", 0, 1, 'R')
+
+    pdf.set_font("Arial", size=10)
+    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0)
+    pdf.cell(0, 6, f"{numero}", 0, 1, 'R')
+
+    pdf.cell(130, 6, f"Email: {email}", 0, 0)
+    pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R')
+    pdf.ln(2)
     pdf.set_font("Arial", size=9)
-    pdf.cell(0, 5, "Etudes - Fournitures - Travaux Electriques & Batiment", ln=True, align='C')
-    pdf.cell(0, 5, f"Tel: {ing_tel} | Ing. {ing_nom}", ln=True, align='C')
-    pdf.ln(5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-
-    # Infos devis
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, f"DEVIS {numero}", ln=True, align='C')
+    pdf.cell(0, 5, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C')
     pdf.ln(3)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(8)
 
-    pdf.set_font("Arial", size=11)
-    pdf.cell(95, 7, f"Client: {client}", 0)
-    pdf.cell(95, 7, f"Titre: {titre}", 0, ln=True)
+    # Infos client
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(95, 7, f"CLIENT: {client}", 0, 0)
+    pdf.cell(0, 7, f"Titre: {titre}", 0, 1)
     if telephone and telephone!= "+243...":
-        pdf.cell(95, 7, f"Tel: {telephone}", 0)
-    pdf.cell(95, 7, f"Localisation: {localisation}", 0, ln=True)
+        pdf.cell(95, 7, f"TEL: {telephone}", 0, 0)
+    if localisation:
+        pdf.cell(0, 7, f"Localisation: {localisation}", 0, 1)
     if parcelle:
-        pdf.cell(95, 7, f"Parcelle: {parcelle}", 0, ln=True)
+        pdf.cell(0, 7, f"Parcelle: {parcelle}", 0, 1)
     pdf.ln(5)
 
     total_general = 0
@@ -1732,21 +1741,19 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        pdf.set_font("Arial", 'B', 12)
-        pdf.set_fill_color(230, 230, 230)
-        pdf.cell(0, 8, f"{section.get('numero','')} {section.get('titre','')}", 0, ln=True, fill=True)
-        pdf.ln(2)
-
-        # En-tête tableau
+        # En-tête tableau : VERT CLAIR
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(10, 7, "N°", 1, 0, 'C')
-        pdf.cell(85, 7, "Désignation", 1, 0, 'C')
-        pdf.cell(20, 7, "Qté", 1, 0, 'C')
-        pdf.cell(25, 7, "PU", 1, 0, 'C')
-        pdf.cell(30, 7, "Total", 1, 1, 'C')
+        pdf.set_fill_color(200, 255, 200)
+        pdf.cell(10, 7, "N", 1, 0, 'C', True)
+        pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
+        pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
+        pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
+        pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
+        pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
 
         # Lignes
-        pdf.set_font("Arial", size=9)
+        pdf.set_font("Arial", size=10)
+        pdf.set_fill_color(255, 255, 255)
         sous_total_sec = 0
         for item in section.get('items', []):
             if pdf.get_y() > 265:
@@ -1754,28 +1761,31 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
             pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
             sous_total_sec += pt
             pdf.cell(10, 6, str(item.get('num', '')), 1)
-            pdf.cell(85, 6, item.get('designation', '')[:45], 1)
-            pdf.cell(20, 6, f"{float(item.get('qte', 0)):,.0f}", 1, 0, 'R')
+            pdf.cell(75, 6, item.get('designation', '')[:40], 1)
+            pdf.cell(20, 6, str(item.get('unite', '')), 1, 0, 'C')
+            pdf.cell(20, 6, f"{float(item.get('qte', 0)):,.2f}", 1, 0, 'R')
             pdf.cell(25, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
             pdf.cell(30, 6, f"{pt:,.2f}", 1, 1, 'R')
 
-        # Sous-total
+        # Sous total : GRIS
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(140, 7, f"Sous-total {section.get('titre','')}", 1, 0, 'R')
-        pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R')
-        pdf.ln(3)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(150, 7, "Sous Total", 1, 0, 'R', True)
+        pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R', True)
+        pdf.ln(5)
         total_general += sous_total_sec
 
-    # Total final
+    # Main d'oeuvre
     if pdf.get_y() > 230:
         pdf.add_page()
-    pdf.ln(3)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(140, 8, "MAIN D'OEUVRE:", 1, 0, 'R')
+    pdf.cell(150, 8, "MAIN D'OEUVRE:", 1, 0, 'R')
     pdf.cell(30, 8, f"{main_oeuvre:,.2f} {devise}", 1, 1, 'R')
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(140, 9, "TOTAL GENERAL:", 1, 0, 'R')
-    pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f} {devise}", 1, 1, 'R')
+
+    # TOTAL GENERAL : BANDE JAUNE
+    pdf.set_fill_color(255, 220, 0)
+    pdf.cell(150, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
 
     # Signature
     if pdf.get_y() > 220:
@@ -1789,9 +1799,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.set_font("Arial", size=10)
     pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
     pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", 'I', 8)
-    pdf.cell(0, 5, "Merci pour votre confiance", ln=True, align='C')
+    pdf.cell(0, 6, f"Adresse: {adresse}", ln=True)
 
     out = pdf.output(dest='S')
     return bytes(out)
@@ -1818,7 +1826,6 @@ if "📋 Devis" in tab_map:
                 st.session_state.devis_type = "Industriel"
                 st.subheader("🏭 Nouveau Devis Industriel")
 
-                # Infos ingénieur
                 col_ing1, col_ing2 = st.columns(2)
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
@@ -1840,17 +1847,8 @@ if "📋 Devis" in tab_map:
                 st.markdown("### 📊 Tableau Complet Éditable")
 
                 if not st.session_state.devis_sections:
-                    st.session_state.devis_sections = [
-                        {
-                            "numero": "A",
-                            "titre": "ELECTRICITE",
-                            "items": [
-                                {"num": "1", "type": "cable", "designation": "Câble 2.5mm²", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 100, "pu": 1.2},
-                                {"num": "2", "type": "interrupteur", "designation": "Interrupteur simple", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 10, "pu": 3.5},
-                                {"num": "3", "type": "autre", "designation": "Goulotte 25x16", "unite": "m", "qte": 50, "pu": 2.5, "spec": "PVC"}
-                            ]
-                        }
-                    ]
+                    items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(10)]
+                    st.session_state.devis_sections = [{"numero": "A", "titre": "ELECTRICITE", "items": items_vides}]
 
                 total_general_ind = 0
                 col_h1, col_h2, col_h3, col_h4, col_h5, col_h6, col_h7, col_h8 = st.columns([0.5, 3, 1.5, 1.5, 1, 1, 1, 0.5])
@@ -1982,7 +1980,8 @@ if "📋 Devis" in tab_map:
                 with col_add3:
                     if st.button("➕ Section", key="add_section_ind", width="stretch"):
                         if new_section_titre:
-                            st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": []})
+                            items_vides = [{"num": str(i+1), "designation": "", "type": "autre", "unite": "pc", "qte": 0, "pu": 0, "spec": ""} for i in range(10)]
+                            st.session_state.devis_sections.append({"numero": new_section_num, "titre": new_section_titre, "items": items_vides})
                             st.rerun()
 
                 st.divider()
@@ -2028,6 +2027,8 @@ if "📋 Devis" in tab_map:
                         except Exception as e:
                             st.error("Erreur enregistrement")
                             st.exception(e)
+                    else:
+                        st.error("Client, Titre et au moins 1 section requis")
 
                 st.divider()
                 if st.button("🔄 Nouveau devis", key="reset_devis"):
