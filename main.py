@@ -1773,6 +1773,79 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
 
     return pdf.output(dest='S').encode('latin-1', errors='replace')
 
+import json
+import base64
+from datetime import datetime
+from fpdf import FPDF
+
+def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
+                                 sections, devise, telephone, ing_nom, ing_tel, main_oeuvre):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, txt=f"DEVIS {numero}", ln=True, align='C')
+    pdf.cell(200, 8, txt=f"CLIENT: {client}", ln=True)
+    if telephone:
+        pdf.cell(200, 8, txt=f"TEL CLIENT: {telephone}", ln=True)
+    pdf.ln(5)
+
+    total_general = 0
+
+    for section in sections:
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(200, 8, txt=f"{section.get('numero','')} {section.get('titre','')}", ln=True)
+
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(10, 7, "N°", 1)
+        pdf.cell(80, 7, "Désignation", 1)
+        pdf.cell(20, 7, "Qté", 1)
+        pdf.cell(25, 7, "PU", 1)
+        pdf.cell(25, 7, "Total", 1)
+        pdf.ln()
+
+        pdf.set_font("Arial", size=9)
+        sous_total_sec = 0
+        for item in section.get('items', []):
+            if pdf.get_y() > 260:
+                pdf.add_page()
+
+            pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
+            sous_total_sec += pt
+            pdf.cell(10, 7, str(item.get('num', '')), 1)
+            pdf.cell(80, 7, item.get('designation', '')[:35], 1)
+            pdf.cell(20, 7, str(item.get('qte', 0)), 1)
+            pdf.cell(25, 7, f"{float(item.get('pu', 0)):,.2f}", 1)
+            pdf.cell(25, 7, f"{pt:,.2f}", 1)
+            pdf.ln()
+
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(135, 7, f"Sous-total {section.get('titre','')}", 1)
+        pdf.cell(25, 7, f"{sous_total_sec:,.2f}", 1)
+        pdf.ln(8)
+        total_general += sous_total_sec
+
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(135, 8, "MAIN D'OEUVRE:", 1)
+    pdf.cell(25, 8, f"{main_oeuvre:,.2f}", 1)
+    pdf.ln()
+    pdf.cell(135, 8, "TOTAL GENERAL:", 1)
+    pdf.cell(25, 8, f"{total_general + main_oeuvre:,.2f} {devise}", 1)
+
+    pdf.ln(20)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    pdf.ln(12)
+    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(200, 6, txt=f"Ing. {ing_nom}", ln=True)
+    pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
+
+    out = pdf.output(dest='S')
+    return out if isinstance(out, (bytes, bytearray)) else out.encode('latin-1', errors='replace')
+
 if "📋 Devis" in tab_map:
     with tab_map["📋 Devis"]:
         st.markdown("## 📋 Devis Consulting - Industriel & Bâtiment")
@@ -2007,7 +2080,6 @@ if "📋 Devis" in tab_map:
                                 "type": "Industriel",
                                 "client": client_devis,
                                 "telephone": tel_client_devis,
-                                
                                 "titre": titre_devis,
                                 "parcelle": parcelle_devis,
                                 "localisation": localisation_devis,
@@ -2021,25 +2093,30 @@ if "📋 Devis" in tab_map:
                             supabase.table('devis').insert(data_devis).execute()
 
                             pdf_bytes = generer_pdf_devis_consulting(
-                              numero_devis, "Industriel", client_devis, titre_devis,
-                              parcelle_devis, localisation_devis, st.session_state.devis_sections,
-                              devise_devis, tel_client_devis, ing_nom, ing_tel, main_oeuvre
+                                numero_devis, "Industriel", client_devis, titre_devis,
+                                parcelle_devis, localisation_devis, st.session_state.devis_sections,
+                                devise_devis, tel_client_devis, ing_nom, ing_tel, main_oeuvre
                             )
 
                             st.download_button(
-                              label="⬇️ Télécharger le Devis PDF",
-                              data=pdf_bytes,
-                              file_name=f"{numero_devis}.pdf",
-                              mime="application/pdf",
-                              key=f"dl_{numero_devis}"  # ajoute une key unique
+                                label="⬇️ Télécharger le Devis PDF",
+                                data=pdf_bytes,
+                                file_name=f"{numero_devis}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_{numero_devis}"
                             )
 
                             st.success(f"✅ Devis enregistré : {numero_devis}")
 
                             if st.button("🔄 Nouveau devis"):
-                               st.session_state.devis_sections = []
-                               st.cache_data.clear()
-                               st.rerun()
+                                st.session_state.devis_sections = []
+                                st.cache_data.clear()
+                                st.rerun()
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+                    else:
+                        st.error("Client, Titre et au moins 1 section requis")
                     
                         
                         
