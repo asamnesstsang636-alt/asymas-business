@@ -1918,26 +1918,25 @@ if "📋 Devis" in tab_map:
                         else:
                             spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
                     with col5:
-                        unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
-                        qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
-                    with col6:
-                        pu = st.number_input("PU", min_value=0.0, key=f"pu_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
-                    with col7:
-                        st.markdown(f"**{qte*pu:,.2f}**")
-                    with col8:
-                        if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
-                            if design:
-                               new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
-                                if type_new == "cable":
-                                new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
-                                elif type_new == "interrupteur":
-                                new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new, "spec": f"{marque_new} - {couleur_new} - {qualite_new}"})
-                                else:
-                                     new_item.update({"spec": spec_new})
-            
-                                section['items'].append(new_item)
-                                st.rerun()
-                                
+    unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_new", label_visibility="collapsed")
+    qte = st.number_input("Qté", min_value=0.0, key=f"qte_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
+with col6:
+    pu = st.number_input("PU", min_value=0.0, key=f"pu_ind_{idx}_new", label_visibility="collapsed", format="%.2f")
+with col7:
+    st.markdown(f"**{qte*pu:,.2f}**")
+with col8:
+    if st.button("➕", key=f"add_item_ind_{idx}", help="Ajouter"):
+        if design:
+            new_item = {"num": num_item, "designation": design, "type": type_new, "unite": unite, "qte": qte, "pu": pu}
+            if type_new == "cable":
+                new_item.update({"marque": marque_new, "section": section_new, "longueur": longueur_new, "spec": f"{marque_new} - {section_new} - {longueur_new}m"})
+            elif type_new == "interrupteur":
+                new_item.update({"marque": marque_new, "couleur": couleur_new, "qualite": qualite_new, "spec": f"{marque_new} - {couleur_new} - {qualite_new}"})
+            else:
+                new_item.update({"spec": spec_new})
+        
+            section['items'].append(new_item)
+            st.rerun()
                                     
                         
                     
