@@ -1706,32 +1706,32 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE : texte image 1 + couleur image 2 + couvre toute la largeur
+    # BANDEAU VERT FONCE qui couvre TOUT le haut - RGB 20,50,40
     y_start = pdf.get_y()
-    pdf.set_fill_color(165, 210, 150) # vert sauge image 2
-    pdf.rect(0, y_start, 210, 32, 'F') # couvre toute la page, pas de blanc
+    pdf.set_fill_color(20, 50, 40) # vert foncé de ta dernière image
+    pdf.rect(0, y_start, 210, 32, 'F') # x=0, w=210 = pas de blanc
 
     pdf.set_xy(10, y_start + 2)
-    pdf.set_text_color(0, 0, 0) # texte noir sur fond clair
+    pdf.set_text_color(255, 255, 255) # texte blanc sur fond foncé
     pdf.set_font("Arial", 'B', 18)
-    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True) # texte image 1
+    pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True) # ton texte
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 10, "DEVIS N", 0, 1, 'R', True)
 
     pdf.set_x(10)
     pdf.set_font("Arial", size=10)
-    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True) # texte image 1
+    pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True) # ton texte
     pdf.cell(0, 6, f"{numero}", 0, 1, 'R', True)
 
     pdf.set_x(10)
-    pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True) # texte image 1
+    pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True) # ton texte
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
 
     pdf.set_x(10)
     pdf.set_font("Arial", size=9)
-    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True) # texte image 1
+    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True) # ton texte
 
-    pdf.set_text_color(0, 0, 0)
+    pdf.set_text_color(0, 0, 0) # remettre noir pour la suite
     pdf.ln(5)
     pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -1755,9 +1755,9 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # EN-TETE TABLEAU VERT SAUGE aussi comme image 2
+        # EN-TETE TABLEAU GRIS 200
         pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(165, 210, 150)
+        pdf.set_fill_color(200, 200, 200)
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
         pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
         pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
@@ -1835,14 +1835,12 @@ if "📋 Devis" in tab_map:
                 st.session_state.devis_type = "Industriel"
                 st.subheader("🏭 Nouveau Devis Industriel")
 
-                # Infos ingénieur
                 col_ing1, col_ing2 = st.columns(2)
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
                 with col_ing2:
                     ing_tel = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
 
-                # Infos client
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     client_devis = st.text_input("👤 Client", value="EMPIRE TECHNOLOGY", key="client_devis_ind")
@@ -1856,7 +1854,6 @@ if "📋 Devis" in tab_map:
 
                 st.divider()
 
-                # Initialiser sections si vide
                 if not st.session_state.devis_sections:
                     items = [
                         {"num": "1", "designation": "OZONEUR", "unite": "pc", "qte": 1.00, "pu": 450},
@@ -1865,7 +1862,6 @@ if "📋 Devis" in tab_map:
                     ] + [{"num": str(i+4), "designation": "", "unite": "pc", "qte": 0, "pu": 0} for i in range(7)]
                     st.session_state.devis_sections = [{"numero": "A", "titre": "INDUSTRIAL", "items": items}]
 
-                # Tableau éditable
                 total_general_ind = 0
                 for idx, section in enumerate(st.session_state.devis_sections):
                     st.markdown(f"**{section['numero']}. {section['titre']}**")
@@ -1896,17 +1892,14 @@ if "📋 Devis" in tab_map:
                     st.markdown(f"**Sous-total: {sous_total_sec:,.2f}**")
                     st.divider()
 
-                # Main d'oeuvre et total
                 main_oeuvre = st.number_input("👷 Main d'oeuvre", min_value=0.0, value=0.0, key="mo_devis_ind")
                 cout_total_ind = total_general_ind + main_oeuvre
                 st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis}")
 
-                # Bouton génération PDF
                 if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
                     if client_devis and titre_devis and st.session_state.devis_sections:
                         numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         try:
-                            # Sauvegarde Supabase
                             data_devis = {
                                 "numero": numero_devis,
                                 "type": "Industriel",
@@ -1924,7 +1917,6 @@ if "📋 Devis" in tab_map:
                             }
                             supabase.table('devis').insert(data_devis).execute()
 
-                            # Génération PDF
                             pdf_bytes = generer_pdf_devis_consulting(
                                 numero_devis, "Industriel", client_devis, titre_devis,
                                 parcelle_devis, localisation_devis, st.session_state.devis_sections,
