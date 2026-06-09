@@ -2021,25 +2021,25 @@ if "📋 Devis" in tab_map:
                             supabase.table('devis').insert(data_devis).execute()
 
                             pdf_bytes = generer_pdf_devis_consulting(
-                                numero_devis, "Industriel", client_devis, titre_devis,
-                                parcelle_devis, localisation_devis, st.session_state.devis_sections,
-                                devise_devis, tel_client_devis, ing_nom, ing_tel, main_oeuvre
+                              numero_devis, "Industriel", client_devis, titre_devis,
+                              parcelle_devis, localisation_devis, st.session_state.devis_sections,
+                              devise_devis, tel_client_devis, ing_nom, ing_tel, main_oeuvre
                             )
+
                             st.download_button(
-                                label="⬇️ Télécharger le Devis PDF",
-                                data=pdf_bytes,
-                                file_name=f"{numero_devis}.pdf",
-                                mime="application/pdf"
+                              label="⬇️ Télécharger le Devis PDF",
+                              data=pdf_bytes,
+                              file_name=f"{numero_devis}.pdf",
+                              mime="application/pdf",
+                              key=f"dl_{numero_devis}"  # ajoute une key unique
                             )
+
                             st.success(f"✅ Devis enregistré : {numero_devis}")
-                            st.session_state.devis_sections = []
-                            st.cache_data.clear()
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Erreur enregistrement")
-                            st.code(repr(e))
-                    else:
-                        st.error("Client, Titre et au moins 1 section requis")
+
+                            if st.button("🔄 Nouveau devis"):
+                               st.session_state.devis_sections = []
+                               st.cache_data.clear()
+                               st.rerun()
                     
                         
                         
