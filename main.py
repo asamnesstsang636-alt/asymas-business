@@ -1698,67 +1698,100 @@ from datetime import datetime
 from fpdf import FPDF
 
 def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
-                                 sections, devise, telephone, ing_nom, ing_tel, main_oeuvre):
+                                 sections, devise, telephone, main_oeuvre, ing_nom="SAMY TSANGYA", ing_tel="+256766515428"):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
 
-    pdf.cell(200, 10, txt=f"DEVIS {numero}", ln=True, align='C')
-    pdf.cell(200, 8, txt=f"CLIENT: {client}", ln=True)
-    if telephone:
-        pdf.cell(200, 8, txt=f"TEL CLIENT: {telephone}", ln=True)
+    # EN-TETE PRO
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True, align='C')
+    pdf.set_font("Arial", size=9)
+    pdf.cell(0, 5, "Etudes - Fournitures - Travaux Electriques & Batiment", ln=True, align='C')
+    pdf.cell(0, 5, f"Tel: {ing_tel} | Ing. {ing_nom}", ln=True, align='C')
+    pdf.ln(5)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+
+    # Infos devis
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, f"DEVIS {numero}", ln=True, align='C')
+    pdf.ln(3)
+
+    pdf.set_font("Arial", size=11)
+    pdf.cell(95, 7, f"Client: {client}", 0)
+    pdf.cell(95, 7, f"Titre: {titre}", 0, ln=True)
+    if telephone and telephone!= "+243...":
+        pdf.cell(95, 7, f"Tel: {telephone}", 0)
+    pdf.cell(95, 7, f"Localisation: {localisation}", 0, ln=True)
+    if parcelle:
+        pdf.cell(95, 7, f"Parcelle: {parcelle}", 0, ln=True)
     pdf.ln(5)
 
     total_general = 0
     for section in sections:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(0, 8, f"{section.get('numero','')} {section.get('titre','')}", 0, ln=True, fill=True)
+        pdf.ln(2)
+
+        # En-tête tableau
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(200, 8, txt=f"{section.get('numero','')} {section.get('titre','')}", ln=True)
+        pdf.cell(10, 7, "N°", 1, 0, 'C')
+        pdf.cell(85, 7, "Désignation", 1, 0, 'C')
+        pdf.cell(20, 7, "Qté", 1, 0, 'C')
+        pdf.cell(25, 7, "PU", 1, 0, 'C')
+        pdf.cell(30, 7, "Total", 1, 1, 'C')
 
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(10, 7, "N°", 1)
-        pdf.cell(80, 7, "Désignation", 1)
-        pdf.cell(20, 7, "Qté", 1)
-        pdf.cell(25, 7, "PU", 1)
-        pdf.cell(25, 7, "Total", 1)
-        pdf.ln()
-
+        # Lignes
         pdf.set_font("Arial", size=9)
         sous_total_sec = 0
         for item in section.get('items', []):
-            if pdf.get_y() > 260:
+            if pdf.get_y() > 265:
                 pdf.add_page()
             pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
             sous_total_sec += pt
-            pdf.cell(10, 7, str(item.get('num', '')), 1)
-            pdf.cell(80, 7, item.get('designation', '')[:35], 1)
-            pdf.cell(20, 7, str(item.get('qte', 0)), 1)
-            pdf.cell(25, 7, f"{float(item.get('pu', 0)):,.2f}", 1)
-            pdf.cell(25, 7, f"{pt:,.2f}", 1)
-            pdf.ln()
+            pdf.cell(10, 6, str(item.get('num', '')), 1)
+            pdf.cell(85, 6, item.get('designation', '')[:45], 1)
+            pdf.cell(20, 6, f"{float(item.get('qte', 0)):,.0f}", 1, 0, 'R')
+            pdf.cell(25, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
+            pdf.cell(30, 6, f"{pt:,.2f}", 1, 1, 'R')
 
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(135, 7, f"Sous-total {section.get('titre','')}", 1)
-        pdf.cell(25, 7, f"{sous_total_sec:,.2f}", 1)
-        pdf.ln(8)
+        # Sous-total
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(140, 7, f"Sous-total {section.get('titre','')}", 1, 0, 'R')
+        pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R')
+        pdf.ln(3)
         total_general += sous_total_sec
 
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 10)
-    pdf.cell(135, 8, "MAIN D'OEUVRE:", 1)
-    pdf.cell(25, 8, f"{main_oeuvre:,.2f}", 1)
-    pdf.ln()
-    pdf.cell(135, 8, "TOTAL GENERAL:", 1)
-    pdf.cell(25, 8, f"{total_general + main_oeuvre:,.2f} {devise}", 1)
-
-    pdf.ln(20)
+    # Total final
+    if pdf.get_y() > 230:
+        pdf.add_page()
+    pdf.ln(3)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-    pdf.ln(12)
-    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+    pdf.cell(140, 8, "MAIN D'OEUVRE:", 1, 0, 'R')
+    pdf.cell(30, 8, f"{main_oeuvre:,.2f} {devise}", 1, 1, 'R')
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(140, 9, "TOTAL GENERAL:", 1, 0, 'R')
+    pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f} {devise}", 1, 1, 'R')
+
+    # Signature
+    if pdf.get_y() > 220:
+        pdf.add_page()
+    pdf.ln(15)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    pdf.ln(15)
+    pdf.line(15, pdf.get_y(), 105, pdf.get_y())
     pdf.ln(5)
     pdf.set_font("Arial", size=10)
-    pdf.cell(200, 6, txt=f"Ing. {ing_nom}", ln=True)
-    pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
+    pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
+    pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(0, 5, "Merci pour votre confiance", ln=True, align='C')
 
     out = pdf.output(dest='S')
     return bytes(out)
@@ -1785,6 +1818,7 @@ if "📋 Devis" in tab_map:
                 st.session_state.devis_type = "Industriel"
                 st.subheader("🏭 Nouveau Devis Industriel")
 
+                # Infos ingénieur
                 col_ing1, col_ing2 = st.columns(2)
                 with col_ing1:
                     ing_nom = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
@@ -1794,7 +1828,7 @@ if "📋 Devis" in tab_map:
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     client_devis = st.text_input("👤 Client", key="client_devis_ind")
-                    tel_client_devis = st.text_input("📞 Téléphone Client", value="+243...", key="tel_devis_ind")
+                    tel_client_devis = st.text_input("📞 Téléphone", value="+243...", key="tel_devis_ind")
                 with col2:
                     titre_devis = st.text_input("📋 Titre Projet", key="titre_devis_ind")
                     parcelle_devis = st.text_input("🗺️ Parcelle N°", key="parcelle_devis_ind")
@@ -1809,16 +1843,11 @@ if "📋 Devis" in tab_map:
                     st.session_state.devis_sections = [
                         {
                             "numero": "A",
-                            "titre": "INDUSTRIAL",
+                            "titre": "ELECTRICITE",
                             "items": [
-                                {"num": "1", "designation": "Câble 2.5mm²", "type": "cable", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 100, "pu": 1.2},
-                                {"num": "2", "designation": "Câble 4mm²", "type": "cable", "marque": "Nexans", "section": "4mm²", "longueur": 100, "unite": "m", "qte": 80, "pu": 1.8},
-                                {"num": "3", "designation": "Interrupteur simple", "type": "interrupteur", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 10, "pu": 3.5},
-                                {"num": "4", "designation": "Prise de courant", "type": "prise", "marque": "Legrand", "unite": "pc", "qte": 15, "pu": 4.0, "spec": ""},
-                                {"num": "5", "designation": "Disjoncteur 16A", "type": "disjoncteur", "marque": "Schneider", "unite": "pc", "qte": 6, "pu": 12.0, "spec": ""},
-                                {"num": "6", "designation": "Goulotte 25x16", "type": "autre", "unite": "m", "qte": 50, "pu": 2.5, "spec": "PVC"},
-                                {"num": "7", "designation": "Boîte de dérivation", "type": "autre", "unite": "pc", "qte": 8, "pu": 2.0, "spec": "Encastrée"},
-                                {"num": "8", "designation": "Lampe LED 18W", "type": "autre", "unite": "pc", "qte": 12, "pu": 5.5, "spec": "Blanc froid"}
+                                {"num": "1", "type": "cable", "designation": "Câble 2.5mm²", "marque": "Nexans", "section": "2.5mm²", "longueur": 100, "unite": "m", "qte": 100, "pu": 1.2},
+                                {"num": "2", "type": "interrupteur", "designation": "Interrupteur simple", "marque": "Legrand", "couleur": "Blanc", "qualite": "Standard", "unite": "pc", "qte": 10, "pu": 3.5},
+                                {"num": "3", "type": "autre", "designation": "Goulotte 25x16", "unite": "m", "qte": 50, "pu": 2.5, "spec": "PVC"}
                             ]
                         }
                     ]
@@ -1860,29 +1889,21 @@ if "📋 Devis" in tab_map:
                             section['items'][i]['type'] = type_item
                         with col4:
                             if type_item == "cable":
-                                subcol1, subcol2, subcol3 = st.columns(3)
-                                with subcol1:
-                                    marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
-                                with subcol2:
-                                    section_cable = st.text_input("Section", value=item.get('section', ''), key=f"sec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="2.5mm²")
-                                with subcol3:
-                                    longueur = st.number_input("Long", value=float(item.get('longueur', 0)), key=f"long_ind_{idx}_{i}", label_visibility="collapsed", format="%.1f")
+                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_ind_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
+                                section_cable = st.text_input("Section", value=item.get('section', ''), key=f"sec_ind_{idx}_{i}", label_visibility="collapsed", placeholder="2.5mm²")
+                                longueur = st.number_input("Long", value=float(item.get('longueur', 0)), key=f"long_ind_{idx}_{i}", label_visibility="collapsed", format="%.1f")
                                 section['items'][i]['marque'] = marque
                                 section['items'][i]['section'] = section_cable
                                 section['items'][i]['longueur'] = longueur
                                 section['items'][i]['spec'] = f"{marque} - {section_cable} - {longueur}m"
                             elif type_item == "interrupteur":
-                                subcol1, subcol2, subcol3 = st.columns(3)
-                                with subcol1:
-                                    marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_int_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
-                                with subcol2:
-                                    couleur = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"],
-                                                          index=["Blanc", "Noir", "Gris", "Beige"].index(item.get('couleur', 'Blanc')) if item.get('couleur') in ["Blanc", "Noir", "Gris", "Beige"] else 0,
-                                                          key=f"coul_int_{idx}_{i}", label_visibility="collapsed")
-                                with subcol3:
-                                    qualite = st.selectbox("Qualité", ["Standard", "Premium", "Pro"],
-                                                          index=["Standard", "Premium", "Pro"].index(item.get('qualite', 'Standard')) if item.get('qualite') in ["Standard", "Premium", "Pro"] else 0,
-                                                          key=f"qual_int_{idx}_{i}", label_visibility="collapsed")
+                                marque = st.text_input("Marque", value=item.get('marque', ''), key=f"marque_int_{idx}_{i}", label_visibility="collapsed", placeholder="Marque")
+                                couleur = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"],
+                                                      index=["Blanc", "Noir", "Gris", "Beige"].index(item.get('couleur', 'Blanc')) if item.get('couleur') in ["Blanc", "Noir", "Gris", "Beige"] else 0,
+                                                      key=f"coul_int_{idx}_{i}", label_visibility="collapsed")
+                                qualite = st.selectbox("Qualité", ["Standard", "Premium", "Pro"],
+                                                      index=["Standard", "Premium", "Pro"].index(item.get('qualite', 'Standard')) if item.get('qualite') in ["Standard", "Premium", "Pro"] else 0,
+                                                      key=f"qual_int_{idx}_{i}", label_visibility="collapsed")
                                 section['items'][i]['marque'] = marque
                                 section['items'][i]['couleur'] = couleur
                                 section['items'][i]['qualite'] = qualite
@@ -1918,21 +1939,13 @@ if "📋 Devis" in tab_map:
                         type_new = st.selectbox("Type", ["cable", "interrupteur", "prise", "disjoncteur", "autre"], key=f"type_ind_{idx}_new", label_visibility="collapsed")
                     with col4:
                         if type_new == "cable":
-                            subcol1, subcol2, subcol3 = st.columns(3)
-                            with subcol1:
-                                marque_new = st.text_input("Marque", key=f"marque_ind_{idx}_new", label_visibility="collapsed", placeholder="Marque")
-                            with subcol2:
-                                section_new = st.text_input("Section", key=f"sec_ind_{idx}_new", label_visibility="collapsed", placeholder="2.5mm²")
-                            with subcol3:
-                                longueur_new = st.number_input("Long", min_value=0.0, key=f"long_ind_{idx}_new", label_visibility="collapsed", format="%.1f")
+                            marque_new = st.text_input("Marque", key=f"marque_ind_{idx}_new", label_visibility="collapsed", placeholder="Marque")
+                            section_new = st.text_input("Section", key=f"sec_ind_{idx}_new", label_visibility="collapsed", placeholder="2.5mm²")
+                            longueur_new = st.number_input("Long", min_value=0.0, key=f"long_ind_{idx}_new", label_visibility="collapsed", format="%.1f")
                         elif type_new == "interrupteur":
-                            subcol1, subcol2, subcol3 = st.columns(3)
-                            with subcol1:
-                                marque_new = st.text_input("Marque", key=f"marque_int_{idx}_new", label_visibility="collapsed", placeholder="Marque")
-                            with subcol2:
-                                couleur_new = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"], key=f"coul_int_{idx}_new", label_visibility="collapsed")
-                            with subcol3:
-                                qualite_new = st.selectbox("Qualité", ["Standard", "Premium", "Pro"], key=f"qual_int_{idx}_new", label_visibility="collapsed")
+                            marque_new = st.text_input("Marque", key=f"marque_int_{idx}_new", label_visibility="collapsed", placeholder="Marque")
+                            couleur_new = st.selectbox("Couleur", ["Blanc", "Noir", "Gris", "Beige"], key=f"coul_int_{idx}_new", label_visibility="collapsed")
+                            qualite_new = st.selectbox("Qualité", ["Standard", "Premium", "Pro"], key=f"qual_int_{idx}_new", label_visibility="collapsed")
                         else:
                             spec_new = st.text_input("Détails", key=f"spec_ind_{idx}_new", label_visibility="collapsed", placeholder="Détails")
                     with col5:
@@ -2001,7 +2014,7 @@ if "📋 Devis" in tab_map:
                             pdf_bytes = generer_pdf_devis_consulting(
                                 numero_devis, "Industriel", client_devis, titre_devis,
                                 parcelle_devis, localisation_devis, st.session_state.devis_sections,
-                                devise_devis, tel_client_devis, ing_nom, ing_tel, main_oeuvre
+                                devise_devis, tel_client_devis, main_oeuvre, ing_nom, ing_tel
                             )
 
                             st.download_button(
