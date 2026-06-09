@@ -1706,13 +1706,13 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # EN-TETE VERT FONCE + TEXTE BLANC comme ta 1ère image
+    # EN-TETE VERT FONCE qui couvre TOUTE LA LARGEUR comme ta dernière image
     y_start = pdf.get_y()
-    pdf.set_fill_color(30, 70, 60) # vert très foncé
-    pdf.rect(10, y_start, 190, 32, 'F')
+    pdf.set_fill_color(20, 50, 40) # vert très foncé RGB 20,50,40
+    pdf.rect(0, y_start, 210, 32, 'F') # x=0, w=210 = toute la page A4
 
     pdf.set_xy(10, y_start + 2)
-    pdf.set_text_color(255, 255, 255) # texte blanc
+    pdf.set_text_color(255, 255, 255) # texte BLANC sur fond foncé
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
@@ -1727,7 +1727,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
 
-    pdf.set_text_color(0, 0, 0) # remettre noir
+    pdf.set_text_color(0, 0, 0) # remettre noir pour la suite
     pdf.ln(5)
     pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -1751,7 +1751,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # EN-TETE TABLEAU GRIS 200 comme ta 1ère image
+        # EN-TETE TABLEAU GRIS 200
         pdf.set_font("Arial", 'B', 10)
         pdf.set_fill_color(200, 200, 200)
         pdf.cell(10, 7, "N", 1, 0, 'C', True)
