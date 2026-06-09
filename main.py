@@ -1937,6 +1937,77 @@ with col8:
         
             section['items'].append(new_item)
             st.rerun()
+
+def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, localisation,
+                                 sections, devise, telephone, ing_nom, ing_tel, main_oeuvre):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, txt=f"DEVIS {numero}", ln=True, align='C')
+    pdf.cell(200, 8, txt=f"CLIENT: {client}", ln=True)
+    if telephone:
+        pdf.cell(200, 8, txt=f"TEL CLIENT: {telephone}", ln=True)
+    pdf.ln(5)
+
+    total_general = 0
+
+    for section in sections:
+        # Titre section
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(200, 8, txt=f"{section.get('numero','')} {section.get('titre','')}", ln=True)
+        
+        # En-tête tableau
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(10, 7, "N°", 1)
+        pdf.cell(80, 7, "Désignation", 1)
+        pdf.cell(20, 7, "Qté", 1)
+        pdf.cell(25, 7, "PU", 1)
+        pdf.cell(25, 7, "Total", 1)
+        pdf.ln()
+
+        # Lignes articles
+        pdf.set_font("Arial", size=9)
+        sous_total_sec = 0
+        for item in section.get('items', []):
+            pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
+            sous_total_sec += pt
+            pdf.cell(10, 7, str(item.get('num', '')), 1)
+            pdf.cell(80, 7, item.get('designation', '')[:35], 1)
+            pdf.cell(20, 7, str(item.get('qte', 0)), 1)
+            pdf.cell(25, 7, f"{float(item.get('pu', 0)):,.2f}", 1)
+            pdf.cell(25, 7, f"{pt:,.2f}", 1)
+            pdf.ln()
+
+        # Sous-total section
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(135, 7, f"Sous-total {section.get('titre','')}", 1)
+        pdf.cell(25, 7, f"{sous_total_sec:,.2f}", 1)
+        pdf.ln(8)
+        
+        total_general += sous_total_sec
+
+    # Main d'oeuvre + Total général
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(135, 8, "MAIN D'OEUVRE:", 1)
+    pdf.cell(25, 8, f"{main_oeuvre:,.2f}", 1)
+    pdf.ln()
+    pdf.cell(135, 8, "TOTAL GENERAL:", 1)
+    pdf.cell(25, 8, f"{total_general + main_oeuvre:,.2f} {devise}", 1)
+
+    # Signature
+    pdf.ln(20)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(200, 8, txt="SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    pdf.ln(12)
+    pdf.line(10, pdf.get_y(), 100, pdf.get_y())
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(200, 6, txt=f"Ing. {ing_nom}", ln=True)
+    pdf.cell(200, 6, txt=f"Tel: {ing_tel}", ln=True)
+
+    return pdf.output(dest='S').encode('latin-1', errors='replace')
                                     
                         
                     
