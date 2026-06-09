@@ -1706,13 +1706,13 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf = FPDF()
     pdf.add_page()
 
-    # BANDEAU VERT FONCE collé au bord haut, pas de blanc
-    pdf.set_y(0) # force y=0
-    pdf.set_fill_color(20, 50, 40) # vert foncé RGB
-    pdf.rect(0, 0, 210, 32, 'F') # couvre toute la largeur dès y=0
+    # BANDEAU VERT FONCE collé au bord haut
+    pdf.set_y(0)
+    pdf.set_fill_color(20, 50, 40)
+    pdf.rect(0, 0, 210, 32, 'F')
 
-    pdf.set_xy(10, 2) # texte commence à y=2
-    pdf.set_text_color(255, 255, 255) # texte blanc
+    pdf.set_xy(10, 2)
+    pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
@@ -1731,7 +1731,7 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
     pdf.set_font("Arial", size=9)
     pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
 
-    pdf.set_text_color(0, 0, 0) # remettre noir
+    pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -1755,18 +1755,25 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # EN-TETE TABLEAU GRIS 200
-        pdf.set_font("Arial", 'B', 10)
+        # EN-TETE TABLEAU avec colonne DETAIL
+        pdf.set_font("Arial", 'B', 9)
         pdf.set_fill_color(200, 200, 200)
-        pdf.cell(10, 7, "N", 1, 0, 'C', True)
-        pdf.cell(75, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
-        pdf.cell(20, 7, "Unité", 1, 0, 'C', True)
-        pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
-        pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
-        pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
+        pdf.cell(8, 7, "N", 1, 0, 'C', True)
+        pdf.cell(55, 7, "DESIGNATION", 1, 0, 'C', True)
+        pdf.cell(45, 7, "DETAIL", 1, 0, 'C', True)
+        pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
+        pdf.cell(18, 7, "Qté", 1, 0, 'C', True)
+        pdf.cell(22, 7, "Prix U", 1, 0, 'C', True)
+        pdf.cell(27, 7, "Prix total", 1, 1, 'C', True)
+
+        # Ligne section
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(8, 6, section.get('numero', 'A'), 1, 0, 'C', True)
+        pdf.cell(182, 6, section.get('titre', 'INDUSTRIAL'), 1, 1, 'L', True)
 
         # Articles fond blanc
-        pdf.set_font("Arial", size=10)
+        pdf.set_font("Arial", size=9)
         pdf.set_fill_color(255, 255, 255)
         sous_total_sec = 0
         for item in section.get('items', []):
@@ -1774,28 +1781,36 @@ def generer_pdf_devis_consulting(numero, type_devis, client, titre, parcelle, lo
                 pdf.add_page()
             pt = float(item.get('qte', 0)) * float(item.get('pu', 0))
             sous_total_sec += pt
-            pdf.cell(10, 6, str(item.get('num', '')), 1)
-            pdf.cell(75, 6, item.get('designation', '')[:40], 1)
-            pdf.cell(20, 6, str(item.get('unite', '')), 1, 0, 'C')
-            pdf.cell(20, 6, f"{float(item.get('qte', 0)):,.2f}", 1, 0, 'R')
-            pdf.cell(25, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
-            pdf.cell(30, 6, f"{pt:,.2f}", 1, 1, 'R')
+            pdf.cell(8, 6, str(item.get('num', '')), 1)
+            pdf.cell(55, 6, item.get('designation', '')[:28], 1)
+            pdf.cell(45, 6, item.get('detail', '')[:22], 1)
+            pdf.cell(15, 6, str(item.get('unite', '')), 1, 0, 'C')
+            pdf.cell(18, 6, f"{float(item.get('qte', 0)):,.2f}", 1, 0, 'R')
+            pdf.cell(22, 6, f"{float(item.get('pu', 0)):,.2f}", 1, 0, 'R')
+            pdf.cell(27, 6, f"{pt:,.2f}", 1, 1, 'R')
 
-        # Sous Total GRIS 230
+        # Sous Total
         pdf.set_font("Arial", 'B', 10)
         pdf.set_fill_color(230, 230, 230)
-        pdf.cell(150, 7, "Sous Total", 1, 0, 'R', True)
-        pdf.cell(30, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R', True)
+        pdf.cell(163, 7, "Sous Total", 1, 0, 'R', True)
+        pdf.cell(27, 7, f"{sous_total_sec:,.2f}", 1, 1, 'R', True)
         pdf.ln(1)
         total_general += sous_total_sec
+
+    # Main d'oeuvre si > 0
+    if main_oeuvre > 0:
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(163, 7, "Main d'oeuvre", 1, 0, 'R', True)
+        pdf.cell(27, 7, f"{main_oeuvre:,.2f}", 1, 1, 'R', True)
 
     # TOTAL GENERAL JAUNE
     if pdf.get_y() > 230:
         pdf.add_page()
     pdf.set_font("Arial", 'B', 11)
     pdf.set_fill_color(255, 200, 0)
-    pdf.cell(150, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(30, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
+    pdf.cell(163, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(27, 9, f"{total_general + main_oeuvre:,.2f}", 1, 1, 'R', True)
 
     # Signature
     if pdf.get_y() > 220:
@@ -1854,36 +1869,48 @@ if "📋 Devis" in tab_map:
 
                 st.divider()
 
+                # Initialiser sections avec champ DETAIL
                 if not st.session_state.devis_sections:
                     items = [
-                        {"num": "1", "designation": "OZONEUR", "unite": "pc", "qte": 1.00, "pu": 450},
-                        {"num": "2", "designation": "LAMPE UV", "unite": "pc", "qte": 2.00, "pu": 200},
-                        {"num": "3", "designation": "DECAPELLE", "unite": "pc", "qte": 3.00, "pu": 120},
-                    ] + [{"num": str(i+4), "designation": "", "unite": "pc", "qte": 0, "pu": 0} for i in range(7)]
+                        {"num": "1", "designation": "OZONEUR", "detail": "", "unite": "pc", "qte": 1.00, "pu": 450},
+                        {"num": "2", "designation": "LAMPE UV", "detail": "", "unite": "pc", "qte": 2.00, "pu": 200},
+                        {"num": "3", "designation": "DECAPELLE", "detail": "", "unite": "m", "qte": 3.00, "pu": 120},
+                    ] + [{"num": str(i+4), "designation": "", "detail": "", "unite": "pc", "qte": 0, "pu": 0} for i in range(7)]
                     st.session_state.devis_sections = [{"numero": "A", "titre": "INDUSTRIAL", "items": items}]
 
+                # Tableau éditable avec 7 colonnes
                 total_general_ind = 0
                 for idx, section in enumerate(st.session_state.devis_sections):
                     st.markdown(f"**{section['numero']}. {section['titre']}**")
                     sous_total_sec = 0
                     for i, item in enumerate(section['items']):
-                        col1, col2, col3, col4, col5, col6 = st.columns([0.5, 3, 1, 1, 1, 1])
+                        col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 2.5, 2, 1, 1, 1, 1])
+
                         with col1:
                             new_num = st.text_input("N°", value=str(item.get('num', '')), key=f"num_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['num'] = new_num
+
                         with col2:
                             new_des = st.text_input("Désignation", value=item.get('designation', ''), key=f"des_ind_{idx}_{i}", label_visibility="collapsed")
                             section['items'][i]['designation'] = new_des
-                        with col3:
-                            unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], key=f"unit_ind_{idx}_{i}", label_visibility="collapsed")
-                            section['items'][i]['unite'] = unite
+
+                        with col3: # COLONNE DETAIL
+                            new_detail = st.text_input("Détail", value=item.get('detail', ''), key=f"detail_ind_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['detail'] = new_detail
+
                         with col4:
+                            unite = st.selectbox("Unité", ["m", "pc", "kg", "lot"], index=["m", "pc", "kg", "lot"].index(item.get('unite', 'pc')), key=f"unit_ind_{idx}_{i}", label_visibility="collapsed")
+                            section['items'][i]['unite'] = unite
+
+                        with col5:
                             new_qte = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['qte'] = new_qte
-                        with col5:
+
+                        with col6:
                             new_pu = st.number_input("PU", value=float(item.get('pu', 0)), min_value=0.0, key=f"pu_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             section['items'][i]['pu'] = new_pu
-                        with col6:
+
+                        with col7:
                             pt = new_qte * new_pu
                             st.markdown(f"**{pt:,.2f}**")
                             sous_total_sec += pt
