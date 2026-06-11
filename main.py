@@ -1580,7 +1580,6 @@ if "💰 Comptabilité" in tab_map:
 
 import json
 from datetime import datetime
-import pandas as pd
 import streamlit as st
 from fpdf import FPDF
 import qrcode
@@ -1588,7 +1587,7 @@ from io import BytesIO
 
 # ===== FONCTION PDF =====
 def generer_pdf_facture_ucad(numero, client, localisation, telephone,
-                             prestations, devise,
+                             prestations, devise, modes_paiement,
                              ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
                              email="asamnesstsang636@gmail.com",
                              adresse="Beni, Nord-Kivu, RDC"):
@@ -1627,7 +1626,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 7, f"LOCALISATION: {localisation}", ln=True)
     pdf.cell(0, 7, f"CLIENT: {client}", ln=True)
-    if telephone and telephone != "+243...":
+    if telephone and telephone!= "+243...":
         pdf.cell(0, 7, f"TEL: {telephone}", ln=True)
     pdf.ln(5)
 
@@ -1666,19 +1665,31 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     pdf.cell(22, 6, f"{total:,.0f}", 1, 0, 'R', True)
     pdf.cell(93, 6, "", 1, 1)
 
+    # MODES DE PAIEMENT SAISIS PAR TOI
+    pdf.ln(5)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
+    pdf.set_font("Arial", size=8)
+    pdf.cell(60, 5, "Mode de règlement", 1, 0, 'C')
+    pdf.cell(130, 5, "Détails / N° Compte", 1, 1, 'C')
+    for mode_nom, mode_detail in modes_paiement:
+        pdf.cell(60, 5, mode_nom, 1, 0, 'C')
+        pdf.cell(130, 5, mode_detail[:58], 1, 1, 'C')
+
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_fill_color(255, 200, 0)
     pdf.cell(100, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
     pdf.cell(90, 8, f"{total:,.2f}", 1, 1, 'R', True)
 
-    # QR CODE avec mode de paiement
+    # QR CODE
     qr_data = {
-        "numero": numero, 
-        "client": client, 
-        "total": total, 
+        "numero": numero,
+        "client": client,
+        "total": total,
         "devise": devise,
-        "prestations": [{"des": p['designation'], "montant": p['montant'], "mode": p.get('mode_paiement')} for p in prestations]
+        "prestations": [{"des": p['designation'], "montant": p['montant'], "mode": p.get('mode_paiement')} for p in prestations],
+        "modes_paiement": modes_paiement
     }
     qr = qrcode.QRCode(box_size=3, border=1)
     qr.add_data(json.dumps(qr_data))
@@ -1706,7 +1717,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     out = pdf.output(dest='S')
     return bytes(out), total
 
-# ===== BLOC STREAMLIT - 4 LIGNES FIXES =====
+# ===== BLOC STREAMLIT =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
         st.markdown("## 📄 Factures - Honoraires")
@@ -1716,6 +1727,7 @@ if "📄 Factures" in tab_map:
 
         if st.session_state.get("nouvelle_facture", False):
             st.subheader("Créer une Facture d'Honoraires")
+
             col1, col2 = st.columns(2)
             with col1:
                 client_fac = st.text_input("Client", key="client_fac")
@@ -1724,23 +1736,37 @@ if "📄 Factures" in tab_map:
                 tel_fac = st.text_input("Téléphone", placeholder="+243...", key="tel_fac")
                 devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac")
 
+            # SAISIE DES 3 OU 4 MODES DE PAIEMENT AVEC LEURS INFOS
+            st.markdown("**Modes de paiement acceptés - saisissez 3 à 4 modes avec leurs détails**")
+            modes_paiement = []
+            for i in range(4):
+                col_m1, col_m2 = st.columns([2, 3])
+                with col_m1:
+                    mode_nom = st.text_input(f"Mode {i+1}", key=f"mode_nom_{i}", placeholder="Ex: Espèces")
+                with col_m2:
+                    mode_detail = st.text_input(f"Détail {i+1}", key=f"mode_detail_{i}", placeholder="Ex: 0812... ou N° Compte BIA")
+                if mode_nom and mode_detail:
+                    modes_paiement.append((mode_nom, mode_detail))
+
+            # Liste des noms de modes pour les selectbox
+            choix_mode = [m[0] for m in modes_paiement] if modes_paiement else ["Espèces"]
+
             st.markdown("**Prestations réalisées**")
-            
+
             choix_designation = [
                 "Frais d'étude technique",
                 "Main d'oeuvre",
-                "Visite de site", 
+                "Visite de site",
                 "Rapport technique",
                 "Déplacement",
                 "Autre"
             ]
-            choix_mode = ["Espèces", "Virement bancaire", "Mobile Money", "Chèque"]
-            
+
             prestations = []
-            for i in range(4):  # EXACTEMENT 4 LIGNES
+            for i in range(4):
                 st.markdown(f"**Désignation {i+1}**")
                 col_a, col_b, col_c, col_d = st.columns([2.5, 2.5, 1.5, 2])
-                
+
                 with col_a:
                     des_choix = st.selectbox(
                         "Désignation",
@@ -1752,20 +1778,20 @@ if "📄 Factures" in tab_map:
                         des = st.text_input("Saisir", key=f"des_custom_fac_{i}", label_visibility="collapsed")
                     else:
                         des = des_choix
-                        
+
                 with col_b:
                     detail = st.text_input("Détail", key=f"detail_fac_{i}", label_visibility="collapsed")
-                    
+
                 with col_c:
                     montant = st.number_input("Montant", min_value=0.0, value=0.0, step=1000.0, key=f"montant_fac_{i}", label_visibility="collapsed")
-                    
+
                 with col_d:
                     mode = st.selectbox("Mode paiement", choix_mode, key=f"mode_fac_{i}", label_visibility="collapsed")
 
                 if des and montant > 0:
                     prestations.append({
-                        "designation": des, 
-                        "detail": detail, 
+                        "designation": des,
+                        "detail": detail,
                         "montant": montant,
                         "mode_paiement": mode
                     })
@@ -1773,11 +1799,11 @@ if "📄 Factures" in tab_map:
             col_gen, col_ann = st.columns(2)
             with col_gen:
                 if st.button("📄 Générer Facture PDF", type="primary", width="stretch"):
-                    if client_fac and prestations:
+                    if client_fac and prestations and modes_paiement:
                         numero_fac = f"FAC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         pdf_bytes, total = generer_pdf_facture_ucad(
                             numero_fac, client_fac, localisation_fac, tel_fac,
-                            prestations, devise_fac
+                            prestations, devise_fac, modes_paiement
                         )
                         st.download_button(
                             "⬇️ Télécharger Facture PDF",
@@ -1788,7 +1814,7 @@ if "📄 Factures" in tab_map:
                         )
                         st.success(f"Facture {numero_fac} - Total: {total:,.2f} {devise_fac}")
                     else:
-                        st.error("Client et au moins 1 prestation avec montant requis")
+                        st.error("Client, au moins 1 prestation, et au moins 1 mode de paiement requis")
             with col_ann:
                 if st.button("❌ Annuler", width="stretch"):
                     st.session_state.nouvelle_facture = False
