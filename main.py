@@ -1657,7 +1657,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
         pdf.cell(22, 6, f"{montant:,.0f}", 1, 0, 'R')
         pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
         pdf.cell(32, 6, mode[:16], 1, 0, 'C')
-        pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(22, 6, "Délai raisonnable", 1, 0, 'C')
         pdf.cell(39, 6, f"Q-{numero[-6:]}{idx}", 1, 1, 'C')
 
     pdf.set_font("Arial", 'B', 8)
