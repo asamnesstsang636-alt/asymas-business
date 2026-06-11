@@ -1587,16 +1587,16 @@ from fpdf import FPDF
 import qrcode
 from io import BytesIO
 
-# ===== FONCTION GENERATION PDF FACTURE TECHNIQUE =====
-def generer_pdf_facture_technique(numero, client, localisation, telephone,
-                                  prestations, devise, main_oeuvre=0,
+# ===== FONCTION PDF FACTURE HONORAIRE - SANS UNITE/QTE/PU =====
+def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
+                                  prestations, devise,
                                   ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
                                   email="asamnesstsang636@gmail.com",
                                   adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
 
-    # === MÊME ENTÊTE QUE LE DEVIS ===
+    # === ENTÊTE IDENTIQUE AU DEVIS ===
     pdf.set_y(0)
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 32, 'F')
@@ -1623,13 +1623,12 @@ def generer_pdf_facture_technique(numero, client, localisation, telephone,
 
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
-    pdf.set_draw_color(0, 0, 0)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
 
-    # Titre centré
+    # Titre
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, "FACTURE TECHNIQUE", ln=True, align='C')
+    pdf.cell(0, 8, "FACTURE D'HONORAIRES", ln=True, align='C')
     pdf.ln(3)
 
     # Infos client
@@ -1640,78 +1639,76 @@ def generer_pdf_facture_technique(numero, client, localisation, telephone,
         pdf.cell(0, 7, f"TEL: {telephone}", ln=True)
     pdf.ln(5)
 
-    # EN-TETE TABLEAU - même style que devis
+    # TABLEAU SIMPLE : Désignation | Détail | Montant
     pdf.set_font("Arial", 'B', 9)
     pdf.set_fill_color(200, 200, 200)
-    pdf.cell(8, 7, "N", 1, 0, 'C', True)
-    pdf.cell(55, 7, "DESIGNATION", 1, 0, 'C', True)
-    pdf.cell(45, 7, "DETAIL", 1, 0, 'C', True)
-    pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
-    pdf.cell(18, 7, "Qté", 1, 0, 'C', True)
-    pdf.cell(22, 7, "Prix U", 1, 0, 'C', True)
-    pdf.cell(27, 7, "Prix total", 1, 1, 'C', True)
+    pdf.cell(80, 7, "DESIGNATION", 1, 0, 'C', True)
+    pdf.cell(65, 7, "DETAIL", 1, 0, 'C', True)
+    pdf.cell(45, 7, "MONTANT", 1, 1, 'C', True)
 
-    # Ligne section unique
-    pdf.set_font("Arial", 'B', 10)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(8, 6, "A", 1, 0, 'C', True)
-    pdf.cell(182, 6, "PRESTATIONS TECHNIQUES", 1, 1, 'L', True)
-
-    # Articles
     pdf.set_font("Arial", size=9)
     pdf.set_fill_color(255, 255, 255)
-    total_ht = 0
-    for i, item in enumerate(prestations, 1):
-        if pdf.get_y() > 265:
+    total = 0
+    for item in prestations:
+        if pdf.get_y() > 260:
             pdf.add_page()
-        pt = float(item['qte']) * float(item['pu'])
-        total_ht += pt
-        pdf.cell(8, 6, str(i), 1)
-        pdf.cell(55, 6, item['designation'][:28], 1)
-        pdf.cell(45, 6, item.get('detail', '')[:22], 1)
-        pdf.cell(15, 6, item['unite'], 1, 0, 'C')
-        pdf.cell(18, 6, f"{float(item['qte']):,.2f}", 1, 0, 'R')
-        pdf.cell(22, 6, f"{float(item['pu']):,.2f}", 1, 0, 'R')
-        pdf.cell(27, 6, f"{pt:,.2f}", 1, 1, 'R')
+        montant = float(item['montant'])
+        total += montant
+        pdf.cell(80, 7, item['designation'][:38], 1)
+        pdf.cell(65, 7, item.get('detail', '')[:32], 1)
+        pdf.cell(45, 7, f"{montant:,.2f} {devise}", 1, 1, 'R')
 
-    # Sous Total
-    pdf.set_font("Arial", 'B', 10)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(163, 7, "Sous Total", 1, 0, 'R', True)
-    pdf.cell(27, 7, f"{total_ht:,.2f}", 1, 1, 'R', True)
-    pdf.ln(1)
-
-    # Main d'oeuvre
-    if main_oeuvre > 0:
-        pdf.set_font("Arial", 'B', 10)
-        pdf.set_fill_color(230, 230, 230)
-        pdf.cell(163, 7, "Main d'oeuvre", 1, 0, 'R', True)
-        pdf.cell(27, 7, f"{main_oeuvre:,.2f}", 1, 1, 'R', True)
-
-    # TOTAL GENERAL JAUNE - même que devis
-    if pdf.get_y() > 230:
-        pdf.add_page()
-    total_ttc = total_ht + main_oeuvre
+    # TOTAL GENERAL JAUNE
+    pdf.ln(2)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_fill_color(255, 200, 0)
-    pdf.cell(163, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(27, 9, f"{total_ttc:,.2f}", 1, 1, 'R', True)
+    pdf.cell(145, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(45, 9, f"{total:,.2f}", 1, 1, 'R', True)
 
-    # QR CODE - même position que devis
-    qr_data = {
-        "numero": numero,
-        "client": client,
-        "type": "Facture Technique",
-        "total": total_ttc,
-        "devise": devise,
-        "date": datetime.now().strftime('%d/%m/%Y'),
-        "verif": f"https://asymas.com/verifier/{numero}"
-    }
-    qr = qrcode.QRCode(version=1, box_size=3, border=1)
+    # DETAIL DES ECHEANCES - REMPLI POUR FAIRE PRO
+    pdf.ln(8)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(0, 6, "Détail des échéances", ln=True, align='C')
+    pdf.ln(2)
+
+    pdf.set_font("Arial", 'B', 8)
+    pdf.set_fill_color(200, 200, 200)
+    pdf.cell(45, 6, "N° Transaction", 1, 0, 'C', True)
+    pdf.cell(25, 6, "Montant", 1, 0, 'C', True)
+    pdf.cell(25, 6, "Date échéance", 1, 0, 'C', True)
+    pdf.cell(35, 6, "Mode Règlement", 1, 0, 'C', True)
+    pdf.cell(25, 6, "Date paiement", 1, 0, 'C', True)
+    pdf.cell(35, 6, "N.Quittance", 1, 1, 'C', True)
+
+    pdf.set_font("Arial", size=8)
+    pdf.cell(45, 6, numero, 1, 0, 'C')
+    pdf.cell(25, 6, f"{total:,.0f} {devise}", 1, 0, 'R')
+    pdf.cell(25, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+    pdf.cell(35, 6, "Espèces / Virement", 1, 0, 'C')
+    pdf.cell(25, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+    pdf.cell(35, 6, f"Q-{numero[-6:]}", 1, 1, 'C')
+
+    pdf.set_font("Arial", 'B', 8)
+    pdf.cell(70, 6, "Total", 1, 0, 'R', True)
+    pdf.cell(25, 6, f"{total:,.0f} {devise}", 1, 0, 'R', True)
+    pdf.cell(95, 6, "", 1, 1)
+
+    # Modes de paiement
+    pdf.ln(3)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(0, 5, "Les modes de paiement suivants sont au choix du client:", ln=True)
+    pdf.set_font("Arial", size=8)
+    pdf.cell(50, 5, "Mode de règlement", 1, 0, 'C')
+    pdf.cell(140, 5, "N° de compte / adresse", 1, 1, 'C')
+    pdf.cell(50, 5, "NUMERAIRE / VIREMENT", 1, 0, 'C')
+    pdf.cell(140, 5, f"Service Comptable - {adresse}", 1, 1, 'C')
+
+    # QR CODE
+    qr_data = {"numero": numero, "client": client, "total": total, "devise": devise}
+    qr = qrcode.QRCode(box_size=3, border=1)
     qr.add_data(json.dumps(qr_data))
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
-
     buf = BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
@@ -1720,13 +1717,12 @@ def generer_pdf_facture_technique(numero, client, localisation, telephone,
     if y_pos > 220:
         pdf.add_page()
         y_pos = 20
-
     pdf.image(buf, x=160, y=y_pos, w=35)
     pdf.set_xy(160, y_pos + 36)
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(35, 4, "Scan pour vérifier", align='C')
 
-    # Signature - même que devis
+    # Signature
     pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
@@ -1736,64 +1732,53 @@ def generer_pdf_facture_technique(numero, client, localisation, telephone,
     pdf.set_font("Arial", size=10)
     pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
     pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
-    pdf.cell(0, 6, f"Adresse: {adresse}", ln=True)
-    pdf.ln(8)
-    pdf.set_text_color(0, 150, 0)
-    pdf.set_font("Arial", 'I', 9)
-    pdf.cell(0, 6, "Facture payable à 30 jours", ln=True, align='C')
 
     out = pdf.output(dest='S')
-    return bytes(out), total_ttc
+    return bytes(out), total
 
-# ===== BLOC FACTURES CORRIGE =====
+# ===== BLOC STREAMLIT FACTURES =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures - Relevé par Catégorie")
+        st.markdown("## 📄 Factures - Honoraires")
 
-        # === BOUTON NOUVELLE FACTURE TECHNIQUE ===
-        if st.button("➕ Nouvelle Facture Technique", type="primary"):
-            st.session_state.nouvelle_facture_tech = True
+        # NOUVELLE FACTURE HONORAIRE
+        if st.button("➕ Nouvelle Facture", type="primary"):
+            st.session_state.nouvelle_facture = True
 
-        if st.session_state.get("nouvelle_facture_tech", False):
-            st.subheader("Créer une Facture Technique")
+        if st.session_state.get("nouvelle_facture", False):
+            st.subheader("Créer une Facture d'Honoraires")
             col1, col2 = st.columns(2)
             with col1:
-                client_fac = st.text_input("Client", key="client_fac_tech")
-                localisation_fac = st.text_input("Localisation", value="Beni, RDC", key="loc_fac_tech")
+                client_fac = st.text_input("Client", key="client_fac")
+                localisation_fac = st.text_input("Localisation", value="Beni, RDC", key="loc_fac")
             with col2:
-                tel_fac = st.text_input("Téléphone", placeholder="+243...", key="tel_fac_tech")
-                devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac_tech")
+                tel_fac = st.text_input("Téléphone", placeholder="+243...", key="tel_fac")
+                devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac")
 
-            st.markdown("**Prestations**")
+            st.markdown("**Prestations réalisées**")
             prestations = []
             for i in range(5):
-                col_a, col_b, col_c, col_d, col_e = st.columns([3, 2, 1, 1, 1])
+                col_a, col_b, col_c = st.columns([3, 3, 2])
                 with col_a:
                     des = st.text_input(f"Désignation {i+1}",
-                        value=["Frais d'étude technique", "Main d'oeuvre", "Visite de site", "", ""][i] if i<5 else "",
+                        value=["Main d'oeuvre", "Visite de site", "Frais d'étude technique", "", ""][i] if i<5 else "",
                         key=f"des_fac_{i}")
                 with col_b:
                     detail = st.text_input("Détail", key=f"detail_fac_{i}")
                 with col_c:
-                    unite = st.selectbox("Unité", ["Forfait", "Heure", "Jour"], key=f"unit_fac_{i}")
-                with col_d:
-                    qte = st.number_input("Qté", min_value=0.0, value=1.0, key=f"qte_fac_{i}")
-                with col_e:
-                    pu = st.number_input("PU", min_value=0.0, value=0.0, key=f"pu_fac_{i}")
+                    montant = st.number_input("Montant", min_value=0.0, value=0.0, key=f"montant_fac_{i}")
 
-                if des:
-                    prestations.append({"designation": des, "detail": detail, "unite": unite, "qte": qte, "pu": pu})
-
-            main_oeuvre_fac = st.number_input("Main d'oeuvre additionnelle", min_value=0.0, value=0.0)
+                if des and montant > 0:
+                    prestations.append({"designation": des, "detail": detail, "montant": montant})
 
             col_gen, col_ann = st.columns(2)
             with col_gen:
                 if st.button("📄 Générer Facture PDF", type="primary", width="stretch"):
                     if client_fac and prestations:
-                        numero_fac = f"FAC-TECH-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        pdf_bytes, total = generer_pdf_facture_technique(
+                        numero_fac = f"FAC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        pdf_bytes, total = generer_pdf_facture_honoraire(
                             numero_fac, client_fac, localisation_fac, tel_fac,
-                            prestations, devise_fac, main_oeuvre_fac
+                            prestations, devise_fac
                         )
                         st.download_button(
                             "⬇️ Télécharger Facture PDF",
@@ -1804,127 +1789,13 @@ if "📄 Factures" in tab_map:
                         )
                         st.success(f"Facture {numero_fac} - Total: {total:,.2f} {devise_fac}")
                     else:
-                        st.error("Client et au moins 1 prestation requis")
+                        st.error("Client et au moins 1 prestation avec montant requis")
             with col_ann:
                 if st.button("❌ Annuler", width="stretch"):
-                    st.session_state.nouvelle_facture_tech = False
+                    st.session_state.nouvelle_facture = False
                     st.rerun()
 
             st.divider()
-
-        # === RELEVE FACTURES EXISTANTES ===
-        if df_compta.empty:
-            st.info("Aucune opération")
-        else:
-            df_compta_sorted = df_compta.sort_values('date', ascending=False)
-            col_f1, col_f2, col_f3 = st.columns(3)
-            date_debut = col_f1.date_input("📅 Date début", value=date.today() - timedelta(days=30), key="date_debut_fact")
-            date_fin = col_f2.date_input("📅 Date fin", value=date.today(), key="date_fin_fact")
-            col_f4, col_f5 = st.columns(2)
-
-            # FILTRE OBLIGATOIRE PAR CATÉGORIE AUTORISÉE
-            if st.session_state.user_role!= "PDG":
-                cats_user = st.session_state.get('user_cats', [])
-                if cats_user and "Toutes" not in cats_user:
-                    df_compta_sorted = df_compta_sorted[df_compta_sorted['categorie'].isin(cats_user)]
-                else:
-                    if not cats_user:
-                        st.error("⛔ Aucune catégorie autorisée. Contacte le PDG.")
-                        st.stop()
-
-            categories_fact = ["Toutes"] + list(df_compta_sorted.get('categorie', pd.Series(dtype=str)).dropna().unique())
-            filtre_cat_fact = col_f4.selectbox("📂 Filtrer par Catégorie", categories_fact, key="filtre_cat_fact")
-            filtre_client_fact = col_f5.text_input("👤 Nom Client contient", placeholder="Tape un nom...", key="filtre_client_fact")
-            df_filtre_fact = df_compta_sorted[(df_compta_sorted['date'] >= str(date_debut)) & (df_compta_sorted['date'] <= str(date_fin))]
-
-            if filtre_cat_fact!= "Toutes":
-                df_filtre_fact = df_filtre_fact[df_filtre_fact.get('categorie', '') == filtre_cat_fact]
-            if filtre_client_fact:
-                df_filtre_fact = df_filtre_fact[df_filtre_fact['description'].str.contains(filtre_client_fact, case=False, na=False)]
-
-            col_t1, col_t2, col_t3 = st.columns(3)
-            total_fc = df_filtre_fact[df_filtre_fact.get('devise','FC')=='FC']['montant'].sum()
-            total_usd = df_filtre_fact[df_filtre_fact.get('devise','FC')=='$']['montant'].sum()
-            total_eur = df_filtre_fact[df_filtre_fact.get('devise','FC')=='€']['montant'].sum()
-            col_t1.metric("💵 Total FC", f"{total_fc:,.0f}")
-            col_t2.metric("💵 Total USD", f"{total_usd:,.0f}")
-            col_t3.metric("💵 Total EUR", f"{total_eur:,.0f}")
-            st.divider()
-
-            categories = df_filtre_fact.get('categorie', pd.Series(dtype=str)).dropna().unique()
-            if len(categories) == 0:
-                st.info("Aucune catégorie trouvée dans la période sélectionnée")
-            else:
-                for cat in sorted(categories):
-                    df_cat = df_filtre_fact[df_filtre_fact.get('categorie', '') == cat]
-                    total_cat_fc = df_cat[df_cat.get('devise','FC')=='FC']['montant'].sum()
-                    total_cat_usd = df_cat[df_cat.get('devise','FC')=='$']['montant'].sum()
-                    total_cat_eur = df_cat[df_cat.get('devise','FC')=='€']['montant'].sum()
-                    with st.expander(f"📁 {cat} - {len(df_cat)} opérations | FC: {total_cat_fc:,.0f} | $: {total_cat_usd:,.0f} | €: {total_cat_eur:,.0f}", expanded=True):
-                        for idx, row in df_cat.iterrows():
-                            # 7 COLONNES = 7 VARIABLES
-                            col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns([1.2,0.8,2.5,1,0.8,0.5,0.5])
-                            col_a.write(f"**{row.get('date','')}**")
-                            col_b.write(f"{row.get('type','')}")
-                            col_c.write(f"{row.get('description','')}")
-                            col_d.write(f"**{row.get('montant',0):,.0f} {row.get('devise','FC')}**")
-                            col_e.write(f"👤 {row.get('utilisateur','N/A')}")
-
-                            if st.session_state.user_role == "PDG":
-                                if col_g.button("🗑️", key=f"del_compta_{row['id']}", help="Supprimer"):
-                                    supabase.table("compta").delete().eq("id", int(row['id'])).execute()
-                                    st.success("Facture supprimée")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            else:
-                                col_g.write("")
-
-                            # BOUTON TÉLÉCHARGER PDF
-                            try:
-                                details_list = []
-                                if row.get('details') and str(row.get('details'))!= 'nan':
-                                    details_list = json.loads(row['details'])
-                                else:
-                                    details_list = [{"designation": row.get('description',''), "detail": "", "unite": "Forfait", "qte": 1, "pu": row.get('montant',0)}]
-
-                                client_nom = row.get('description', '').split(' - ')[1] if ' - ' in row.get('description','') else 'Client'
-                                pdf_bytes, _ = generer_pdf_facture_technique(
-                                    row.get('numero_facture', f"FACT-{row['id']}"),
-                                    client_nom,
-                                    row.get('localisation', 'Beni, RDC'),
-                                    "+243...",
-                                    details_list,
-                                    row.get('devise','FC'),
-                                    0
-                                )
-                                col_f.download_button(
-                                    "📥",
-                                    data=pdf_bytes,
-                                    file_name=f"{row.get('numero_facture', f'FACT-{row['id']}')}.pdf",
-                                    mime="application/pdf",
-                                    key=f"dl_fact_{row['id']}",
-                                    help="Télécharger PDF"
-                                )
-
-                                # BOUTON IMPRIMER
-                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                col_g.markdown(f"""
-                                    <button onclick="printPDF_{row['id']}()" style="width:100%; padding:2px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-                                        🖨️
-                                    </button>
-                                    <script>
-                                    function printPDF_{row['id']}() {{
-                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                                        const win = window.open('', '_blank');
-                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                                        win.document.close();
-                                        setTimeout(() => {{ win.print(); }}, 1000);
-                                    }}
-                                    </script>
-                                """, unsafe_allow_html=True)
-                            except Exception as e:
-                                col_f.write("❌")
-                                col_g.write("❌")
 import json
 from datetime import datetime
 from fpdf import FPDF
