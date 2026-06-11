@@ -1587,113 +1587,88 @@ from fpdf import FPDF
 import qrcode
 from io import BytesIO
 
-# ===== FONCTION PDF FACTURE HONORAIRE - SANS UNITE/QTE/PU =====
-def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
-                                  prestations, devise,
-                                  ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
-                                  email="asamnesstsang636@gmail.com",
-                                  adresse="Beni, Nord-Kivu, RDC"):
+# ===== FONCTION PDF FACTURE STYLE UCAD =====
+def generer_pdf_facture_ucad(numero, client, localisation, telephone,
+                             prestations, devise,
+                             ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
+                             email="asamnesstsang636@gmail.com",
+                             adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
 
-    # === ENTÊTE IDENTIQUE AU DEVIS ===
+    # ENTÊTE ASYMAS
     pdf.set_y(0)
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 32, 'F')
-
     pdf.set_xy(10, 2)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 10, "FACTURE N", 0, 1, 'R', True)
-
     pdf.set_x(10)
     pdf.set_font("Arial", size=10)
     pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True)
     pdf.cell(0, 6, f"{numero}", 0, 1, 'R', True)
-
     pdf.set_x(10)
     pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
-
     pdf.set_x(10)
     pdf.set_font("Arial", size=9)
     pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
-
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
 
-    # Titre
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, "FACTURE D'HONORAIRES", ln=True, align='C')
     pdf.ln(3)
 
-    # Infos client
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 7, f"LOCALISATION: {localisation}", ln=True)
     pdf.cell(0, 7, f"CLIENT: {client}", ln=True)
-    if telephone and telephone!= "+243...":
+    if telephone and telephone != "+243...":
         pdf.cell(0, 7, f"TEL: {telephone}", ln=True)
     pdf.ln(5)
 
-    # TABLEAU SIMPLE : Désignation | Détail | Montant
-    pdf.set_font("Arial", 'B', 9)
-    pdf.set_fill_color(200, 200, 200)
-    pdf.cell(80, 7, "DESIGNATION", 1, 0, 'C', True)
-    pdf.cell(65, 7, "DETAIL", 1, 0, 'C', True)
-    pdf.cell(45, 7, "MONTANT", 1, 1, 'C', True)
+    total = sum(float(p['montant']) for p in prestations)
 
-    pdf.set_font("Arial", size=9)
-    pdf.set_fill_color(255, 255, 255)
-    total = 0
-    for item in prestations:
-        if pdf.get_y() > 260:
-            pdf.add_page()
-        montant = float(item['montant'])
-        total += montant
-        pdf.cell(80, 7, item['designation'][:38], 1)
-        pdf.cell(65, 7, item.get('detail', '')[:32], 1)
-        pdf.cell(45, 7, f"{montant:,.2f} {devise}", 1, 1, 'R')
-
-    # TOTAL GENERAL JAUNE
-    pdf.ln(2)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.set_fill_color(255, 200, 0)
-    pdf.cell(145, 9, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(45, 9, f"{total:,.2f}", 1, 1, 'R', True)
-
-    # DETAIL DES ECHEANCES - REMPLI POUR FAIRE PRO
-    pdf.ln(8)
+    # TABLEAU DETAIL DES ECHEANCES AVEC MODE PAIEMENT
     pdf.set_font("Arial", 'B', 10)
     pdf.cell(0, 6, "Détail des échéances", ln=True, align='C')
     pdf.ln(2)
 
     pdf.set_font("Arial", 'B', 8)
     pdf.set_fill_color(200, 200, 200)
-    pdf.cell(45, 6, "N° Transaction", 1, 0, 'C', True)
-    pdf.cell(25, 6, "Montant", 1, 0, 'C', True)
-    pdf.cell(25, 6, "Date échéance", 1, 0, 'C', True)
-    pdf.cell(35, 6, "Mode Règlement", 1, 0, 'C', True)
-    pdf.cell(25, 6, "Date paiement", 1, 0, 'C', True)
-    pdf.cell(35, 6, "N.Quittance", 1, 1, 'C', True)
+    pdf.cell(8, 6, "N°", 1, 0, 'C', True)
+    pdf.cell(45, 6, "Transaction", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Montant", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Date échéance", 1, 0, 'C', True)
+    pdf.cell(32, 6, "Mode Règlement", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Date paiement", 1, 0, 'C', True)
+    pdf.cell(39, 6, "N.Quittance", 1, 1, 'C', True)
 
     pdf.set_font("Arial", size=8)
-    pdf.cell(45, 6, numero, 1, 0, 'C')
-    pdf.cell(25, 6, f"{total:,.0f} {devise}", 1, 0, 'R')
-    pdf.cell(25, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
-    pdf.cell(35, 6, "Espèces / Virement", 1, 0, 'C')
-    pdf.cell(25, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
-    pdf.cell(35, 6, f"Q-{numero[-6:]}", 1, 1, 'C')
+    pdf.set_fill_color(255, 255, 255)
+    for idx, item in enumerate(prestations, 1):
+        if pdf.get_y() > 260:
+            pdf.add_page()
+        montant = float(item['montant'])
+        mode = item.get('mode_paiement', 'Espèces')
+        pdf.cell(8, 6, str(idx), 1, 0, 'C')
+        pdf.cell(45, 6, item['designation'][:23], 1)
+        pdf.cell(22, 6, f"{montant:,.0f}", 1, 0, 'R')
+        pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(32, 6, mode[:16], 1, 0, 'C')
+        pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(39, 6, f"Q-{numero[-6:]}{idx}", 1, 1, 'C')
 
     pdf.set_font("Arial", 'B', 8)
-    pdf.cell(70, 6, "Total", 1, 0, 'R', True)
-    pdf.cell(25, 6, f"{total:,.0f} {devise}", 1, 0, 'R', True)
-    pdf.cell(95, 6, "", 1, 1)
+    pdf.cell(75, 6, "Total", 1, 0, 'R', True)
+    pdf.cell(22, 6, f"{total:,.0f}", 1, 0, 'R', True)
+    pdf.cell(93, 6, "", 1, 1)
 
-    # Modes de paiement
     pdf.ln(3)
     pdf.set_font("Arial", 'I', 8)
     pdf.cell(0, 5, "Les modes de paiement suivants sont au choix du client:", ln=True)
@@ -1703,8 +1678,20 @@ def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
     pdf.cell(50, 5, "NUMERAIRE / VIREMENT", 1, 0, 'C')
     pdf.cell(140, 5, f"Service Comptable - {adresse}", 1, 1, 'C')
 
-    # QR CODE
-    qr_data = {"numero": numero, "client": client, "total": total, "devise": devise}
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_fill_color(255, 200, 0)
+    pdf.cell(100, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(90, 8, f"{total:,.2f}", 1, 1, 'R', True)
+
+    # QR CODE contient maintenant le mode de paiement
+    qr_data = {
+        "numero": numero, 
+        "client": client, 
+        "total": total, 
+        "devise": devise,
+        "prestations": [{"des": p['designation'], "montant": p['montant'], "mode": p.get('mode_paiement')} for p in prestations]
+    }
     qr = qrcode.QRCode(box_size=3, border=1)
     qr.add_data(json.dumps(qr_data))
     qr.make(fit=True)
@@ -1712,7 +1699,6 @@ def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
     buf = BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-
     y_pos = pdf.get_y() + 10
     if y_pos > 220:
         pdf.add_page()
@@ -1721,8 +1707,6 @@ def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
     pdf.set_xy(160, y_pos + 36)
     pdf.set_font("Arial", 'I', 7)
     pdf.cell(35, 4, "Scan pour vérifier", align='C')
-
-    # Signature
     pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
@@ -1736,12 +1720,11 @@ def generer_pdf_facture_honoraire(numero, client, localisation, telephone,
     out = pdf.output(dest='S')
     return bytes(out), total
 
-# ===== BLOC STREAMLIT FACTURES =====
+# ===== BLOC STREAMLIT =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
         st.markdown("## 📄 Factures - Honoraires")
 
-        # NOUVELLE FACTURE HONORAIRE
         if st.button("➕ Nouvelle Facture", type="primary"):
             st.session_state.nouvelle_facture = True
 
@@ -1756,27 +1739,51 @@ if "📄 Factures" in tab_map:
                 devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac")
 
             st.markdown("**Prestations réalisées**")
+            
+            choix_designation = [
+                "Main d'oeuvre",
+                "Visite de site", 
+                "Frais d'étude technique",
+                "Rapport technique",
+                "Déplacement",
+                "Autre"
+            ]
+            choix_mode = ["Espèces", "Virement bancaire", "Mobile Money", "Chèque"]
+            
             prestations = []
             for i in range(5):
-                col_a, col_b, col_c = st.columns([3, 3, 2])
+                col_a, col_b, col_c, col_d = st.columns([2.5, 2.5, 1.5, 2])
                 with col_a:
-                    des = st.text_input(f"Désignation {i+1}",
-                        value=["Main d'oeuvre", "Visite de site", "Frais d'étude technique", "", ""][i] if i<5 else "",
-                        key=f"des_fac_{i}")
+                    des_choix = st.selectbox(
+                        f"Désignation {i+1}",
+                        choix_designation,
+                        key=f"des_choix_fac_{i}"
+                    )
+                    if des_choix == "Autre":
+                        des = st.text_input("Saisir", key=f"des_custom_fac_{i}")
+                    else:
+                        des = des_choix
                 with col_b:
                     detail = st.text_input("Détail", key=f"detail_fac_{i}")
                 with col_c:
                     montant = st.number_input("Montant", min_value=0.0, value=0.0, key=f"montant_fac_{i}")
+                with col_d:
+                    mode = st.selectbox("Mode paiement", choix_mode, key=f"mode_fac_{i}")
 
                 if des and montant > 0:
-                    prestations.append({"designation": des, "detail": detail, "montant": montant})
+                    prestations.append({
+                        "designation": des, 
+                        "detail": detail, 
+                        "montant": montant,
+                        "mode_paiement": mode
+                    })
 
             col_gen, col_ann = st.columns(2)
             with col_gen:
                 if st.button("📄 Générer Facture PDF", type="primary", width="stretch"):
                     if client_fac and prestations:
                         numero_fac = f"FAC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        pdf_bytes, total = generer_pdf_facture_honoraire(
+                        pdf_bytes, total = generer_pdf_facture_ucad(
                             numero_fac, client_fac, localisation_fac, tel_fac,
                             prestations, devise_fac
                         )
