@@ -145,12 +145,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-     .replace("–", "-")
-     .replace("’", "'")
-     .replace("“", '"')
-     .replace("”", '"')
-     .replace("•", "-")
-     .replace("…", "...")
+    .replace("–", "-")
+    .replace("’", "'")
+    .replace("“", '"')
+    .replace("”", '"')
+    .replace("•", "-")
+    .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -711,6 +711,68 @@ if st.session_state.selected_module is None:
     if st.button("🚪 Déconnexion"):
         st.session_state.clear()
         st.rerun()
+
+# =========================
+# ROUTAGE DES MODULES
+# =========================
+else:
+    # Bouton retour en haut
+    if st.button("← Retour Accueil"):
+        st.session_state.selected_module = None
+        st.rerun()
+
+    st.title(f"ASYMAS BUSINESS - {st.session_state.user_name}")
+    st.markdown(f"### Module : {st.session_state.selected_module}")
+    st.markdown("---")
+
+    # ROUTAGE
+    if st.session_state.selected_module == "Commerce":
+        st.subheader("🏪 Module Commerce")
+        df_commerce = load_table("commerce")
+        if not df_commerce.empty:
+            st.dataframe(df_commerce, use_container_width=True)
+        else:
+            st.info("Aucune donnée commerce")
+
+    elif st.session_state.selected_module == "Auto":
+        st.subheader("🚚 Module Automobile")
+        df_auto = load_table("automobile")
+        if not df_auto.empty:
+            st.dataframe(df_auto, use_container_width=True)
+        else:
+            st.info("Aucune donnée automobile")
+
+    elif st.session_state.selected_module == "Factures":
+        st.subheader("🧾 Module Factures")
+        df_fact = load_table("factures")
+        if not df_fact.empty:
+            st.dataframe(df_fact, use_container_width=True)
+        else:
+            st.info("Aucune facture")
+
+    elif st.session_state.selected_module == "Immo":
+        st.subheader("🏠 Module Immobilier")
+        df_immo = load_table("immobilier")
+        if not df_immo.empty:
+            st.dataframe(df_immo, use_container_width=True)
+        else:
+            st.info("Aucun bien immobilier")
+
+    elif st.session_state.selected_module == "Stock":
+        st.subheader("📦 Module Stock")
+        df_stock = load_table("stock")
+        if not df_stock.empty:
+            st.dataframe(df_stock, use_container_width=True)
+        else:
+            st.info("Stock vide")
+
+    elif st.session_state.selected_module == "Compta":
+        st.subheader("📊 Module Comptabilité")
+        df_compta = load_table("compta")
+        if not df_compta.empty:
+            st.dataframe(df_compta, use_container_width=True)
+        else:
+            st.info("Aucune écriture comptable")
 
     # on s'arrête là sur la page d'accueil
     st.stop()
