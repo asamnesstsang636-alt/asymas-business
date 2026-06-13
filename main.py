@@ -145,12 +145,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-      .replace("–", "-")
-      .replace("’", "'")
-      .replace("“", '"')
-      .replace("”", '"')
-      .replace("•", "-")
-      .replace("…", "...")
+     .replace("–", "-")
+     .replace("’", "'")
+     .replace("“", '"')
+     .replace("”", '"')
+     .replace("•", "-")
+     .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -817,7 +817,7 @@ else:
                     st.session_state.panier_commerce = []
                     st.rerun()
 
-            elif st.session_state.panier_commerce:
+            if st.session_state.panier_commerce:
                 total_panier = 0
                 for i, item in enumerate(st.session_state.panier_commerce):
                     col1, col2, col3 = st.columns([4, 2, 1])
@@ -832,79 +832,6 @@ else:
                 if st.button("💾 FINALISER VENTE & FACTURE", use_container_width=True, type="primary"):
                     if not st.session_state.client_com_nom:
                         st.error("Nom du client obligatoire!")
-                    else:
-                        num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        details_list = []
-                        for item in st.session_state.panier_commerce:
-                            supabase.table("ventes").insert(
-                                {
-                                    "numero_facture": num_fact,
-                                    "client_nom": st.session_state.client_com_nom,
-                                    "article_id": item["id"],
-                                    "quantite": item["qte"],
-                                    "prix_unitaire": item["pu"],
-                                    "total": item["qte"] * item["pu"],
-                                }
-                            ).execute()
-                            stock_actuel = df_articles[df_articles["id"] == item["id"]]["stock"].iloc[0]
-                            supabase.table("articles").update(
-                                {"stock": int(stock_actuel - item["qte"])}
-                            ).eq("id", item["id"]).execute()
-                            details_list.append(
-                                {
-                                    "nom": item["nom"],
-                                    "qte": item["qte"],
-                                    "pu": item["pu"],
-                                    "total": item["qte"] * item["pu"],
-                                }
-                            )
-                        details_json = json.dumps(details_list)
-                        supabase.table("compta").insert(
-                            {
-                                "date": str(date.today()),
-                                "type": "Revenu",
-                                "categorie": "Vente Commerce",
-                                "description": f"Vente - {st.session_state.client_com_nom}",
-                                "montant": float(total_panier),
-                                "devise": "FC",
-                                "numero_facture": num_fact,
-                                "details": details_json,
-                                "utilisateur": st.session_state.user_name,
-                            }
-                        ).execute()
-                        pdf_bytes = generer_pdf_facture(
-                            num_fact,
-                            "Vente Commerce",
-                            st.session_state.client_com_nom,
-                            details_list,
-                            total_panier,
-                            "FC",
-                            st.session_state.client_com_tel,
-                        )
-                        st.session_state.pdf_data = pdf_bytes
-                        st.session_state.num_fact = num_fact
-                        st.session_state.vente_finie = True
-                        st.session_state.panier_commerce = []
-                        st.cache_data.clear()
-                        st.rerun()
-            
-            elif st.session_state.panier_commerce:
-                total_panier = 0
-                for i, item in enumerate(st.session_state.panier_commerce):
-                    col1, col2, col3 = st.columns([4, 2, 1])
-                    col1.write(f"**{item['nom']}**")
-                    col2.write(f"Qté: {item['qte']} | {item['pu']:,.0f} FC")
-                    if col3.button("❌", key=f"d_{i}"):
-                        st.session_state.panier_commerce.pop(i)
-                        st.rerun()
-                    total_panier += item["qte"] * item["pu"]
-
-                st.markdown(f"### Total: {total_panier:,.0f} FC")
-                if st.button("💾 FINALISER VENTE & FACTURE", use_container_width=True, type="primary"):
-                    if not st.session_state.client_com_nom:
-                        st.error("Nom du client obligatoire!")
-                    else:
-                        st.info("Panier vide")
                     else:
                         num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         details_list = []
@@ -1115,11 +1042,11 @@ else:
             try:
                 mvts = (
                     supabase.table("mouvements_stock")
-                   .select("*")
-                   .order("created_at", desc=True)
-                   .limit(50)
-                   .execute()
-                   .data
+                  .select("*")
+                  .order("created_at", desc=True)
+                  .limit(50)
+                  .execute()
+                  .data
                 )
             except:
                 mvts = []
@@ -1230,12 +1157,12 @@ else:
             try:
                 pertes = (
                     supabase.table("mouvements_stock")
-                   .select("*")
-                   .eq("type", "PERTE")
-                   .order("created_at", desc=True)
-                   .limit(20)
-                   .execute()
-                   .data
+                  .select("*")
+                  .eq("type", "PERTE")
+                  .order("created_at", desc=True)
+                  .limit(20)
+                  .execute()
+                  .data
                 )
             except:
                 pertes = []
