@@ -730,8 +730,8 @@ if st.session_state.selected_module is None:
 
 # barre latérale commune
 with st.sidebar:
-    st.markdown(f"## 👤 {st.session_state.user_name}")
-    st.markdown(f"**Rôle : {st.session_state.user_role}**")
+    st.markdown("## 👤 {st.session_state.user_name}")
+    st.markdown("**Rôle : {st.session_state.user_role}**")
     st.info("ASYMAS BUSINESS v3.0")
     if st.button("🏠 Retour Accueil"):
         st.session_state.selected_module = None
