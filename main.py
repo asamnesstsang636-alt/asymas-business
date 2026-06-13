@@ -785,7 +785,7 @@ else:
                              }
                     )
                     st.success("Ajouté au panier")
-                 st.rerun()
+                    st.rerun()
 
     with col_droite:
         st.subheader("🧾 Panier")
