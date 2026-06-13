@@ -145,12 +145,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-      .replace("–", "-")
-      .replace("’", "'")
-      .replace("“", '"')
-      .replace("”", '"')
-      .replace("•", "-")
-      .replace("…", "...")
+     .replace("–", "-")
+     .replace("’", "'")
+     .replace("“", '"')
+     .replace("”", '"')
+     .replace("•", "-")
+     .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -541,7 +541,7 @@ if isinstance(perms, str):
         perms = {}
 
 # =========================
-# ACCUEIL : CERCLE + 6 BOUTONS
+# ACCUEIL : CERCLE + 6 BOUTONS CLIQUABLES
 # =========================
 if st.session_state.selected_module is None:
     can_commerce = check_perm("commerce")
@@ -551,12 +551,34 @@ if st.session_state.selected_module is None:
     can_stock = check_perm("stock")
     can_compta = check_perm("comptabilite")
 
-    st.markdown(
+    perms_json = json.dumps({
+        "Commerce": can_commerce,
+        "Auto": can_auto,
+        "Factures": can_factures,
+        "Immo": can_immo,
+        "Stock": can_stock,
+        "Compta": can_compta
+    })
+
+    clicked = components.html(
         f"""
-        <div style="position:relative;width:100%;height:500px;
+        <script>
+        const perms = {perms_json};
+
+        function selectModule(mod) {{
+            if (!perms[mod]) {{
+                alert("⛔ Vous n'avez pas l'autorisation pour " + mod);
+                return;
+            }}
+            Streamlit.setComponentValue(mod);
+        }}
+        </script>
+
+        <div style="position:relative;width:100%;height:600px;
                     background:radial-gradient(ellipse at center 55%,
                     rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
                     overflow:hidden;">
+
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:450px;height:450px;">
@@ -597,7 +619,68 @@ if st.session_state.selected_module is None:
                     </div>
                 </div>
             </div>
+
+            <button onclick="selectModule('Commerce')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                🏪<br>Commerce
+            </button>
+
+            <button onclick="selectModule('Auto')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                🚚<br>Auto
+            </button>
+
+            <button onclick="selectModule('Factures')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                🧾<br>Factures
+            </button>
+
+            <button onclick="selectModule('Immo')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                🏠<br>Immo
+            </button>
+
+            <button onclick="selectModule('Stock')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                📦<br>Stock
+            </button>
+
+            <button onclick="selectModule('Compta')"
+                style="position:absolute;top:50%;left:50%;
+                       transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);
+                       width:70px;height:70px;
+                       border:3px solid #FFD700;border-radius:50%;
+                       background:#fff;box-shadow:0 0 25px #FFD700;
+                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
+                📊<br>Compta
+            </button>
         </div>
+
         <style>
         @keyframes pulseRing{{
             0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
@@ -611,65 +694,23 @@ if st.session_state.selected_module is None:
             from{{transform:translate(-50%,-50%) rotate(0deg);}}
             to{{transform:translate(-50%,-50%) rotate(360deg);}}
         }}
+        button:hover {{
+            transform: translate(-50%,-50%) scale(1.1)!important;
+            box-shadow: 0 0 35px #FFD700!important;
+        }}
         </style>
         """,
-        unsafe_allow_html=True,
+        height=600,
     )
 
-    st.markdown("### Choisir un module")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if can_commerce:
-            if st.button("🏪 Commerce", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Commerce"
-                st.rerun()
-        else:
-            st.button("🏪 Commerce", disabled=True, use_container_width=True)
-
-        if can_stock:
-            if st.button("📦 Stock", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Stock"
-                st.rerun()
-        else:
-            st.button("📦 Stock", disabled=True, use_container_width=True)
-
-    with col2:
-        if can_auto:
-            if st.button("🚚 Auto", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Auto"
-                st.rerun()
-        else:
-            st.button("🚚 Auto", disabled=True, use_container_width=True)
-
-        if can_compta:
-            if st.button("📊 Compta", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Compta"
-                st.rerun()
-        else:
-            st.button("📊 Compta", disabled=True, use_container_width=True)
-
-    with col3:
-        if can_factures:
-            if st.button("🧾 Factures", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Factures"
-                st.rerun()
-        else:
-            st.button("🧾 Factures", disabled=True, use_container_width=True)
-
-        if can_immo:
-            if st.button("🏠 Immo", use_container_width=True, type="primary"):
-                st.session_state.selected_module = "Immo"
-                st.rerun()
-        else:
-            st.button("🏠 Immo", disabled=True, use_container_width=True)
+    if clicked:
+        st.session_state.selected_module = clicked
+        st.rerun()
 
     st.markdown("---")
-    col_logout, col_empty = st.columns([1, 5])
-    with col_logout:
-        if st.button("🚪 Déconnexion"):
-            st.session_state.clear()
-            st.rerun()
+    if st.button("🚪 Déconnexion"):
+        st.session_state.clear()
+        st.rerun()
 
     # on s'arrête là sur la page d'accueil
     st.stop()
