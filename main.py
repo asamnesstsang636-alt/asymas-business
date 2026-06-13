@@ -772,7 +772,7 @@ else:
                                 existant["qte"] += qte
                                 st.success(f"Panier mis à jour: {existant['qte']}x")
                             else:
-                        st.error(f"Stock insuffisant ! Max dispo: {qte_max}")
+                                st.error(f"Stock insuffisant ! Max dispo: {qte_max}")
                 else:
                     st.session_state.panier_commerce.append(
                         {
