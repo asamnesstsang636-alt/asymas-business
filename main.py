@@ -773,19 +773,19 @@ else:
                                 st.success(f"Panier mis à jour: {existant['qte']}x")
                             else:
                                 st.error(f"Stock insuffisant ! Max dispo: {qte_max}")
-                else:
-                    st.session_state.panier_commerce.append(
-                        {
-                            "id": int(p["id"]),
-                            "nom": str(p["nom_article"]),
-                            "pu": float(p["prix_vente"]),
-                            "qte": int(qte),
-                            "code_qr": p.get("code_qr", ""),
-                            "stock_max": qte_max,
-                        }
+                        else:
+                          st.session_state.panier_commerce.append(
+                             {
+                               "id": int(p["id"]),
+                               "nom": str(p["nom_article"]),
+                               "pu": float(p["prix_vente"]),
+                               "qte": int(qte),
+                               "code_qr": p.get("code_qr", ""),
+                               "stock_max": qte_max,
+                             }
                     )
                     st.success("Ajouté au panier")
-                st.rerun()
+                 st.rerun()
 
     with col_droite:
         st.subheader("🧾 Panier")
