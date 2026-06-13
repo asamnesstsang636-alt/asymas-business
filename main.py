@@ -32,7 +32,6 @@ st.markdown(
 <style>
 .block-container{padding:0!important;max-width:100%!important;}
 .main{background:#0a0a0a;margin:0;padding:0;}
-/* Champ mot de passe sur l'écran login */
 div[data-testid="stTextInput"]{
     position:absolute!important;
     bottom:8%!important;
@@ -50,7 +49,6 @@ div[data-testid="stTextInput"] input{
     padding:10px!important;
 }
 div[data-testid="stTextInput"] label{display:none!important;}
-
 #MainMenu, header,.stAppToolbar,
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
@@ -60,7 +58,6 @@ footer,.stDeployButton,
     display: none!important;
     visibility: hidden!important;
 }
-
 h1, h2, h3 {
     color: #00ff41!important;
     font-size: 2.2rem!important;
@@ -101,9 +98,10 @@ if "logged_in" not in st.session_state:
 if "selected_module" not in st.session_state:
     st.session_state.selected_module = None
 
-if "module" in st.query_params and st.session_state.selected_module is None:
-    st.session_state.selected_module = st.query_params["module"]
-    st.rerun()
+if "module" in st.query_params:
+    if st.session_state.selected_module!= st.query_params["module"]:
+        st.session_state.selected_module = st.query_params["module"]
+        st.rerun()
 
 # =========================
 # FONCTIONS UTILITAIRES
@@ -147,12 +145,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-       .replace("–", "-")
-       .replace("’", "'")
-       .replace("“", '"')
-       .replace("”", '"')
-       .replace("•", "-")
-       .replace("…", "...")
+      .replace("–", "-")
+      .replace("’", "'")
+      .replace("“", '"')
+      .replace("”", '"')
+      .replace("•", "-")
+      .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -553,151 +551,120 @@ if st.session_state.selected_module is None:
     can_stock = check_perm("stock")
     can_compta = check_perm("comptabilite")
 
-    html_buttons = f"""
-    <script>
-      const perms = {{
-        Commerce: {str(can_commerce).lower()},
-        Auto: {str(can_auto).lower()},
-        Factures: {str(can_factures).lower()},
-        Immo: {str(can_immo).lower()},
-        Stock: {str(can_stock).lower()},
-        Compta: {str(can_compta).lower()}
-      }};
-
-      function openModule(mod) {{
-        if (!perms[mod]) {{
-          alert("⛔ Vous n'avez pas l'autorisation pour " + mod);
-          return;
-        }}
-        window.location.search='?module=' + mod;
-      }}
-    </script>
-
-    <div style="position:relative;width:100%;height:700px;
-                background:radial-gradient(ellipse at center 55%,
-                rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
-                overflow:hidden;">
-
-        <div style="position:absolute;top:50%;left:50%;
-                    transform:translate(-50%,-50%);
-                    width:450px;height:450px;">
+    st.markdown(
+        f"""
+        <div style="position:relative;width:100%;height:500px;
+                    background:radial-gradient(ellipse at center 55%,
+                    rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
+                    overflow:hidden;">
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
-                        width:380px;height:380px;
-                        border:2px solid rgba(255,215,0,0.5);
-                        border-radius:50%;
-                        box-shadow:0 0 80px rgba(255,215,0,0.8);
-                        animation:pulseRing 3s ease-in-out infinite;">
-            </div>
-            <div style="position:absolute;top:50%;left:50%;
-                        transform:translate(-50%,-50%);
-                        width:300px;height:300px;
-                        border:2px dotted rgba(255,215,0,0.9);
-                        border-radius:50%;
-                        animation:rotate 15s linear infinite;">
-            </div>
-            <div style="position:absolute;top:50%;left:50%;
-                        transform:translate(-50%,-50%);
-                        width:220px;height:220px;
-                        border:3px solid #FFD700;
-                        border-radius:50%;
-                        box-shadow:0 0 90px #FFD700;">
-            </div>
-            <div style="position:absolute;top:50%;left:50%;
-                        transform:translate(-50%,-50%);
-                        width:170px;height:170px;
-                        background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);
-                        border-radius:50%;
-                        box-shadow:0 0 100px #FFD700;
-                        display:flex;flex-direction:column;
-                        align-items:center;justify-content:center;
-                        animation:pulseCart 2s ease-in-out infinite;">
-                <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">
-                    ASYMAS
+                        width:450px;height:450px;">
+                <div style="position:absolute;top:50%;left:50%;
+                            transform:translate(-50%,-50%);
+                            width:380px;height:380px;
+                            border:2px solid rgba(255,215,0,0.5);
+                            border-radius:50%;
+                            box-shadow:0 0 80px rgba(255,215,0,0.8);
+                            animation:pulseRing 3s ease-in-out infinite;">
+                </div>
+                <div style="position:absolute;top:50%;left:50%;
+                            transform:translate(-50%,-50%);
+                            width:300px;height:300px;
+                            border:2px dotted rgba(255,215,0,0.9);
+                            border-radius:50%;
+                            animation:rotate 15s linear infinite;">
+                </div>
+                <div style="position:absolute;top:50%;left:50%;
+                            transform:translate(-50%,-50%);
+                            width:220px;height:220px;
+                            border:3px solid #FFD700;
+                            border-radius:50%;
+                            box-shadow:0 0 90px #FFD700;">
+                </div>
+                <div style="position:absolute;top:50%;left:50%;
+                            transform:translate(-50%,-50%);
+                            width:170px;height:170px;
+                            background:radial-gradient(circle,#FFD700 0%,#FFA500 100%);
+                            border-radius:50%;
+                            box-shadow:0 0 100px #FFD700;
+                            display:flex;flex-direction:column;
+                            align-items:center;justify-content:center;
+                            animation:pulseCart 2s ease-in-out infinite;">
+                    <div style="font-size:50px;">🛒</div>
+                    <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">
+                        ASYMAS
+                    </div>
                 </div>
             </div>
         </div>
+        <style>
+        @keyframes pulseRing{{
+            0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
+            50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+        }}
+        @keyframes pulseCart{{
+            0%,100%{{transform:translate(-50%,-50%) scale(1);}}
+            50%{{transform:translate(-50%,-50%) scale(1.18);}}
+        }}
+        @keyframes rotate{{
+            from{{transform:translate(-50%,-50%) rotate(0deg);}}
+            to{{transform:translate(-50%,-50%) rotate(360deg);}}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        <button onclick="openModule('Commerce')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            🏪<br>Commerce
-        </button>
+    st.markdown("### Choisir un module")
+    col1, col2, col3 = st.columns(3)
 
-        <button onclick="openModule('Auto')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            🚚<br>Auto
-        </button>
+    with col1:
+        if can_commerce:
+            if st.button("🏪 Commerce", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Commerce"
+                st.rerun()
+        else:
+            st.button("🏪 Commerce", disabled=True, use_container_width=True)
 
-        <button onclick="openModule('Factures')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            🧾<br>Factures
-        </button>
+        if can_stock:
+            if st.button("📦 Stock", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Stock"
+                st.rerun()
+        else:
+            st.button("📦 Stock", disabled=True, use_container_width=True)
 
-        <button onclick="openModule('Immo')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            🏠<br>Immo
-        </button>
+    with col2:
+        if can_auto:
+            if st.button("🚚 Auto", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Auto"
+                st.rerun()
+        else:
+            st.button("🚚 Auto", disabled=True, use_container_width=True)
 
-        <button onclick="openModule('Stock')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            📦<br>Stock
-        </button>
+        if can_compta:
+            if st.button("📊 Compta", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Compta"
+                st.rerun()
+        else:
+            st.button("📊 Compta", disabled=True, use_container_width=True)
 
-        <button onclick="openModule('Compta')"
-            style="position:absolute;top:50%;left:50%;
-                   transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);
-                   width:60px;height:60px;
-                   border:3px solid #FFD700;border-radius:50%;
-                   background:#fff;box-shadow:0 0 25px #FFD700;
-                   font-size:11px;font-weight:bold;color:#000;cursor:pointer;">
-            📊<br>Compta
-        </button>
-    </div>
+    with col3:
+        if can_factures:
+            if st.button("🧾 Factures", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Factures"
+                st.rerun()
+        else:
+            st.button("🧾 Factures", disabled=True, use_container_width=True)
 
-    <style>
-    @keyframes pulseRing{{
-        0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
-        50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-    }}
-    @keyframes pulseCart{{
-        0%,100%{{transform:translate(-50%,-50%) scale(1);}}
-        50%{{transform:translate(-50%,-50%) scale(1.18);}}
-    }}
-    @keyframes rotate{{
-        from{{transform:translate(-50%,-50%) rotate(0deg);}}
-        to{{transform:translate(-50%,-50%) rotate(360deg);}}
-    }}
-    </style>
-    """
+        if can_immo:
+            if st.button("🏠 Immo", use_container_width=True, type="primary"):
+                st.session_state.selected_module = "Immo"
+                st.rerun()
+        else:
+            st.button("🏠 Immo", disabled=True, use_container_width=True)
 
-    components.html(html_buttons, height=700)
-
+    st.markdown("---")
     col_logout, col_empty = st.columns([1, 5])
     with col_logout:
         if st.button("🚪 Déconnexion"):
