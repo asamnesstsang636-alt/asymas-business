@@ -887,8 +887,7 @@ else:
                         st.session_state.panier_commerce = []
                         st.cache_data.clear()
                         st.rerun()
-            else:
-                st.info("Panier vide")
+            
             elif st.session_state.panier_commerce:
                 total_panier = 0
                 for i, item in enumerate(st.session_state.panier_commerce):
@@ -904,6 +903,8 @@ else:
                 if st.button("💾 FINALISER VENTE & FACTURE", use_container_width=True, type="primary"):
                     if not st.session_state.client_com_nom:
                         st.error("Nom du client obligatoire!")
+                    else:
+                        st.info("Panier vide")
                     else:
                         num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         details_list = []
