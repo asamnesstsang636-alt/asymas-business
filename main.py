@@ -741,10 +741,12 @@ else:
                 st.session_state.last_qr = qr_code
                 st.rerun()
 
-            df_articles_filtre = df_articles[df_articles["stock"] > 0].copy() if not df_articles.empty else pd.DataFrame()
+           df_articles_filtre = df_articles[df_articles["stock"] > 0].copy() if not df_articles.empty else pd.DataFrame()
 
-if qr_code and not df_articles_filtre.empty:
-    qr_clean = str(qr_code).strip().upper()
+if df_articles_filtre.empty:
+    st.warning("Aucun produit disponible")
+else:
+    options_articles = []
     df_articles_filtre = df_articles_filtre[
         df_articles_filtre["code_qr"].astype(str).str.strip().str.upper() == qr_clean
     ]
