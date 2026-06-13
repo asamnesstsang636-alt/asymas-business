@@ -145,12 +145,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-    .replace("–", "-")
-    .replace("’", "'")
-    .replace("“", '"')
-    .replace("”", '"')
-    .replace("•", "-")
-    .replace("…", "...")
+       .replace("–", "-")
+       .replace("’", "'")
+       .replace("“", '"')
+       .replace("”", '"')
+       .replace("•", "-")
+       .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -441,8 +441,7 @@ if not st.session_state.logged_in:
                     background:linear-gradient(145deg,#2d2d2d,#1a1a1a);
                     border-radius:45px;
                     box-shadow:0 35px 70px rgba(0,0,0,0.9);
-                    border:3px solid #444;">
-        </div>
+                    border:3px solid #444;"></div>
         <div style="position:absolute;top:50%;left:50%;
                     transform:translate(-50%,-50%);
                     width:450px;height:450px;">
@@ -452,22 +451,19 @@ if not st.session_state.logged_in:
                         border:2px solid rgba(255,215,0,0.5);
                         border-radius:50%;
                         box-shadow:0 0 80px rgba(255,215,0,0.8);
-                        animation:pulseRing 3s ease-in-out infinite;">
-            </div>
+                        animation:pulseRing 3s ease-in-out infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:300px;height:300px;
                         border:2px dotted rgba(255,215,0,0.9);
                         border-radius:50%;
-                        animation:rotate 15s linear infinite;">
-            </div>
+                        animation:rotate 15s linear infinite;"></div>
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:220px;height:220px;
                         border:3px solid #FFD700;
                         border-radius:50%;
-                        box-shadow:0 0 90px #FFD700;">
-            </div>
+                        box-shadow:0 0 90px #FFD700;"></div>
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:170px;height:170px;
@@ -478,9 +474,7 @@ if not st.session_state.logged_in:
                         align-items:center;justify-content:center;
                         animation:pulseCart 2s ease-in-out infinite;">
                 <div style="font-size:50px;">🛒</div>
-                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">
-                    ASYMAS
-                </div>
+                <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
             </div>
         </div>
     </div>
@@ -564,7 +558,6 @@ if st.session_state.selected_module is None:
         f"""
         <script>
         const perms = {perms_json};
-
         function selectModule(mod) {{
             if (!perms[mod]) {{
                 alert("⛔ Vous n'avez pas l'autorisation pour " + mod);
@@ -573,12 +566,10 @@ if st.session_state.selected_module is None:
             Streamlit.setComponentValue(mod);
         }}
         </script>
-
         <div style="position:relative;width:100%;height:600px;
                     background:radial-gradient(ellipse at center 55%,
                     rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
                     overflow:hidden;">
-
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:450px;height:450px;">
@@ -588,22 +579,19 @@ if st.session_state.selected_module is None:
                             border:2px solid rgba(255,215,0,0.5);
                             border-radius:50%;
                             box-shadow:0 0 80px rgba(255,215,0,0.8);
-                            animation:pulseRing 3s ease-in-out infinite;">
-                </div>
+                            animation:pulseRing 3s ease-in-out infinite;"></div>
                 <div style="position:absolute;top:50%;left:50%;
                             transform:translate(-50%,-50%);
                             width:300px;height:300px;
                             border:2px dotted rgba(255,215,0,0.9);
                             border-radius:50%;
-                            animation:rotate 15s linear infinite;">
-                </div>
+                            animation:rotate 15s linear infinite;"></div>
                 <div style="position:absolute;top:50%;left:50%;
                             transform:translate(-50%,-50%);
                             width:220px;height:220px;
                             border:3px solid #FFD700;
                             border-radius:50%;
-                            box-shadow:0 0 90px #FFD700;">
-                </div>
+                            box-shadow:0 0 90px #FFD700;"></div>
                 <div style="position:absolute;top:50%;left:50%;
                             transform:translate(-50%,-50%);
                             width:170px;height:170px;
@@ -614,90 +602,21 @@ if st.session_state.selected_module is None:
                             align-items:center;justify-content:center;
                             animation:pulseCart 2s ease-in-out infinite;">
                     <div style="font-size:50px;">🛒</div>
-                    <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">
-                        ASYMAS
-                    </div>
+                    <div style="font-size:16px;font-weight:bold;color:#000;margin-top:5px;">ASYMAS</div>
                 </div>
             </div>
-
-            <button onclick="selectModule('Commerce')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                🏪<br>Commerce
-            </button>
-
-            <button onclick="selectModule('Auto')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                🚚<br>Auto
-            </button>
-
-            <button onclick="selectModule('Factures')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                🧾<br>Factures
-            </button>
-
-            <button onclick="selectModule('Immo')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                🏠<br>Immo
-            </button>
-
-            <button onclick="selectModule('Stock')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                📦<br>Stock
-            </button>
-
-            <button onclick="selectModule('Compta')"
-                style="position:absolute;top:50%;left:50%;
-                       transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);
-                       width:70px;height:70px;
-                       border:3px solid #FFD700;border-radius:50%;
-                       background:#fff;box-shadow:0 0 25px #FFD700;
-                       font-size:10px;font-weight:bold;color:#000;cursor:pointer;">
-                📊<br>Compta
-            </button>
+            <button onclick="selectModule('Commerce')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">🏪<br>Commerce</button>
+            <button onclick="selectModule('Auto')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(30deg) translate(190px) rotate(-30deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">🚚<br>Auto</button>
+            <button onclick="selectModule('Factures')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg) translate(190px) rotate(30deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">🧾<br>Factures</button>
+            <button onclick="selectModule('Immo')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg) translate(190px) rotate(90deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">🏠<br>Immo</button>
+            <button onclick="selectModule('Stock')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-150deg) translate(190px) rotate(150deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">📦<br>Stock</button>
+            <button onclick="selectModule('Compta')" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(150deg) translate(190px) rotate(-150deg);width:70px;height:70px;border:3px solid #FFD700;border-radius:50%;background:#fff;box-shadow:0 0 25px #FFD700;font-size:10px;font-weight:bold;color:#000;cursor:pointer;">📊<br>Compta</button>
         </div>
-
         <style>
-        @keyframes pulseRing{{
-            0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
-            50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
-        }}
-        @keyframes pulseCart{{
-            0%,100%{{transform:translate(-50%,-50%) scale(1);}}
-            50%{{transform:translate(-50%,-50%) scale(1.18);}}
-        }}
-        @keyframes rotate{{
-            from{{transform:translate(-50%,-50%) rotate(0deg);}}
-            to{{transform:translate(-50%,-50%) rotate(360deg);}}
-        }}
-        button:hover {{
-            transform: translate(-50%,-50%) scale(1.1)!important;
-            box-shadow: 0 0 35px #FFD700!important;
-        }}
+        @keyframes pulseRing{{0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}}}
+        @keyframes pulseCart{{0%,100%{{transform:translate(-50%,-50%) scale(1);}}50%{{transform:translate(-50%,-50%) scale(1.18);}}}}
+        @keyframes rotate{{from{{transform:translate(-50%,-50%) rotate(0deg);}}to{{transform:translate(-50%,-50%) rotate(360deg);}}}}
+        button:hover {{transform: translate(-50%,-50%) scale(1.1)!important;box-shadow: 0 0 35px #FFD700!important;}}
         </style>
         """,
         height=600,
@@ -713,270 +632,224 @@ if st.session_state.selected_module is None:
         st.rerun()
 
 # =========================
-# ROUTAGE DES MODULES
+# ROUTAGE DES MODULES + SIDEBAR
 # =========================
 else:
-    # Bouton retour en haut
-    if st.button("← Retour Accueil"):
-        st.session_state.selected_module = None
-        st.rerun()
-
-    st.title(f"ASYMAS BUSINESS - {st.session_state.user_name}")
-    st.markdown(f"### Module : {st.session_state.selected_module}")
-    st.markdown("---")
-
-    # ROUTAGE
-    if st.session_state.selected_module == "Commerce":
-        st.subheader("🏪 Module Commerce")
-        df_commerce = load_table("commerce")
-        if not df_commerce.empty:
-            st.dataframe(df_commerce, use_container_width=True)
-        else:
-            st.info("Aucune donnée commerce")
-
-    elif st.session_state.selected_module == "Auto":
-        st.subheader("🚚 Module Automobile")
-        df_auto = load_table("automobile")
-        if not df_auto.empty:
-            st.dataframe(df_auto, use_container_width=True)
-        else:
-            st.info("Aucune donnée automobile")
-
-    elif st.session_state.selected_module == "Factures":
-        st.subheader("🧾 Module Factures")
-        df_fact = load_table("factures")
-        if not df_fact.empty:
-            st.dataframe(df_fact, use_container_width=True)
-        else:
-            st.info("Aucune facture")
-
-    elif st.session_state.selected_module == "Immo":
-        st.subheader("🏠 Module Immobilier")
-        df_immo = load_table("immobilier")
-        if not df_immo.empty:
-            st.dataframe(df_immo, use_container_width=True)
-        else:
-            st.info("Aucun bien immobilier")
-
-    elif st.session_state.selected_module == "Stock":
-        st.subheader("📦 Module Stock")
-        df_stock = load_table("stock")
-        if not df_stock.empty:
-            st.dataframe(df_stock, use_container_width=True)
-        else:
-            st.info("Stock vide")
-
-    elif st.session_state.selected_module == "Compta":
-        st.subheader("📊 Module Comptabilité")
-        df_compta = load_table("compta")
-        if not df_compta.empty:
-            st.dataframe(df_compta, use_container_width=True)
-        else:
-            st.info("Aucune écriture comptable")
-
-    # on s'arrête là sur la page d'accueil
-    st.stop()
-
-# =====================================================
-# SI ON ARRIVE ICI : UN MODULE EST SELECTIONNÉ
-# =====================================================
-
-# barre latérale commune
-with st.sidebar:
-    st.markdown("## 👤 {st.session_state.user_name}")
-    st.markdown("**Rôle : {st.session_state.user_role}**")
-    st.info("ASYMAS BUSINESS v3.0")
-    if st.button("🏠 Retour Accueil"):
-        st.session_state.selected_module = None
-        st.query_params.clear()
-        st.rerun()
-    if st.button("🔄 Actualiser"):
-        st.cache_data.clear()
-        st.rerun()
-    if st.button("🔒 Déconnexion"):
-        st.session_state.clear()
-        st.rerun()
-
-# chargement global des tables pour les modules
-df_biens = load_table("biens")
-df_articles = load_table("articles")
-df_voitures = load_table("voitures")
-df_compta = load_table("compta")
-df_factures = load_table("factures_proforma")
-df_devis = load_table("devis")
-df_utilisateurs = load_table("utilisateurs")
-
-if "montant" not in df_compta.columns:
-    df_compta["montant"] = 0
-if "type" not in df_compta.columns:
-    df_compta["type"] = "Inconnu"
-if "date" in df_compta.columns:
-    df_compta["date"] = pd.to_datetime(df_compta["date"], errors="coerce")
-    df_compta = df_compta.sort_values("date", ascending=False)
-
-# Vérification permission du module demandé
-perm_map = {
-    "Commerce": "commerce",
-    "Stock": "stock",
-    "Immo": "immobilier",
-    "Auto": "automobile",
-    "Compta": "comptabilite",
-    "Factures": "factures",
-}
-module = st.session_state.selected_module
-perm_key = perm_map.get(module, "")
-
-if perm_key and not check_perm(perm_key):
-    st.error(f"⛔ Pas d'autorisation pour {module}")
-    if st.button("← Retour Accueil"):
-        st.session_state.selected_module = None
-        st.query_params.clear()
-        st.rerun()
-    st.stop()
-
-# entête module
-col1, col2 = st.columns([6, 1])
-with col1:
-    st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
-    st.markdown(f"### Module : {module}")
-with col2:
-    if st.button("← Retour Accueil"):
-        st.session_state.selected_module = None
-        st.query_params.clear()
-        st.rerun()
-
-st.divider()
-
-# ====================
-# MODULE : COMMERCE
-# ====================
-if module == "Commerce":
-    st.markdown("## 🛍️ Commerce - Point de Vente")
-
-    if "panier_commerce" not in st.session_state:
-        st.session_state.panier_commerce = []
-    if "vente_finie" not in st.session_state:
-        st.session_state.vente_finie = False
-    if "pdf_data" not in st.session_state:
-        st.session_state.pdf_data = None
-    if "num_fact" not in st.session_state:
-        st.session_state.num_fact = None
-    if "client_com_nom" not in st.session_state:
-        st.session_state.client_com_nom = ""
-    if "client_com_tel" not in st.session_state:
-        st.session_state.client_com_tel = "+243..."
-    if "last_qr" not in st.session_state:
-        st.session_state.last_qr = ""
-
-    col_gauche, col_droite = st.columns([2, 1])
-
-    with col_gauche:
-        st.subheader("👤 Client")
-        st.session_state.client_com_nom = st.text_input(
-            "Nom Client", value=st.session_state.client_com_nom, key="nom_client_c"
-        )
-        st.session_state.client_com_tel = st.text_input(
-            "Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c"
-        )
-
-        st.subheader("🔍 Scanner QR Code")
-        col_scan1, col_scan2 = st.columns([2, 1])
-        with col_scan1:
-            qr_code = qrcode_scanner(key="qr_commerce_unique")
-        with col_scan2:
-            recherche_manuelle = st.text_input(
-                "🔎 Recherche manuelle",
-                placeholder="Tape le nom...",
-                key="search_man_c",
-            )
-
-        if qr_code and qr_code != st.session_state.last_qr:
-            st.session_state.last_qr = qr_code
+    # Sidebar commune
+    with st.sidebar:
+        st.markdown(f"## 👤 {st.session_state.user_name}")
+        st.markdown(f"**Rôle : {st.session_state.user_role}**")
+        st.info("ASYMAS BUSINESS v3.0")
+        if st.button("🏠 Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        if st.button("🔄 Actualiser"):
+            st.cache_data.clear()
+            st.rerun()
+        if st.button("🔒 Déconnexion"):
+            st.session_state.clear()
             st.rerun()
 
-        df_articles_filtre = df_articles[df_articles["stock"] > 0].copy()
+    # Vérification permission
+    perm_map = {
+        "Commerce": "commerce",
+        "Stock": "stock",
+        "Immo": "immobilier",
+        "Auto": "automobile",
+        "Compta": "comptabilite",
+        "Factures": "factures",
+    }
+    module = st.session_state.selected_module
+    perm_key = perm_map.get(module, "")
 
-        if qr_code:
-            qr_clean = str(qr_code).strip().upper()
-            df_articles_filtre = df_articles_filtre[
-                df_articles_filtre["code_qr"]
-                .astype(str)
-                .str.strip()
-                .str.upper()
-                == qr_clean
-            ]
-        elif recherche_manuelle:
-            mask = df_articles_filtre["nom_article"].str.contains(
-                recherche_manuelle, case=False, na=False
+    if perm_key and not check_perm(perm_key):
+        st.error(f"⛔ Pas d'autorisation pour {module}")
+        if st.button("← Retour Accueil"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+        st.stop()
+
+    # Entête module
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        st.markdown(f"# ASYMAS BUSINESS - {st.session_state.user_name}")
+        st.markdown(f"### Module : {module}")
+    with col2:
+        if st.button("← Retour Accueil", key="retour_top"):
+            st.session_state.selected_module = None
+            st.query_params.clear()
+            st.rerun()
+
+    st.divider()
+
+    # ====================
+    # MODULE : COMMERCE
+    # ====================
+    if module == "Commerce":
+        st.markdown("## 🛍️ Commerce - Point de Vente")
+
+        if "panier_commerce" not in st.session_state:
+            st.session_state.panier_commerce = []
+        if "vente_finie" not in st.session_state:
+            st.session_state.vente_finie = False
+        if "pdf_data" not in st.session_state:
+            st.session_state.pdf_data = None
+        if "num_fact" not in st.session_state:
+            st.session_state.num_fact = None
+        if "client_com_nom" not in st.session_state:
+            st.session_state.client_com_nom = ""
+        if "client_com_tel" not in st.session_state:
+            st.session_state.client_com_tel = "+243..."
+        if "last_qr" not in st.session_state:
+            st.session_state.last_qr = ""
+
+        col_gauche, col_droite = st.columns([2, 1])
+
+        with col_gauche:
+            st.subheader("👤 Client")
+            st.session_state.client_com_nom = st.text_input(
+                "Nom Client", value=st.session_state.client_com_nom, key="nom_client_c"
             )
-            df_articles_filtre = df_articles_filtre[mask]
-
-        if df_articles_filtre.empty:
-            st.warning("Aucun produit disponible")
-        else:
-            options_articles = []
-            for _, p in df_articles_filtre.iterrows():
-                qr_txt = f" | QR:{p['code_qr']}" if "code_qr" in p and p["code_qr"] else ""
-                prix_usd = (
-                    f" | {p['prix_vente_usd']:,.2f}$" if "prix_vente_usd" in p else ""
-                )
-                options_articles.append(
-                    f"{p['nom_article']} | Stock:{int(p['stock'])} | "
-                    f"{p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}"
-                )
-
-            article_choisi = st.selectbox(
-                "Sélectionne le produit", options_articles, key="select_article_unique"
+            st.session_state.client_com_tel = st.text_input(
+                "Téléphone Client", value=st.session_state.client_com_tel, key="tel_client_c"
             )
 
-            if article_choisi:
-                id_choisi = int(article_choisi.split("ID:")[1])
-                p = df_articles_filtre[df_articles_filtre["id"] == id_choisi].iloc[0]
-                c1, c2, c3 = st.columns(3)
-                qte_max = int(p["stock"])
-                qte = c1.number_input(
-                    "Quantité",
-                    min_value=1,
-                    max_value=qte_max,
-                    value=1,
-                    key="qte_c_unique",
+            st.subheader("🔍 Scanner QR Code")
+            col_scan1, col_scan2 = st.columns([2, 1])
+            with col_scan1:
+                qr_code = qrcode_scanner(key="qr_commerce_unique")
+            with col_scan2:
+                recherche_manuelle = st.text_input(
+                    "🔎 Recherche manuelle",
+                    placeholder="Tape le nom...",
+                    key="search_man_c",
                 )
-                c2.metric("Stock dispo", qte_max)
-                c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
 
-                if st.button(
-                    "🛒 AJOUTER AU PANIER",
-                    type="primary",
-                    use_container_width=True,
-                    key="add_article_unique",
-                ):
-                    existant = next(
-                        (
-                            item
-                            for item in st.session_state.panier_commerce
-                            if item["id"] == int(p["id"])
-                        ),
-                        None,
+            if qr_code and qr_code!= st.session_state.last_qr:
+                st.session_state.last_qr = qr_code
+                st.rerun()
+
+            df_articles = load_table("articles")
+            df_articles_filtre = df_articles[df_articles["stock"] > 0].copy() if not df_articles.empty else pd.DataFrame()
+
+            if qr_code and not df_articles_filtre.empty:
+                qr_clean = str(qr_code).strip().upper()
+                df_articles_filtre = df_articles_filtre[
+                    df_articles_filtre["code_qr"].astype(str).str.strip().str.upper() == qr_clean
+                ]
+            elif recherche_manuelle and not df_articles_filtre.empty:
+                mask = df_articles_filtre["nom_article"].str.contains(recherche_manuelle, case=False, na=False)
+                df_articles_filtre = df_articles_filtre[mask]
+
+            if df_articles_filtre.empty:
+                st.warning("Aucun produit disponible")
+            else:
+                options_articles = []
+                for _, p in df_articles_filtre.iterrows():
+                    qr_txt = f" | QR:{p['code_qr']}" if "code_qr" in p and p["code_qr"] else ""
+                    prix_usd = f" | {p['prix_vente_usd']:,.2f}$" if "prix_vente_usd" in p else ""
+                    options_articles.append(
+                        f"{p['nom_article']} | Stock:{int(p['stock'])} | {p['prix_vente']:,.0f} FC{prix_usd}{qr_txt} | ID:{p['id']}"
                     )
-                    if existant:
-                        if existant["qte"] + qte <= qte_max:
-                            existant["qte"] += qte
-                            st.success(f"Panier mis à jour: {existant['qte']}x")
-                        else:
-                            st.error(f"Stock insuffisant! Max dispo: {qte_max}")
-                    else:
-                        st.session_state.panier_commerce.append(
-                            {
-                                "id": int(p["id"]),
-                                "nom": str(p["nom_article"]),
-                                "pu": float(p["prix_vente"]),
-                                "qte": int(qte),
-                                "code_qr": p.get("code_qr", ""),
-                                "stock_max": qte_max,
-                            }
-                        )
-                        st.success("Ajouté au panier")
+
+                article_choisi = st.selectbox("Sélectionne le produit", options_articles, key="select_article_unique")
+
+                if article_choisi:
+                    id_choisi = int(article_choisi.split("ID:")[1])
+                    p = df_articles_filtre[df_articles_filtre["id"] == id_choisi].iloc[0]
+                    c1, c2, c3 = st.columns(3)
+                    qte_max = int(p["stock"])
+                    qte = c1.number_input("Quantité", min_value=1, max_value=qte_max, value=1, key="qte_c_unique")
+                    c2.metric("Stock dispo", qte_max)
+                    c3.metric("Prix unitaire", f"{p['prix_vente']:,.0f} FC")
+
+                    if st.button("🛒 AJOUTER AU PANIER", type="primary", use_container_width=True, key="add_article_unique"):
+                        existant = next((item for item in st.session_state.panier_commerce if item["id"] == int(p["id"])), None)
+                        if existant:
+                            if existant["qte"] + qte <= qte_max:
+                                existant["qte"] += qte
+                                st.success(f"Panier mis à jour: {existant['qte']}x")
+                            else:
+                        st.error(f"Stock insuffisant ! Max dispo: {qte_max}")
+                else:
+                    st.session_state.panier_commerce.append(
+                        {
+                            "id": int(p["id"]),
+                            "nom": str(p["nom_article"]),
+                            "pu": float(p["prix_vente"]),
+                            "qte": int(qte),
+                            "code_qr": p.get("code_qr", ""),
+                            "stock_max": qte_max,
+                        }
+                    )
+                    st.success("Ajouté au panier")
+                st.rerun()
+
+    with col_droite:
+        st.subheader("🧾 Panier")
+        
+        if st.session_state.panier_commerce:
+            total = 0
+            for i, item in enumerate(st.session_state.panier_commerce):
+                col1, col2, col3 = st.columns([4, 2, 1])
+                sous_total = item["pu"] * item["qte"]
+                total += sous_total
+                col1.write(f"{item['nom'][:20]}...")
+                col2.write(f"{item['qte']} x {item['pu']:,.0f}")
+                if col3.button("❌", key=f"del_{i}"):
+                    st.session_state.panier_commerce.pop(i)
                     st.rerun()
+            
+            st.markdown("---")
+            st.metric("TOTAL", f"{total:,.0f} FC")
+            
+            if st.button("💰 FINALISER VENTE", type="primary", use_container_width=True):
+                if not st.session_state.client_com_nom.strip():
+                    st.error("Entre le nom du client")
+                else:
+                    details_list = [
+                        {"nom": item["nom"], "qte": item["qte"], "pu": item["pu"]}
+                        for item in st.session_state.panier_commerce
+                    ]
+                    num_fact, pdf_bytes = creer_facture_auto(
+                        type_op="Vente Commerce",
+                        client=st.session_state.client_com_nom,
+                        details=f"{len(details_list)} articles",
+                        montant=total,
+                        devise="FC",
+                        details_list=details_list,
+                        tel=st.session_state.client_com_tel,
+                    )
+                    st.session_state.num_fact = num_fact
+                    st.session_state.pdf_data = pdf_bytes
+                    st.session_state.vente_finie = True
+                    
+                    # Déduire le stock
+                    for item in st.session_state.panier_commerce:
+                        supabase.table("articles").update(
+                            {"stock": item["stock_max"] - item["qte"]}
+                        ).eq("id", item["id"]).execute()
+                    st.rerun()
+        else:
+            st.info("Panier vide")
+
+        if st.session_state.vente_finie and st.session_state.pdf_data:
+            st.success(f"✅ Facture {st.session_state.num_fact} créée")
+            st.download_button(
+                "📥 Télécharger Facture PDF",
+                st.session_state.pdf_data,
+                file_name=f"{st.session_state.num_fact}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+            if st.button("🔄 Nouvelle Vente"):
+                st.session_state.panier_commerce = []
+                st.session_state.vente_finie = False
+                st.session_state.pdf_data = None
+                st.session_state.num_fact = None
+                st.rerun()
 
     with col_droite:
         st.subheader("🛒 Panier")
