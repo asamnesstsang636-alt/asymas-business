@@ -98,11 +98,9 @@ if "logged_in" not in st.session_state:
     st.session_state.perms = {}
     st.session_state.user_cats = []
 
-# module sélectionné (Commerce, Stock, Immo, Auto, Compta, Factures)
 if "selected_module" not in st.session_state:
     st.session_state.selected_module = None
 
-# synchroniser avec query params (ex: ?module=Commerce)
 if "module" in st.query_params and st.session_state.selected_module is None:
     st.session_state.selected_module = st.query_params["module"]
     st.rerun()
@@ -149,12 +147,12 @@ def safe_pdf_txt(txt):
     txt = str(txt)
     txt = (
         txt.replace("—", "-")
-        .replace("–", "-")
-        .replace("’", "'")
-        .replace("“", '"')
-        .replace("”", '"')
-        .replace("•", "-")
-        .replace("…", "...")
+       .replace("–", "-")
+       .replace("’", "'")
+       .replace("“", '"')
+       .replace("”", '"')
+       .replace("•", "-")
+       .replace("…", "...")
     )
     txt = "".join(c if ord(c) < 128 else "?" for c in txt)
     return txt.replace("\n", " ").replace("\r", "").strip()
@@ -174,7 +172,6 @@ def generer_pdf_facture(
     pdf.add_page()
     pdf.set_auto_page_break(auto=False, margin=10)
 
-    # Bandeau
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 35, "F")
     pdf.set_text_color(255, 255, 255)
@@ -233,7 +230,6 @@ def generer_pdf_facture(
     pdf.cell(85, 6, "", "LRB", 1, "L")
     y_pos += 14
 
-    # Tableau
     pdf.set_fill_color(0, 102, 0)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
@@ -261,7 +257,6 @@ def generer_pdf_facture(
             pdf.cell(40, 7, f"{montant_item:,.0f}", 1, 1, "R")
             y_pos += 7
 
-    # Total
     pdf.set_fill_color(255, 204, 0)
     pdf.set_font("Arial", "B", 11)
     pdf.set_xy(10, y_pos)
@@ -273,7 +268,6 @@ def generer_pdf_facture(
         pdf.add_page()
         y_pos = 30
 
-    # Signature
     pdf.set_xy(10, y_pos)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(0, 8, "SIGNATURE RESPONSABLE:", ln=True)
@@ -299,8 +293,11 @@ def generer_pdf_facture(
         f"Client: {client}\nMontant: {montant:,.0f} {devise}"
     )
     qr_path = generer_qrcode(qr_data)
-    pdf.image(qr_path, x=155, y=y_pos - 25, w=25)
-    os.unlink(qr_path)
+    try:
+        pdf.image(qr_path, x=155, y=y_pos - 25, w=25)
+    finally:
+        if os.path.exists(qr_path):
+            os.unlink(qr_path)
 
     return bytes(pdf.output(dest="S"))
 
@@ -431,16 +428,15 @@ def check_perm(key: str) -> bool:
     return st.session_state.user_role == "PDG" or perms.get(key, False)
 
 # =========================
-# ÉCRAN LOGIN (cercle seul)
+# ÉCRAN LOGIN
 # =========================
 if not st.session_state.logged_in:
     st.markdown(
-        """
+        f"""
     <div style="position:relative;width:100vw;height:100vh;
                 background:radial-gradient(ellipse at center 55%,
                 rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
                 overflow:hidden;">
-        <!-- Carte bas -->
         <div style="position:absolute;bottom:10%;left:50%;
                     transform:translateX(-50%);
                     width:340px;height:170px;
@@ -449,12 +445,9 @@ if not st.session_state.logged_in:
                     box-shadow:0 35px 70px rgba(0,0,0,0.9);
                     border:3px solid #444;">
         </div>
-
-        <!-- Cercle central -->
         <div style="position:absolute;top:50%;left:50%;
                     transform:translate(-50%,-50%);
                     width:450px;height:450px;">
-
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:380px;height:380px;
@@ -463,7 +456,6 @@ if not st.session_state.logged_in:
                         box-shadow:0 0 80px rgba(255,215,0,0.8);
                         animation:pulseRing 3s ease-in-out infinite;">
             </div>
-
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:300px;height:300px;
@@ -471,7 +463,6 @@ if not st.session_state.logged_in:
                         border-radius:50%;
                         animation:rotate 15s linear infinite;">
             </div>
-
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:220px;height:220px;
@@ -479,7 +470,6 @@ if not st.session_state.logged_in:
                         border-radius:50%;
                         box-shadow:0 0 90px #FFD700;">
             </div>
-
             <div style="position:absolute;top:50%;left:50%;
                         transform:translate(-50%,-50%);
                         width:170px;height:170px;
@@ -496,20 +486,19 @@ if not st.session_state.logged_in:
             </div>
         </div>
     </div>
-
     <style>
-    @keyframes pulseRing{
-        0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}
-        50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}
-    }
-    @keyframes pulseCart{
-        0%,100%{transform:translate(-50%,-50%) scale(1);}
-        50%{transform:translate(-50%,-50%) scale(1.18);}
-    }
-    @keyframes rotate{
-        from{transform:translate(-50%,-50%) rotate(0deg);}
-        to{transform:translate(-50%,-50%) rotate(360deg);}
-    }
+    @keyframes pulseRing{{
+        0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
+        50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    }}
+    @keyframes pulseCart{{
+        0%,100%{{transform:translate(-50%,-50%) scale(1);}}
+        50%{{transform:translate(-50%,-50%) scale(1.18);}}
+    }}
+    @keyframes rotate{{
+        from{{transform:translate(-50%,-50%) rotate(0deg);}}
+        to{{transform:translate(-50%,-50%) rotate(360deg);}}
+    }}
     </style>
     """,
         unsafe_allow_html=True,
@@ -544,10 +533,8 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==================================
-# ICI : UTILISATEUR CONNECTÉ
+# UTILISATEUR CONNECTÉ
 # ==================================
-
-# Charger permissions sous forme dict
 perms = st.session_state.perms
 if isinstance(perms, str):
     try:
@@ -559,7 +546,6 @@ if isinstance(perms, str):
 # ACCUEIL : CERCLE + 6 BOUTONS
 # =========================
 if st.session_state.selected_module is None:
-    # calcul des droits pour les 6 modules
     can_commerce = check_perm("commerce")
     can_auto = check_perm("automobile")
     can_factures = check_perm("factures")
@@ -592,7 +578,6 @@ if st.session_state.selected_module is None:
                 rgba(255,215,0,0.7) 0%, rgba(15,15,15,1) 85%);
                 overflow:hidden;">
 
-        <!-- Cercle central (même design que login) -->
         <div style="position:absolute;top:50%;left:50%;
                     transform:translate(-50%,-50%);
                     width:450px;height:450px;">
@@ -634,7 +619,6 @@ if st.session_state.selected_module is None:
             </div>
         </div>
 
-        <!-- Boutons modules autour -->
         <button onclick="openModule('Commerce')"
             style="position:absolute;top:50%;left:50%;
                    transform:translate(-50%,-50%) rotate(90deg) translate(190px) rotate(-90deg);
@@ -697,24 +681,23 @@ if st.session_state.selected_module is None:
     </div>
 
     <style>
-    @keyframes pulseRing{
-        0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7;}
-        50%{transform:translate(-50%,-50%) scale(1.12);opacity:1;}
-    }
-    @keyframes pulseCart{
-        0%,100%{transform:translate(-50%,-50%) scale(1);}
-        50%{transform:translate(-50%,-50%) scale(1.18);}
-    }
-    @keyframes rotate{
-        from{transform:translate(-50%,-50%) rotate(0deg);}
-        to{transform:translate(-50%,-50%) rotate(360deg);}
-    }
+    @keyframes pulseRing{{
+        0%,100%{{transform:translate(-50%,-50%) scale(1);opacity:0.7;}}
+        50%{{transform:translate(-50%,-50%) scale(1.12);opacity:1;}}
+    }}
+    @keyframes pulseCart{{
+        0%,100%{{transform:translate(-50%,-50%) scale(1);}}
+        50%{{transform:translate(-50%,-50%) scale(1.18);}}
+    }}
+    @keyframes rotate{{
+        from{{transform:translate(-50%,-50%) rotate(0deg);}}
+        to{{transform:translate(-50%,-50%) rotate(360deg);}}
+    }}
     </style>
     """
 
     components.html(html_buttons, height=700)
 
-    # petit menu basique pour déconnexion
     col_logout, col_empty = st.columns([1, 5])
     with col_logout:
         if st.button("🚪 Déconnexion"):
