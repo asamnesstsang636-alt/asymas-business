@@ -374,8 +374,10 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
         details_list = [{"nom": details, "qte": 1, "pu": montant}]
     pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode, type_facture)
     try:
+        user_id = supabase.auth.get_user().user.id
         colonnes_compta = get_table_columns("compta")
         data_compta = {
+            "user_id": user_id,
             "type": "Revenu",
             "description": str(f"{type_op} - {client} - {details}"),
             "montant": float(montant),
@@ -443,7 +445,7 @@ st.markdown("""
   \"short_name\": \"ASYMAS\",
   \"start_url\": \".\",
   \"display\": \"standalone\",
-  \"background_color\": \"#000000\",
+  \"background_color\": \"#000\",
   \"theme_color\": \"#00ff41\",
   \"description\": \"Agriculture Commerce Immobilier Automobile\",
   \"icons\": [{
@@ -503,7 +505,6 @@ if st.session_state.user_role is None:
                 role_connect = profil.split(" - ")[1] if " - " in profil else profil
                 df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
                 df_users_login = pd.DataFrame(df_users_login)
-                st.write(df_users_login) # supprime ça après
                 user_data = df_users_login[df_users_login['nom'] == nom_connect]
                 if not user_data.empty and password == user_data.iloc[0]['password']:
                     st.session_state.user_role = user_data.iloc[0]['role']
@@ -620,6 +621,8 @@ if "📊 Dashboard" in tab_map:
         else:
             col4.metric("💰 Revenus", "0 FC")
 
+# === COMMERCE + GESTION STOCK CORRIGÉ ===
+# === COMMERCE + GESTION STOCK CORRIGÉ ===
 if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
@@ -703,6 +706,7 @@ if "🛍️ Commerce" in tab_map:
                             })
                             st.success("Ajouté au panier")
                         st.rerun()
+
         with col_droite:
             st.subheader("🛒 Panier")
             if st.session_state.vente_finie and st.session_state.pdf_data:
@@ -755,8 +759,10 @@ if "🛍️ Commerce" in tab_map:
                         st.error("Nom du client obligatoire!")
                     else:
                         try:
+                            user_id = supabase.auth.get_user().user.id
                             num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                             details_list = []
+
                             for item in st.session_state.panier_commerce:
                                 supabase.table("ventes").insert({
                                     "numero_facture": num_fact,
@@ -774,8 +780,11 @@ if "🛍️ Commerce" in tab_map:
                                     "pu": item['pu'],
                                     "total": item['qte'] * item['pu']
                                 })
+
                             details_json = json.dumps(details_list)
+
                             supabase.table("compta").insert({
+                                "user_id": user_id,
                                 "date": str(date.today()),
                                 "type": "Revenu",
                                 "categorie": "Vente Commerce",
@@ -786,10 +795,21 @@ if "🛍️ Commerce" in tab_map:
                                 "details": details_json,
                                 "utilisateur": st.session_state.user_name
                             }).execute()
+
+                            supabase.table("operations_commerce").insert({
+                                "user_id": user_id,
+                                "type_operation": "vente",
+                                "reference": num_fact,
+                                "montant": float(total_panier),
+                                "statut": "valide",
+                                "created_at": datetime.now().isoformat()
+                            }).execute()
+
                             pdf_bytes = generer_pdf_facture(
                                 num_fact, "Vente Commerce", st.session_state.client_com_nom,
                                 details_list, total_panier, "FC", st.session_state.client_com_tel
                             )
+
                             st.session_state.pdf_data = pdf_bytes
                             st.session_state.num_fact = num_fact
                             st.session_state.vente_finie = True
@@ -803,7 +823,6 @@ if "🛍️ Commerce" in tab_map:
 if "📦 Gestion Stock" in tab_map:
     with tab_map["📦 Gestion Stock"]:
         st.markdown("## 📦 Gestion Stock Commerce - Articles & Pertes")
-        
         tab_stock, tab_ajout, tab_mvt, tab_pertes = st.tabs(["📊 Stock Actuel", "➕ Ajouter Article", "📈 Mouvements", "⚠️ Pertes & Casses"])
 
         with tab_stock:
@@ -825,7 +844,7 @@ if "📦 Gestion Stock" in tab_map:
                         st.write(f"PA: {row.get('prix_achat',0):,.0f}")
                     with col4:
                         st.write(f"PV: {row.get('prix_vente',0):,.0f} FC")
-                    
+
                     with st.expander(f"Modifier/Supprimer {row['nom_article']}"):
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -838,7 +857,7 @@ if "📦 Gestion Stock" in tab_map:
                             new_prix_usd = st.number_input("Prix Vente $", value=float(row.get('prix_vente_usd',0)), key=f"pusd_art_{row['id']}")
                         with c3:
                             new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_art_{row['id']}")
-                        
+
                         c1, c2 = st.columns(2)
                         if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                             try:
@@ -917,7 +936,7 @@ if "📦 Gestion Stock" in tab_map:
                 mvts = supabase.table('mouvements_stock').select("*").order("created_at", desc=True).limit(50).execute().data
             except:
                 mvts = []
-            
+
             if not mvts:
                 st.info("Aucun mouvement enregistré")
             else:
@@ -926,9 +945,8 @@ if "📦 Gestion Stock" in tab_map:
 
         with tab_pertes:
             st.subheader("⚠️ Déclarer Perte/Casse Article Commerce")
-            
             articles_dispo = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
-            
+
             if articles_dispo.empty:
                 st.warning("Aucun article en stock pour déclarer une perte")
             else:
@@ -941,21 +959,20 @@ if "📦 Gestion Stock" in tab_map:
                     motif_perte = st.selectbox("Motif", ["Casse", "Vol", "Péremption", "Défaut fabrication", "Accident", "Autre"])
                     detail_perte = st.text_area("Détails", placeholder="Ex: Carton mouillé lors livraison")
                     responsable = st.text_input("Déclaré par", value=st.session_state.user_name)
-                
+
                 if article_choisi:
                     article_data = article_dict[article_choisi]
                     valeur_perte = qte_perte * float(article_data.get('prix_achat', 0))
                     st.error(f"💸 Valeur de la perte : {valeur_perte:,.0f} FC")
-                
+
                 if st.button("🚨 ENREGISTRER LA PERTE", type="primary", width="stretch"):
                     if article_choisi and qte_perte > 0:
                         article_data = article_dict[article_choisi]
                         try:
-                            # 1. Déduire du stock
+                            user_id = supabase.auth.get_user().user.id
                             nouveau_stock = int(article_data['stock']) - qte_perte
                             supabase.table('articles').update({"stock": nouveau_stock}).eq("id", int(article_data['id'])).execute()
-                            
-                            # 2. Enregistrer mouvement
+
                             supabase.table('mouvements_stock').insert({
                                 "article_id": int(article_data['id']),
                                 "article_nom": str(article_data['nom_article']),
@@ -966,27 +983,36 @@ if "📦 Gestion Stock" in tab_map:
                                 "created_by": responsable,
                                 "created_at": datetime.now().isoformat()
                             }).execute()
-                            
+
+                            supabase.table('operations_commerce').insert({
+                                "user_id": user_id,
+                                "type_operation": "perte_stock",
+                                "reference": article_data['nom_article'],
+                                "montant": float(valeur_perte),
+                                "statut": "valide",
+                                "created_at": datetime.now().isoformat()
+                            }).execute()
+
                             st.success(f"✅ Perte enregistrée. Nouveau stock {article_data['nom_article']}: {nouveau_stock}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur enregistrement perte")
                             st.code(repr(e))
-            
+
             st.divider()
             st.subheader("📋 Historique Pertes Commerce")
             try:
                 pertes = supabase.table('mouvements_stock').select("*").eq("type", "PERTE").order("created_at", desc=True).limit(20).execute().data
             except:
                 pertes = []
-            
+
             if not pertes:
                 st.info("Aucune perte enregistrée")
             else:
                 total_pertes = sum(p.get('valeur', 0) for p in pertes)
                 st.metric("💸 TOTAL PERTES COMMERCE", f"{total_pertes:,.0f} FC")
-                
+
                 for p in pertes:
                     with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
                         col1, col2, col3 = st.columns(3)
@@ -1001,6 +1027,10 @@ if "📦 Gestion Stock" in tab_map:
                                 if st.button("🗑️ Supprimer", key=f"del_perte_com_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
+    
+        
+        
+            
 if "🏠 Immobilier" in tab_map:
     with tab_map["🏠 Immobilier"]:
         st.markdown("## 🏠 Immobilier - Générer Facture")
