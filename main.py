@@ -1584,17 +1584,19 @@ import streamlit as st
 from fpdf import FPDF
 import qrcode
 from io import BytesIO
+from supabase import create_client
 
-# ===== FONCTION PDF =====
-def generer_pdf_facture_ucad(numero, client, localisation, telephone,
-                             prestations, devise, modes_paiement,
-                             ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
-                             email="asamnesstsang636@gmail.com",
-                             adresse="Beni, Nord-Kivu, RDC"):
+# === CONFIG SUPABASE ===
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ===== FONCTIONS PDF =====
+def generer_pdf_base(numero, titre, client, localisation, telephone, prestations,
+                     devise, modes_paiement, ing_nom, ing_tel, email, adresse):
     pdf = FPDF()
     pdf.add_page()
 
-    # ENTÊTE ASYMAS
     pdf.set_y(0)
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 32, 'F')
@@ -1603,7 +1605,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "FACTURE N", 0, 1, 'R', True)
+    pdf.cell(0, 10, titre, 0, 1, 'R', True)
     pdf.set_x(10)
     pdf.set_font("Arial", size=10)
     pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True)
@@ -1620,7 +1622,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     pdf.ln(8)
 
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, "FACTURE D'HONORAIRES", ln=True, align='C')
+    pdf.cell(0, 8, titre.replace("N", ""), ln=True, align='C')
     pdf.ln(3)
 
     pdf.set_font("Arial", 'B', 11)
@@ -1632,20 +1634,17 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
 
     total = sum(float(p['montant']) for p in prestations)
 
-    # TABLEAU DETAIL DES ECHEANCES
     pdf.set_font("Arial", 'B', 10)
-    pdf.cell(0, 6, "Détail des échéances", ln=True, align='C')
+    pdf.cell(0, 6, "Détail", ln=True, align='C')
     pdf.ln(2)
 
     pdf.set_font("Arial", 'B', 8)
     pdf.set_fill_color(200, 200, 200)
     pdf.cell(8, 6, "N°", 1, 0, 'C', True)
-    pdf.cell(45, 6, "Transaction", 1, 0, 'C', True)
+    pdf.cell(45, 6, "Désignation", 1, 0, 'C', True)
     pdf.cell(22, 6, "Montant", 1, 0, 'C', True)
-    pdf.cell(22, 6, "Date échéance", 1, 0, 'C', True)
     pdf.cell(32, 6, "Mode Règlement", 1, 0, 'C', True)
-    pdf.cell(22, 6, "Date paiement", 1, 0, 'C', True)
-    pdf.cell(39, 6, "N.Quittance", 1, 1, 'C', True)
+    pdf.cell(83, 6, "Détails", 1, 1, 'C', True)
 
     pdf.set_font("Arial", size=8)
     pdf.set_fill_color(255, 255, 255)
@@ -1655,26 +1654,24 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
         pdf.cell(8, 6, str(idx), 1, 0, 'C')
         pdf.cell(45, 6, item['designation'][:23], 1)
         pdf.cell(22, 6, f"{montant:,.0f}", 1, 0, 'R')
-        pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
         pdf.cell(32, 6, mode[:16], 1, 0, 'C')
-        pdf.cell(22, 6, "Délai raisonnable", 1, 0, 'C')
-        pdf.cell(39, 6, f"Q-{numero[-6:]}{idx}", 1, 1, 'C')
+        pdf.cell(83, 6, item.get('detail', '')[:40], 1, 1)
 
     pdf.set_font("Arial", 'B', 8)
     pdf.cell(75, 6, "Total", 1, 0, 'R', True)
     pdf.cell(22, 6, f"{total:,.0f}", 1, 0, 'R', True)
     pdf.cell(93, 6, "", 1, 1)
 
-    # MODES DE PAIEMENT SAISIS PAR TOI
-    pdf.ln(5)
-    pdf.set_font("Arial", 'I', 8)
-    pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
-    pdf.set_font("Arial", size=8)
-    pdf.cell(60, 5, "Mode de règlement", 1, 0, 'C')
-    pdf.cell(130, 5, "Détails / N° Compte", 1, 1, 'C')
-    for mode_nom, mode_detail in modes_paiement:
-        pdf.cell(60, 5, mode_nom, 1, 0, 'C')
-        pdf.cell(130, 5, mode_detail[:58], 1, 1, 'C')
+    if modes_paiement:
+        pdf.ln(5)
+        pdf.set_font("Arial", 'I', 8)
+        pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
+        pdf.set_font("Arial", size=8)
+        pdf.cell(60, 5, "Mode de règlement", 1, 0, 'C')
+        pdf.cell(130, 5, "Détails / N° Compte", 1, 1, 'C')
+        for mode_nom, mode_detail in modes_paiement:
+            pdf.cell(60, 5, mode_nom, 1, 0, 'C')
+            pdf.cell(130, 5, mode_detail[:58], 1, 1, 'C')
 
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 11)
@@ -1682,15 +1679,7 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     pdf.cell(100, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
     pdf.cell(90, 8, f"{total:,.2f}", 1, 1, 'R', True)
 
-    # QR CODE
-    qr_data = {
-        "numero": numero,
-        "client": client,
-        "total": total,
-        "devise": devise,
-        "prestations": [{"des": p['designation'], "montant": p['montant'], "mode": p.get('mode_paiement')} for p in prestations],
-        "modes_paiement": modes_paiement
-    }
+    qr_data = {"numero": numero, "client": client, "total": total, "devise": devise}
     qr = qrcode.QRCode(box_size=3, border=1)
     qr.add_data(json.dumps(qr_data))
     qr.make(fit=True)
@@ -1700,13 +1689,10 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     buf.seek(0)
     y_pos = pdf.get_y() + 10
     pdf.image(buf, x=160, y=y_pos, w=35)
-    pdf.set_xy(160, y_pos + 36)
-    pdf.set_font("Arial", 'I', 7)
-    pdf.cell(35, 4, "Scan pour vérifier", align='C')
 
     pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
+    pdf.cell(0, 8, "SIGNATURE:", ln=True)
     pdf.ln(15)
     pdf.line(15, pdf.get_y(), 105, pdf.get_y())
     pdf.ln(5)
@@ -1717,110 +1703,141 @@ def generer_pdf_facture_ucad(numero, client, localisation, telephone,
     out = pdf.output(dest='S')
     return bytes(out), total
 
+def generer_pdf_proforma(*args, **kwargs):
+    return generer_pdf_base(*args, titre="PROFORMA N", **kwargs)
+
+def generer_pdf_facture_honoraire(*args, **kwargs):
+    return generer_pdf_base(*args, titre="FACTURE HONORAIRES N", **kwargs)
+
+def generer_pdf_facture_fourniture(*args, **kwargs):
+    return generer_pdf_base(*args, titre="FACTURE FOURNITURE N", **kwargs)
+
+# ===== SAUVEGARDE DB + HISTORIQUE =====
+def sauvegarder_document(type_doc, numero, client, total, prestations, user_id):
+    table_map = {
+        "proforma": "factures_proforma",
+        "facture_honoraire": "factures",
+        "facture_fourniture": "factures"
+    }
+    table = table_map[type_doc]
+
+    # 1. Insérer document
+    res = supabase.table(table).insert({
+        "user_id": user_id,
+        "numero": numero,
+        "client": client,
+        "total": total,
+        "type": type_doc,
+        "created_at": datetime.now().isoformat()
+    }).execute()
+
+    doc_id = res.data[0]["id"] if res.data else None
+
+    # 2. Insérer lignes
+    if doc_id:
+        for p in prestations:
+            supabase.table("facture_items").insert({
+                "facture_id": doc_id,
+                "facture_type": table,
+                "designation": p["designation"],
+                "detail": p.get("detail", ""),
+                "montant": p["montant"]
+            }).execute()
+
+    # 3. Log opération ASYMAS
+    supabase.table("operations_asymas").insert({
+        "user_id": user_id,
+        "type_operation": f"creation_{type_doc}",
+        "reference": numero,
+        "montant": total,
+        "statut": "valide",
+        "created_at": datetime.now().isoformat()
+    }).execute()
+
 # ===== BLOC STREAMLIT =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 Factures - Honoraires")
+        st.markdown("## 📄 ASYMAS - Facturation")
 
-        if st.button("➕ Nouvelle Facture", type="primary"):
-            st.session_state.nouvelle_facture = True
+        type_doc = st.selectbox("Type de document",
+            ["Proforma Honoraires", "Facture Honoraires", "Facture Fourniture"])
 
-        if st.session_state.get("nouvelle_facture", False):
-            st.subheader("Créer une Facture d'Honoraires")
+        if st.button("➕ Nouveau Document", type="primary"):
+            st.session_state.nouveau_doc = True
+
+        if st.session_state.get("nouveau_doc", False):
+            st.subheader(f"Créer {type_doc}")
 
             col1, col2 = st.columns(2)
             with col1:
-                client_fac = st.text_input("Client", key="client_fac")
-                localisation_fac = st.text_input("Localisation", value="Beni, RDC", key="loc_fac")
+                client = st.text_input("Client")
+                localisation = st.text_input("Localisation", value="Beni, RDC")
             with col2:
-                tel_fac = st.text_input("Téléphone", placeholder="+243...", key="tel_fac")
-                devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac")
+                tel = st.text_input("Téléphone", placeholder="+243...")
+                devise = st.selectbox("Devise", ["USD", "FC", "€"])
 
-            # SAISIE DES 3 OU 4 MODES DE PAIEMENT AVEC LEURS INFOS
-            st.markdown("**Modes de paiement acceptés - saisissez 3 à 4 modes avec leurs détails**")
+            st.markdown("**Modes de paiement acceptés**")
             modes_paiement = []
             for i in range(4):
-                col_m1, col_m2 = st.columns([2, 3])
-                with col_m1:
-                    mode_nom = st.text_input(f"Mode {i+1}", key=f"mode_nom_{i}", placeholder="Ex: Espèces")
-                with col_m2:
-                    mode_detail = st.text_input(f"Détail {i+1}", key=f"mode_detail_{i}", placeholder="Ex: 0812... ou N° Compte BIA")
+                c1, c2 = st.columns([2, 3])
+                with c1:
+                    mode_nom = st.text_input(f"Mode {i+1}", key=f"mode_nom_{i}")
+                with c2:
+                    mode_detail = st.text_input(f"Détail {i+1}", key=f"mode_detail_{i}")
                 if mode_nom and mode_detail:
                     modes_paiement.append((mode_nom, mode_detail))
 
-            # Liste des noms de modes pour les selectbox
             choix_mode = [m[0] for m in modes_paiement] if modes_paiement else ["Espèces"]
 
-            st.markdown("**Prestations réalisées**")
-
-            choix_designation = [
-                "Frais d'étude technique",
-                "Main d'oeuvre",
-                "Visite de site",
-                "Rapport technique",
-                "Déplacement",
-                "Autre"
-            ]
-
+            st.markdown("**Prestations / Articles**")
+            choix_designation = ["Frais d'étude", "Main d'oeuvre", "Fourniture", "Autre"]
             prestations = []
-            for i in range(4):
-                st.markdown(f"**Désignation {i+1}**")
-                col_a, col_b, col_c, col_d = st.columns([2.5, 2.5, 1.5, 2])
-
-                with col_a:
-                    des_choix = st.selectbox(
-                        "Désignation",
-                        choix_designation,
-                        key=f"des_choix_fac_{i}",
-                        label_visibility="collapsed"
-                    )
-                    if des_choix == "Autre":
-                        des = st.text_input("Saisir", key=f"des_custom_fac_{i}", label_visibility="collapsed")
-                    else:
-                        des = des_choix
-
-                with col_b:
-                    detail = st.text_input("Détail", key=f"detail_fac_{i}", label_visibility="collapsed")
-
-                with col_c:
-                    montant = st.number_input("Montant", min_value=0.0, value=0.0, step=1000.0, key=f"montant_fac_{i}", label_visibility="collapsed")
-
-                with col_d:
-                    mode = st.selectbox("Mode paiement", choix_mode, key=f"mode_fac_{i}", label_visibility="collapsed")
-
+            for i in range(5):
+                st.markdown(f"**Ligne {i+1}**")
+                c1, c2, c3, c4 = st.columns([2.5, 2.5, 1.5, 2])
+                with c1:
+                    des_choix = st.selectbox("Désignation", choix_designation, key=f"des_{i}", label_visibility="collapsed")
+                    des = st.text_input("Saisir", key=f"des_custom_{i}", label_visibility="collapsed") if des_choix == "Autre" else des_choix
+                with c2:
+                    detail = st.text_input("Détail", key=f"detail_{i}", label_visibility="collapsed")
+                with c3:
+                    montant = st.number_input("Montant", min_value=0.0, value=0.0, step=1000.0, key=f"montant_{i}", label_visibility="collapsed")
+                with c4:
+                    mode = st.selectbox("Mode", choix_mode, key=f"mode_{i}", label_visibility="collapsed")
                 if des and montant > 0:
-                    prestations.append({
-                        "designation": des,
-                        "detail": detail,
-                        "montant": montant,
-                        "mode_paiement": mode
-                    })
+                    prestations.append({"designation": des, "detail": detail, "montant": montant, "mode_paiement": mode})
 
-            col_gen, col_ann = st.columns(2)
-            with col_gen:
-                if st.button("📄 Générer Facture PDF", type="primary", width="stretch"):
-                    if client_fac and prestations and modes_paiement:
-                        numero_fac = f"FAC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        pdf_bytes, total = generer_pdf_facture_ucad(
-                            numero_fac, client_fac, localisation_fac, tel_fac,
-                            prestations, devise_fac, modes_paiement
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("📄 Générer PDF", type="primary", use_container_width=True):
+                    if client and prestations:
+                        user_id = supabase.auth.get_user().user.id
+                        numero = f"{type_doc[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+                        gen_map = {
+                            "Proforma Honoraires": generer_pdf_proforma,
+                            "Facture Honoraires": generer_pdf_facture_honoraire,
+                            "Facture Fourniture": generer_pdf_facture_fourniture
+                        }
+
+                        pdf_bytes, total = gen_map[type_doc](
+                            numero, client, localisation, tel, prestations,
+                            devise, modes_paiement,
+                            "SAMY TSANGYA", "+256766515428",
+                            "asamnesstsang636@gmail.com", "Beni, Nord-Kivu, RDC"
                         )
-                        st.download_button(
-                            "⬇️ Télécharger Facture PDF",
-                            data=pdf_bytes,
-                            file_name=f"{numero_fac}.pdf",
-                            mime="application/pdf",
-                            width="stretch"
-                        )
-                        st.success(f"Facture {numero_fac} - Total: {total:,.2f} {devise_fac}")
+
+                        sauvegarder_document(type_doc.lower().replace(" ", "_"), numero, client, total, prestations, user_id)
+
+                        st.download_button("⬇️ Télécharger PDF", pdf_bytes, f"{numero}.pdf", mime="application/pdf", use_container_width=True)
+                        st.success(f"{numero} généré - Total: {total:,.2f} {devise}")
                     else:
-                        st.error("Client, au moins 1 prestation, et au moins 1 mode de paiement requis")
-            with col_ann:
-                if st.button("❌ Annuler", width="stretch"):
-                    st.session_state.nouvelle_facture = False
+                        st.error("Client et au moins 1 ligne requis")
+            with c2:
+                if st.button("❌ Annuler", use_container_width=True):
+                    st.session_state.nouveau_doc = False
                     st.rerun()
-
-            st.divider()
+          
 import json
 from datetime import datetime
 from fpdf import FPDF
