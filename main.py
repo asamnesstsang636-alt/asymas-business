@@ -374,10 +374,8 @@ def creer_facture_auto(type_op, client, details, montant, devise="FC", details_l
         details_list = [{"nom": details, "qte": 1, "pu": montant}]
     pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode, type_facture)
     try:
-        user_id = supabase.auth.get_user().user.id
         colonnes_compta = get_table_columns("compta")
         data_compta = {
-            "user_id": user_id,
             "type": "Revenu",
             "description": str(f"{type_op} - {client} - {details}"),
             "montant": float(montant),
@@ -445,7 +443,7 @@ st.markdown("""
   \"short_name\": \"ASYMAS\",
   \"start_url\": \".\",
   \"display\": \"standalone\",
-  \"background_color\": \"#000\",
+  \"background_color\": \"#000000\",
   \"theme_color\": \"#00ff41\",
   \"description\": \"Agriculture Commerce Immobilier Automobile\",
   \"icons\": [{
@@ -505,6 +503,7 @@ if st.session_state.user_role is None:
                 role_connect = profil.split(" - ")[1] if " - " in profil else profil
                 df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
                 df_users_login = pd.DataFrame(df_users_login)
+                st.write(df_users_login) # supprime ça après
                 user_data = df_users_login[df_users_login['nom'] == nom_connect]
                 if not user_data.empty and password == user_data.iloc[0]['password']:
                     st.session_state.user_role = user_data.iloc[0]['role']
@@ -621,8 +620,6 @@ if "📊 Dashboard" in tab_map:
         else:
             col4.metric("💰 Revenus", "0 FC")
 
-# === COMMERCE + GESTION STOCK CORRIGÉ ===
-# === COMMERCE + GESTION STOCK CORRIGÉ ===
 if "🛍️ Commerce" in tab_map:
     with tab_map["🛍️ Commerce"]:
         st.markdown("## 🛍️ Commerce - Point de Vente")
@@ -706,7 +703,6 @@ if "🛍️ Commerce" in tab_map:
                             })
                             st.success("Ajouté au panier")
                         st.rerun()
-
         with col_droite:
             st.subheader("🛒 Panier")
             if st.session_state.vente_finie and st.session_state.pdf_data:
@@ -759,10 +755,8 @@ if "🛍️ Commerce" in tab_map:
                         st.error("Nom du client obligatoire!")
                     else:
                         try:
-                            user_id = supabase.auth.get_user().user.id
                             num_fact = f"VTE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                             details_list = []
-
                             for item in st.session_state.panier_commerce:
                                 supabase.table("ventes").insert({
                                     "numero_facture": num_fact,
@@ -780,11 +774,8 @@ if "🛍️ Commerce" in tab_map:
                                     "pu": item['pu'],
                                     "total": item['qte'] * item['pu']
                                 })
-
                             details_json = json.dumps(details_list)
-
                             supabase.table("compta").insert({
-                                "user_id": user_id,
                                 "date": str(date.today()),
                                 "type": "Revenu",
                                 "categorie": "Vente Commerce",
@@ -795,21 +786,10 @@ if "🛍️ Commerce" in tab_map:
                                 "details": details_json,
                                 "utilisateur": st.session_state.user_name
                             }).execute()
-
-                            supabase.table("operations_commerce").insert({
-                                "user_id": user_id,
-                                "type_operation": "vente",
-                                "reference": num_fact,
-                                "montant": float(total_panier),
-                                "statut": "valide",
-                                "created_at": datetime.now().isoformat()
-                            }).execute()
-
                             pdf_bytes = generer_pdf_facture(
                                 num_fact, "Vente Commerce", st.session_state.client_com_nom,
                                 details_list, total_panier, "FC", st.session_state.client_com_tel
                             )
-
                             st.session_state.pdf_data = pdf_bytes
                             st.session_state.num_fact = num_fact
                             st.session_state.vente_finie = True
@@ -823,6 +803,7 @@ if "🛍️ Commerce" in tab_map:
 if "📦 Gestion Stock" in tab_map:
     with tab_map["📦 Gestion Stock"]:
         st.markdown("## 📦 Gestion Stock Commerce - Articles & Pertes")
+        
         tab_stock, tab_ajout, tab_mvt, tab_pertes = st.tabs(["📊 Stock Actuel", "➕ Ajouter Article", "📈 Mouvements", "⚠️ Pertes & Casses"])
 
         with tab_stock:
@@ -844,7 +825,7 @@ if "📦 Gestion Stock" in tab_map:
                         st.write(f"PA: {row.get('prix_achat',0):,.0f}")
                     with col4:
                         st.write(f"PV: {row.get('prix_vente',0):,.0f} FC")
-
+                    
                     with st.expander(f"Modifier/Supprimer {row['nom_article']}"):
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -857,7 +838,7 @@ if "📦 Gestion Stock" in tab_map:
                             new_prix_usd = st.number_input("Prix Vente $", value=float(row.get('prix_vente_usd',0)), key=f"pusd_art_{row['id']}")
                         with c3:
                             new_stock = st.number_input("Stock", value=int(row.get('stock',0)), key=f"stock_art_{row['id']}")
-
+                        
                         c1, c2 = st.columns(2)
                         if c1.button("✏️ Modifier", key=f"mod_art_{row['id']}", width="stretch"):
                             try:
@@ -936,7 +917,7 @@ if "📦 Gestion Stock" in tab_map:
                 mvts = supabase.table('mouvements_stock').select("*").order("created_at", desc=True).limit(50).execute().data
             except:
                 mvts = []
-
+            
             if not mvts:
                 st.info("Aucun mouvement enregistré")
             else:
@@ -945,8 +926,9 @@ if "📦 Gestion Stock" in tab_map:
 
         with tab_pertes:
             st.subheader("⚠️ Déclarer Perte/Casse Article Commerce")
+            
             articles_dispo = df_articles[df_articles['stock'] > 0].copy() if not df_articles.empty else pd.DataFrame()
-
+            
             if articles_dispo.empty:
                 st.warning("Aucun article en stock pour déclarer une perte")
             else:
@@ -959,20 +941,21 @@ if "📦 Gestion Stock" in tab_map:
                     motif_perte = st.selectbox("Motif", ["Casse", "Vol", "Péremption", "Défaut fabrication", "Accident", "Autre"])
                     detail_perte = st.text_area("Détails", placeholder="Ex: Carton mouillé lors livraison")
                     responsable = st.text_input("Déclaré par", value=st.session_state.user_name)
-
+                
                 if article_choisi:
                     article_data = article_dict[article_choisi]
                     valeur_perte = qte_perte * float(article_data.get('prix_achat', 0))
                     st.error(f"💸 Valeur de la perte : {valeur_perte:,.0f} FC")
-
+                
                 if st.button("🚨 ENREGISTRER LA PERTE", type="primary", width="stretch"):
                     if article_choisi and qte_perte > 0:
                         article_data = article_dict[article_choisi]
                         try:
-                            user_id = supabase.auth.get_user().user.id
+                            # 1. Déduire du stock
                             nouveau_stock = int(article_data['stock']) - qte_perte
                             supabase.table('articles').update({"stock": nouveau_stock}).eq("id", int(article_data['id'])).execute()
-
+                            
+                            # 2. Enregistrer mouvement
                             supabase.table('mouvements_stock').insert({
                                 "article_id": int(article_data['id']),
                                 "article_nom": str(article_data['nom_article']),
@@ -983,36 +966,27 @@ if "📦 Gestion Stock" in tab_map:
                                 "created_by": responsable,
                                 "created_at": datetime.now().isoformat()
                             }).execute()
-
-                            supabase.table('operations_commerce').insert({
-                                "user_id": user_id,
-                                "type_operation": "perte_stock",
-                                "reference": article_data['nom_article'],
-                                "montant": float(valeur_perte),
-                                "statut": "valide",
-                                "created_at": datetime.now().isoformat()
-                            }).execute()
-
+                            
                             st.success(f"✅ Perte enregistrée. Nouveau stock {article_data['nom_article']}: {nouveau_stock}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur enregistrement perte")
                             st.code(repr(e))
-
+            
             st.divider()
             st.subheader("📋 Historique Pertes Commerce")
             try:
                 pertes = supabase.table('mouvements_stock').select("*").eq("type", "PERTE").order("created_at", desc=True).limit(20).execute().data
             except:
                 pertes = []
-
+            
             if not pertes:
                 st.info("Aucune perte enregistrée")
             else:
                 total_pertes = sum(p.get('valeur', 0) for p in pertes)
                 st.metric("💸 TOTAL PERTES COMMERCE", f"{total_pertes:,.0f} FC")
-
+                
                 for p in pertes:
                     with st.expander(f"🔴 {p.get('article_nom')} - {abs(p.get('quantite',0))} - {p.get('created_at','')[:10]}"):
                         col1, col2, col3 = st.columns(3)
@@ -1027,10 +1001,6 @@ if "📦 Gestion Stock" in tab_map:
                                 if st.button("🗑️ Supprimer", key=f"del_perte_com_{p.get('id')}"):
                                     supabase.table('mouvements_stock').delete().eq("id", p.get('id')).execute()
                                     st.rerun()
-    
-        
-        
-            
 if "🏠 Immobilier" in tab_map:
     with tab_map["🏠 Immobilier"]:
         st.markdown("## 🏠 Immobilier - Générer Facture")
@@ -1614,17 +1584,17 @@ import streamlit as st
 from fpdf import FPDF
 import qrcode
 from io import BytesIO
-from supabase import create_client
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# ===== PDF BASE =====
-def generer_pdf_base(numero, titre, client, localisation, telephone, prestations,
-                     devise, modes_paiement, ing_nom, ing_tel, email, adresse):
+# ===== FONCTION PDF =====
+def generer_pdf_facture_ucad(numero, client, localisation, telephone,
+                             prestations, devise, modes_paiement,
+                             ing_nom="SAMY TSANGYA", ing_tel="+256766515428",
+                             email="asamnesstsang636@gmail.com",
+                             adresse="Beni, Nord-Kivu, RDC"):
     pdf = FPDF()
     pdf.add_page()
+
+    # ENTÊTE ASYMAS
     pdf.set_y(0)
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 32, 'F')
@@ -1633,7 +1603,7 @@ def generer_pdf_base(numero, titre, client, localisation, telephone, prestations
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(130, 10, "ASYMAS CONSULTING", 0, 0, '', True)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, titre, 0, 1, 'R', True)
+    pdf.cell(0, 10, "FACTURE N", 0, 1, 'R', True)
     pdf.set_x(10)
     pdf.set_font("Arial", size=10)
     pdf.cell(130, 6, f"{adresse} | Tel: {ing_tel}", 0, 0, '', True)
@@ -1641,12 +1611,17 @@ def generer_pdf_base(numero, titre, client, localisation, telephone, prestations
     pdf.set_x(10)
     pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
+    pdf.set_x(10)
+    pdf.set_font("Arial", size=9)
+    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
     pdf.set_text_color(0, 0, 0)
-    pdf.ln(10)
+    pdf.ln(5)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(8)
 
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, titre.replace("N", ""), ln=True, align='C')
-    pdf.ln(5)
+    pdf.cell(0, 8, "FACTURE D'HONORAIRES", ln=True, align='C')
+    pdf.ln(3)
 
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 7, f"LOCALISATION: {localisation}", ln=True)
@@ -1657,189 +1632,195 @@ def generer_pdf_base(numero, titre, client, localisation, telephone, prestations
 
     total = sum(float(p['montant']) for p in prestations)
 
+    # TABLEAU DETAIL DES ECHEANCES
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(0, 6, "Détail des échéances", ln=True, align='C')
+    pdf.ln(2)
+
     pdf.set_font("Arial", 'B', 8)
     pdf.set_fill_color(200, 200, 200)
     pdf.cell(8, 6, "N°", 1, 0, 'C', True)
-    pdf.cell(50, 6, "Désignation", 1, 0, 'C', True)
-    pdf.cell(25, 6, "Montant", 1, 0, 'C', True)
-    pdf.cell(35, 6, "Mode", 1, 0, 'C', True)
-    pdf.cell(72, 6, "Détails", 1, 1, 'C', True)
+    pdf.cell(45, 6, "Transaction", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Montant", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Date échéance", 1, 0, 'C', True)
+    pdf.cell(32, 6, "Mode Règlement", 1, 0, 'C', True)
+    pdf.cell(22, 6, "Date paiement", 1, 0, 'C', True)
+    pdf.cell(39, 6, "N.Quittance", 1, 1, 'C', True)
 
     pdf.set_font("Arial", size=8)
+    pdf.set_fill_color(255, 255, 255)
     for idx, item in enumerate(prestations, 1):
+        montant = float(item['montant'])
+        mode = item.get('mode_paiement', 'Espèces')
         pdf.cell(8, 6, str(idx), 1, 0, 'C')
-        pdf.cell(50, 6, item['designation'][:25], 1)
-        pdf.cell(25, 6, f"{float(item['montant']):,.0f}", 1, 0, 'R')
-        pdf.cell(35, 6, item.get('mode_paiement', 'Espèces')[:17], 1, 0, 'C')
-        pdf.cell(72, 6, item.get('detail', '')[:38], 1, 1)
+        pdf.cell(45, 6, item['designation'][:23], 1)
+        pdf.cell(22, 6, f"{montant:,.0f}", 1, 0, 'R')
+        pdf.cell(22, 6, datetime.now().strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(32, 6, mode[:16], 1, 0, 'C')
+        pdf.cell(22, 6, "Délai raisonnable", 1, 0, 'C')
+        pdf.cell(39, 6, f"Q-{numero[-6:]}{idx}", 1, 1, 'C')
 
-    pdf.set_font("Arial", 'B', 9)
-    pdf.cell(83, 7, "TOTAL GENERAL", 1, 0, 'R', True)
-    pdf.cell(25, 7, f"{total:,.0f}", 1, 0, 'R', True)
-    pdf.cell(82, 7, f"{devise}", 1, 1, 'C', True)
+    pdf.set_font("Arial", 'B', 8)
+    pdf.cell(75, 6, "Total", 1, 0, 'R', True)
+    pdf.cell(22, 6, f"{total:,.0f}", 1, 0, 'R', True)
+    pdf.cell(93, 6, "", 1, 1)
 
-    if modes_paiement:
-        pdf.ln(5)
-        pdf.set_font("Arial", 'I', 8)
-        pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
-        pdf.set_font("Arial", size=8)
-        pdf.cell(60, 5, "Mode", 1, 0, 'C')
-        pdf.cell(130, 5, "Détails", 1, 1, 'C')
-        for mode_nom, mode_detail in modes_paiement:
-            pdf.cell(60, 5, mode_nom, 1, 0, 'C')
-            pdf.cell(130, 5, mode_detail[:60], 1, 1, 'C')
+    # MODES DE PAIEMENT SAISIS PAR TOI
+    pdf.ln(5)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
+    pdf.set_font("Arial", size=8)
+    pdf.cell(60, 5, "Mode de règlement", 1, 0, 'C')
+    pdf.cell(130, 5, "Détails / N° Compte", 1, 1, 'C')
+    for mode_nom, mode_detail in modes_paiement:
+        pdf.cell(60, 5, mode_nom, 1, 0, 'C')
+        pdf.cell(130, 5, mode_detail[:58], 1, 1, 'C')
 
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_fill_color(255, 200, 0)
+    pdf.cell(100, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
+    pdf.cell(90, 8, f"{total:,.2f}", 1, 1, 'R', True)
+
+    # QR CODE
+    qr_data = {
+        "numero": numero,
+        "client": client,
+        "total": total,
+        "devise": devise,
+        "prestations": [{"des": p['designation'], "montant": p['montant'], "mode": p.get('mode_paiement')} for p in prestations],
+        "modes_paiement": modes_paiement
+    }
+    qr = qrcode.QRCode(box_size=3, border=1)
+    qr.add_data(json.dumps(qr_data))
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
     y_pos = pdf.get_y() + 10
+    pdf.image(buf, x=160, y=y_pos, w=35)
+    pdf.set_xy(160, y_pos + 36)
+    pdf.set_font("Arial", 'I', 7)
+    pdf.cell(35, 4, "Scan pour vérifier", align='C')
+
     pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 8, "SIGNATURE:", ln=True)
+    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
     pdf.ln(15)
     pdf.line(15, pdf.get_y(), 105, pdf.get_y())
+    pdf.ln(5)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
+    pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
 
     out = pdf.output(dest='S')
     return bytes(out), total
 
-def generer_pdf_proforma(*args, **kwargs):
-    return generer_pdf_base(*args, titre="PROFORMA N", **kwargs)
-
-def generer_pdf_facture_honoraire(*args, **kwargs):
-    return generer_pdf_base(*args, titre="FACTURE HONORAIRES N", **kwargs)
-
-def generer_pdf_facture_fourniture(*args, **kwargs):
-    return generer_pdf_base(*args, titre="FACTURE FOURNITURE N", **kwargs)
-
-# ===== SAUVEGARDE DB =====
-def sauvegarder_document(type_doc, numero, client, total, prestations, module, user_id):
-    table_doc = "factures_proforma" if "proforma" in type_doc else "factures"
-
-    # 1. Insérer document
-    res = supabase.table(table_doc).insert({
-        "user_id": user_id,
-        "numero": numero,
-        "client": client,
-        "total": total,
-        "type": type_doc,
-        "module": module,
-        "created_at": datetime.now().isoformat()
-    }).execute()
-
-    doc_id = res.data[0]["id"] if res.data else None
-
-    # 2. Insérer lignes
-    if doc_id:
-        for p in prestations:
-            supabase.table("facture_items").insert({
-                "facture_id": doc_id,
-                "facture_type": table_doc,
-                "designation": p["designation"],
-                "detail": p.get("detail", ""),
-                "montant": p["montant"]
-            }).execute()
-
-    # 3. Log dans la bonne table historique
-    table_log = {
-        "commerce": "operations_commerce",
-        "automobile": "operations_automobile",
-        "immobilier": "operations_immobilier"
-    }[module]
-
-    supabase.table(table_log).insert({
-        "user_id": user_id,
-        "type_operation": f"creation_{type_doc}",
-        "reference": numero,
-        "montant": total,
-        "statut": "valide",
-        "created_at": datetime.now().isoformat()
-    }).execute()
-
-# ===== INTERFACE STREAMLIT =====
+# ===== BLOC STREAMLIT =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
-        st.markdown("## 📄 ASYMAS - Facturation")
+        st.markdown("## 📄 Factures - Honoraires")
 
-        col_type, col_module = st.columns(2)
-        with col_type:
-            type_doc = st.selectbox("Type de document",
-                ["Proforma Honoraires", "Facture Honoraires", "Facture Fourniture"])
-        with col_module:
-            module = st.selectbox("Module", ["commerce", "automobile", "immobilier"])
+        if st.button("➕ Nouvelle Facture", type="primary"):
+            st.session_state.nouvelle_facture = True
 
-        if st.button("➕ Nouveau Document", type="primary"):
-            st.session_state.nouveau_doc = True
+        if st.session_state.get("nouvelle_facture", False):
+            st.subheader("Créer une Facture d'Honoraires")
 
-        if st.session_state.get("nouveau_doc", False):
-            st.subheader(f"Créer {type_doc} - Module {module}")
+            col1, col2 = st.columns(2)
+            with col1:
+                client_fac = st.text_input("Client", key="client_fac")
+                localisation_fac = st.text_input("Localisation", value="Beni, RDC", key="loc_fac")
+            with col2:
+                tel_fac = st.text_input("Téléphone", placeholder="+243...", key="tel_fac")
+                devise_fac = st.selectbox("Devise", ["USD", "FC", "€"], key="devise_fac")
 
-            c1, c2 = st.columns(2)
-            with c1:
-                client = st.text_input("Client")
-                localisation = st.text_input("Localisation", value="Beni, RDC")
-            with c2:
-                tel = st.text_input("Téléphone", placeholder="+243...")
-                devise = st.selectbox("Devise", ["USD", "FC", "€"])
-
-            st.markdown("**Modes de paiement acceptés**")
+            # SAISIE DES 3 OU 4 MODES DE PAIEMENT AVEC LEURS INFOS
+            st.markdown("**Modes de paiement acceptés - saisissez 3 à 4 modes avec leurs détails**")
             modes_paiement = []
             for i in range(4):
-                c1, c2 = st.columns([2, 3])
-                with c1:
-                    mode_nom = st.text_input(f"Mode {i+1}", key=f"mode_nom_{i}")
-                with c2:
-                    mode_detail = st.text_input(f"Détail {i+1}", key=f"mode_detail_{i}")
+                col_m1, col_m2 = st.columns([2, 3])
+                with col_m1:
+                    mode_nom = st.text_input(f"Mode {i+1}", key=f"mode_nom_{i}", placeholder="Ex: Espèces")
+                with col_m2:
+                    mode_detail = st.text_input(f"Détail {i+1}", key=f"mode_detail_{i}", placeholder="Ex: 0812... ou N° Compte BIA")
                 if mode_nom and mode_detail:
                     modes_paiement.append((mode_nom, mode_detail))
 
+            # Liste des noms de modes pour les selectbox
             choix_mode = [m[0] for m in modes_paiement] if modes_paiement else ["Espèces"]
 
-            st.markdown("**Prestations / Articles**")
-            choix_designation = ["Frais d'étude", "Main d'oeuvre", "Fourniture", "Autre"]
+            st.markdown("**Prestations réalisées**")
+
+            choix_designation = [
+                "Frais d'étude technique",
+                "Main d'oeuvre",
+                "Visite de site",
+                "Rapport technique",
+                "Déplacement",
+                "Autre"
+            ]
+
             prestations = []
-            for i in range(5):
-                st.markdown(f"**Ligne {i+1}**")
-                c1, c2, c3, c4 = st.columns([2.5, 2.5, 1.5, 2])
-                with c1:
-                    des_choix = st.selectbox("Désignation", choix_designation, key=f"des_{i}", label_visibility="collapsed")
-                    des = st.text_input("Saisir", key=f"des_custom_{i}", label_visibility="collapsed") if des_choix == "Autre" else des_choix
-                with c2:
-                    detail = st.text_input("Détail", key=f"detail_{i}", label_visibility="collapsed")
-                with c3:
-                    montant = st.number_input("Montant", min_value=0.0, value=0.0, step=1000.0, key=f"montant_{i}", label_visibility="collapsed")
-                with c4:
-                    mode = st.selectbox("Mode", choix_mode, key=f"mode_{i}", label_visibility="collapsed")
-                if des and montant > 0:
-                    prestations.append({"designation": des, "detail": detail, "montant": montant, "mode_paiement": mode})
+            for i in range(4):
+                st.markdown(f"**Désignation {i+1}**")
+                col_a, col_b, col_c, col_d = st.columns([2.5, 2.5, 1.5, 2])
 
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("📄 Générer PDF", type="primary", use_container_width=True):
-                    if client and prestations:
-                        user_id = supabase.auth.get_user().user.id
-                        numero = f"{module[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-                        gen_map = {
-                            "Proforma Honoraires": generer_pdf_proforma,
-                            "Facture Honoraires": generer_pdf_facture_honoraire,
-                            "Facture Fourniture": generer_pdf_facture_fourniture
-                        }
-
-                        pdf_bytes, total = gen_map[type_doc](
-                            numero, client, localisation, tel, prestations,
-                            devise, modes_paiement,
-                            "SAMY TSANGYA", "+256766515428",
-                            "asamnesstsang636@gmail.com", "Beni, Nord-Kivu, RDC"
-                        )
-
-                        sauvegarder_document(type_doc.lower().replace(" ", "_"), numero, client, total, prestations, module, user_id)
-
-                        st.download_button("⬇️ Télécharger PDF", pdf_bytes, f"{numero}.pdf", mime="application/pdf", use_container_width=True)
-                        st.success(f"{numero} généré - Total: {total:,.2f} {devise}")
+                with col_a:
+                    des_choix = st.selectbox(
+                        "Désignation",
+                        choix_designation,
+                        key=f"des_choix_fac_{i}",
+                        label_visibility="collapsed"
+                    )
+                    if des_choix == "Autre":
+                        des = st.text_input("Saisir", key=f"des_custom_fac_{i}", label_visibility="collapsed")
                     else:
-                        st.error("Client et au moins 1 ligne requis")
-            with c2:
-                if st.button("❌ Annuler", use_container_width=True):
-                    st.session_state.nouveau_doc = False
+                        des = des_choix
+
+                with col_b:
+                    detail = st.text_input("Détail", key=f"detail_fac_{i}", label_visibility="collapsed")
+
+                with col_c:
+                    montant = st.number_input("Montant", min_value=0.0, value=0.0, step=1000.0, key=f"montant_fac_{i}", label_visibility="collapsed")
+
+                with col_d:
+                    mode = st.selectbox("Mode paiement", choix_mode, key=f"mode_fac_{i}", label_visibility="collapsed")
+
+                if des and montant > 0:
+                    prestations.append({
+                        "designation": des,
+                        "detail": detail,
+                        "montant": montant,
+                        "mode_paiement": mode
+                    })
+
+            col_gen, col_ann = st.columns(2)
+            with col_gen:
+                if st.button("📄 Générer Facture PDF", type="primary", width="stretch"):
+                    if client_fac and prestations and modes_paiement:
+                        numero_fac = f"FAC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        pdf_bytes, total = generer_pdf_facture_ucad(
+                            numero_fac, client_fac, localisation_fac, tel_fac,
+                            prestations, devise_fac, modes_paiement
+                        )
+                        st.download_button(
+                            "⬇️ Télécharger Facture PDF",
+                            data=pdf_bytes,
+                            file_name=f"{numero_fac}.pdf",
+                            mime="application/pdf",
+                            width="stretch"
+                        )
+                        st.success(f"Facture {numero_fac} - Total: {total:,.2f} {devise_fac}")
+                    else:
+                        st.error("Client, au moins 1 prestation, et au moins 1 mode de paiement requis")
+            with col_ann:
+                if st.button("❌ Annuler", width="stretch"):
+                    st.session_state.nouvelle_facture = False
                     st.rerun()
-          
+
+            st.divider()
 import json
 from datetime import datetime
 from fpdf import FPDF
