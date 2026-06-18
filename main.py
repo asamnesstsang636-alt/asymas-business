@@ -1586,17 +1586,15 @@ import qrcode
 from io import BytesIO
 from supabase import create_client
 
-# === CONFIG SUPABASE ===
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ===== FONCTIONS PDF =====
+# ===== PDF BASE =====
 def generer_pdf_base(numero, titre, client, localisation, telephone, prestations,
                      devise, modes_paiement, ing_nom, ing_tel, email, adresse):
     pdf = FPDF()
     pdf.add_page()
-
     pdf.set_y(0)
     pdf.set_fill_color(20, 50, 40)
     pdf.rect(0, 0, 210, 32, 'F')
@@ -1613,17 +1611,12 @@ def generer_pdf_base(numero, titre, client, localisation, telephone, prestations
     pdf.set_x(10)
     pdf.cell(130, 6, f"Email: {email}", 0, 0, '', True)
     pdf.cell(0, 6, f"Date: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'R', True)
-    pdf.set_x(10)
-    pdf.set_font("Arial", size=9)
-    pdf.cell(0, 6, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment", ln=True, align='C', fill=True)
     pdf.set_text_color(0, 0, 0)
-    pdf.ln(5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(8)
+    pdf.ln(10)
 
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, titre.replace("N", ""), ln=True, align='C')
-    pdf.ln(3)
+    pdf.ln(5)
 
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 7, f"LOCALISATION: {localisation}", ln=True)
@@ -1634,71 +1627,44 @@ def generer_pdf_base(numero, titre, client, localisation, telephone, prestations
 
     total = sum(float(p['montant']) for p in prestations)
 
-    pdf.set_font("Arial", 'B', 10)
-    pdf.cell(0, 6, "Détail", ln=True, align='C')
-    pdf.ln(2)
-
     pdf.set_font("Arial", 'B', 8)
     pdf.set_fill_color(200, 200, 200)
     pdf.cell(8, 6, "N°", 1, 0, 'C', True)
-    pdf.cell(45, 6, "Désignation", 1, 0, 'C', True)
-    pdf.cell(22, 6, "Montant", 1, 0, 'C', True)
-    pdf.cell(32, 6, "Mode Règlement", 1, 0, 'C', True)
-    pdf.cell(83, 6, "Détails", 1, 1, 'C', True)
+    pdf.cell(50, 6, "Désignation", 1, 0, 'C', True)
+    pdf.cell(25, 6, "Montant", 1, 0, 'C', True)
+    pdf.cell(35, 6, "Mode", 1, 0, 'C', True)
+    pdf.cell(72, 6, "Détails", 1, 1, 'C', True)
 
     pdf.set_font("Arial", size=8)
-    pdf.set_fill_color(255, 255, 255)
     for idx, item in enumerate(prestations, 1):
-        montant = float(item['montant'])
-        mode = item.get('mode_paiement', 'Espèces')
         pdf.cell(8, 6, str(idx), 1, 0, 'C')
-        pdf.cell(45, 6, item['designation'][:23], 1)
-        pdf.cell(22, 6, f"{montant:,.0f}", 1, 0, 'R')
-        pdf.cell(32, 6, mode[:16], 1, 0, 'C')
-        pdf.cell(83, 6, item.get('detail', '')[:40], 1, 1)
+        pdf.cell(50, 6, item['designation'][:25], 1)
+        pdf.cell(25, 6, f"{float(item['montant']):,.0f}", 1, 0, 'R')
+        pdf.cell(35, 6, item.get('mode_paiement', 'Espèces')[:17], 1, 0, 'C')
+        pdf.cell(72, 6, item.get('detail', '')[:38], 1, 1)
 
-    pdf.set_font("Arial", 'B', 8)
-    pdf.cell(75, 6, "Total", 1, 0, 'R', True)
-    pdf.cell(22, 6, f"{total:,.0f}", 1, 0, 'R', True)
-    pdf.cell(93, 6, "", 1, 1)
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(83, 7, "TOTAL GENERAL", 1, 0, 'R', True)
+    pdf.cell(25, 7, f"{total:,.0f}", 1, 0, 'R', True)
+    pdf.cell(82, 7, f"{devise}", 1, 1, 'C', True)
 
     if modes_paiement:
         pdf.ln(5)
         pdf.set_font("Arial", 'I', 8)
         pdf.cell(0, 5, "Modes de paiement acceptés:", ln=True)
         pdf.set_font("Arial", size=8)
-        pdf.cell(60, 5, "Mode de règlement", 1, 0, 'C')
-        pdf.cell(130, 5, "Détails / N° Compte", 1, 1, 'C')
+        pdf.cell(60, 5, "Mode", 1, 0, 'C')
+        pdf.cell(130, 5, "Détails", 1, 1, 'C')
         for mode_nom, mode_detail in modes_paiement:
             pdf.cell(60, 5, mode_nom, 1, 0, 'C')
-            pdf.cell(130, 5, mode_detail[:58], 1, 1, 'C')
+            pdf.cell(130, 5, mode_detail[:60], 1, 1, 'C')
 
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.set_fill_color(255, 200, 0)
-    pdf.cell(100, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(90, 8, f"{total:,.2f}", 1, 1, 'R', True)
-
-    qr_data = {"numero": numero, "client": client, "total": total, "devise": devise}
-    qr = qrcode.QRCode(box_size=3, border=1)
-    qr.add_data(json.dumps(qr_data))
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = BytesIO()
-    img.save(buf, format='PNG')
-    buf.seek(0)
     y_pos = pdf.get_y() + 10
-    pdf.image(buf, x=160, y=y_pos, w=35)
-
     pdf.set_xy(15, y_pos)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "SIGNATURE:", ln=True)
     pdf.ln(15)
     pdf.line(15, pdf.get_y(), 105, pdf.get_y())
-    pdf.ln(5)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 6, f"Ing. {ing_nom}", ln=True)
-    pdf.cell(0, 6, f"Tel: {ing_tel}", ln=True)
 
     out = pdf.output(dest='S')
     return bytes(out), total
@@ -1712,22 +1678,18 @@ def generer_pdf_facture_honoraire(*args, **kwargs):
 def generer_pdf_facture_fourniture(*args, **kwargs):
     return generer_pdf_base(*args, titre="FACTURE FOURNITURE N", **kwargs)
 
-# ===== SAUVEGARDE DB + HISTORIQUE =====
-def sauvegarder_document(type_doc, numero, client, total, prestations, user_id):
-    table_map = {
-        "proforma": "factures_proforma",
-        "facture_honoraire": "factures",
-        "facture_fourniture": "factures"
-    }
-    table = table_map[type_doc]
+# ===== SAUVEGARDE DB =====
+def sauvegarder_document(type_doc, numero, client, total, prestations, module, user_id):
+    table_doc = "factures_proforma" if "proforma" in type_doc else "factures"
 
     # 1. Insérer document
-    res = supabase.table(table).insert({
+    res = supabase.table(table_doc).insert({
         "user_id": user_id,
         "numero": numero,
         "client": client,
         "total": total,
         "type": type_doc,
+        "module": module,
         "created_at": datetime.now().isoformat()
     }).execute()
 
@@ -1738,14 +1700,20 @@ def sauvegarder_document(type_doc, numero, client, total, prestations, user_id):
         for p in prestations:
             supabase.table("facture_items").insert({
                 "facture_id": doc_id,
-                "facture_type": table,
+                "facture_type": table_doc,
                 "designation": p["designation"],
                 "detail": p.get("detail", ""),
                 "montant": p["montant"]
             }).execute()
 
-    # 3. Log opération ASYMAS
-    supabase.table("operations_asymas").insert({
+    # 3. Log dans la bonne table historique
+    table_log = {
+        "commerce": "operations_commerce",
+        "automobile": "operations_automobile",
+        "immobilier": "operations_immobilier"
+    }[module]
+
+    supabase.table(table_log).insert({
         "user_id": user_id,
         "type_operation": f"creation_{type_doc}",
         "reference": numero,
@@ -1754,25 +1722,29 @@ def sauvegarder_document(type_doc, numero, client, total, prestations, user_id):
         "created_at": datetime.now().isoformat()
     }).execute()
 
-# ===== BLOC STREAMLIT =====
+# ===== INTERFACE STREAMLIT =====
 if "📄 Factures" in tab_map:
     with tab_map["📄 Factures"]:
         st.markdown("## 📄 ASYMAS - Facturation")
 
-        type_doc = st.selectbox("Type de document",
-            ["Proforma Honoraires", "Facture Honoraires", "Facture Fourniture"])
+        col_type, col_module = st.columns(2)
+        with col_type:
+            type_doc = st.selectbox("Type de document",
+                ["Proforma Honoraires", "Facture Honoraires", "Facture Fourniture"])
+        with col_module:
+            module = st.selectbox("Module", ["commerce", "automobile", "immobilier"])
 
         if st.button("➕ Nouveau Document", type="primary"):
             st.session_state.nouveau_doc = True
 
         if st.session_state.get("nouveau_doc", False):
-            st.subheader(f"Créer {type_doc}")
+            st.subheader(f"Créer {type_doc} - Module {module}")
 
-            col1, col2 = st.columns(2)
-            with col1:
+            c1, c2 = st.columns(2)
+            with c1:
                 client = st.text_input("Client")
                 localisation = st.text_input("Localisation", value="Beni, RDC")
-            with col2:
+            with c2:
                 tel = st.text_input("Téléphone", placeholder="+243...")
                 devise = st.selectbox("Devise", ["USD", "FC", "€"])
 
@@ -1812,7 +1784,7 @@ if "📄 Factures" in tab_map:
                 if st.button("📄 Générer PDF", type="primary", use_container_width=True):
                     if client and prestations:
                         user_id = supabase.auth.get_user().user.id
-                        numero = f"{type_doc[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        numero = f"{module[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
                         gen_map = {
                             "Proforma Honoraires": generer_pdf_proforma,
@@ -1827,7 +1799,7 @@ if "📄 Factures" in tab_map:
                             "asamnesstsang636@gmail.com", "Beni, Nord-Kivu, RDC"
                         )
 
-                        sauvegarder_document(type_doc.lower().replace(" ", "_"), numero, client, total, prestations, user_id)
+                        sauvegarder_document(type_doc.lower().replace(" ", "_"), numero, client, total, prestations, module, user_id)
 
                         st.download_button("⬇️ Télécharger PDF", pdf_bytes, f"{numero}.pdf", mime="application/pdf", use_container_width=True)
                         st.success(f"{numero} généré - Total: {total:,.2f} {devise}")
