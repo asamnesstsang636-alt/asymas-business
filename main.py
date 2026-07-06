@@ -501,7 +501,7 @@ if st.session_state.user_role is None:
             if profil!= "-- Sélectionner --":
                 nom_connect = profil.split(" - ")[0]
                 role_connect = profil.split(" - ")[1] if " - " in profil else profil
-                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").execute().data
+                df_users_login = supabase.table("utilisateurs").select("id, nom, role, password").eq("nom", user_selectionne).execute().data
                 df_users_login = pd.DataFrame(df_users_login)
                 st.write(df_users_login) # supprime ça après
                 user_data = df_users_login[df_users_login['nom'] == nom_connect]
