@@ -2065,6 +2065,7 @@ if "📋 Devis" in tab_map:
             tab_idx += 1
 
         # ===== 3. ONGLET HISTORIQUE GLOBAL =====
+        # ===== 3. ONGLET HISTORIQUE GLOBAL =====
         if peut_hist:
             with tabs[tab_idx]:
                 st.subheader("📜 Historique des Devis")
@@ -2077,53 +2078,66 @@ if "📋 Devis" in tab_map:
                     st.info("Aucun devis enregistré")
                 else:
                     for d in devis_list:
-                        with st.expander(f"{d.get('type')} - {d.get('numero')} - {d.get('client')} - {d.get('total'):,.0f} {d.get('devise')}"):
+                        with st.expander(f"{d.get('type')} - {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
                             st.write(f"**Titre:** {d.get('titre')}")
-                            st.write(f"**Créé par:** {d.get('created_by')} le {d.get('created_at')[:10]}")
-                            col1, col2 = st.columns(2)
-                            # Télécharger
-                            if (d.get('type') == "Industriel" and peut_dl_ind) or (d.get('type') == "Bâtiment" and peut_dl_bat):
-                                with col1:
+                            st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
+                            
+                            col1, col2, col3 = st.columns([3,1,1])
+                            with col1:
+                                st.write(f"**Localisation:** {d.get('localisation','')}")
+                            
+                            # BOUTON TELECHARGER
+                            with col2:
+                                if (d.get('type') == "Industriel" and peut_dl_ind) or (d.get('type') == "Bâtiment" and peut_dl_bat):
                                     ing_h = "ESDRAS" if d.get('type')=="Bâtiment" else "SAMY TSANGYA"
                                     tel_h = "+243 972 888 690" if d.get('type')=="Bâtiment" else "+256766515428"
+                                    
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         d.get('numero'), d.get('type'), d.get('client'), d.get('titre'),
-                                        d.get('parcelle'), d.get('localisation'), d.get('sections'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
                                         d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), ing_h, tel_h
                                     )
-                                    st.download_button("📥 Télécharger PDF", data=pdf_bytes, file_name=f"{d.get('numero')}.pdf", mime="application/pdf", key=f"dl_hist_{d.get('numero')}")
-                            # Imprimer
-                            if (d.get('type') == "Industriel" and peut_pr_ind) or (d.get('type') == "Bâtiment" and peut_pr_bat):
-                                with col2:
+                                    st.download_button("📥", data=pdf_bytes, file_name=f"{d.get('numero')}.pdf", mime="application/pdf", key=f"dl_hist_{d.get('numero')}", width="stretch")
+                                else:
+                                    st.write("🔒")
+                            
+                            # BOUTON IMPRIMER
+                            with col3:
+                                if (d.get('type') == "Industriel" and peut_pr_ind) or (d.get('type') == "Bâtiment" and peut_pr_bat):
                                     ing_h = "ESDRAS" if d.get('type')=="Bâtiment" else "SAMY TSANGYA"
                                     tel_h = "+243 972 888 690" if d.get('type')=="Bâtiment" else "+256766515428"
+                                    
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
                                     pdf_bytes = generer_pdf_devis_consulting(
                                         d.get('numero'), d.get('type'), d.get('client'), d.get('titre'),
-                                        d.get('parcelle'), d.get('localisation'), d.get('sections'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
                                         d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), ing_h, tel_h
                                     )
                                     pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                    safe_id = d.get('numero').replace('-', '_')
+                                    safe_id = d.get('numero','DEV').replace('-', '_').replace('.', '_')
+                                    
                                     st.components.v1.html(f"""<button onclick="printPDF_{safe_id}()" style="width:100%; padding:6px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
-                    🖨️
-                </button>
-                <script>
-                function printPDF_{safe_id}() {{
-                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
-                    const win = window.open('', '_blank');
-                    win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
-                    win.document.close();
-                    setTimeout(() => {{ win.print(); }}, 1000);
-                }}
-                </script>
-            """, height=40)
-            else:
-                st.write("🔒")
-else:
-    st.write("🔒")
-
-st.divider()
-
+                                        🖨️
+                                    </button>
+                                    <script>
+                                    function printPDF_{safe_id}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, height=40)
+                                else:
+                                    st.write("🔒")
 # ===== FIN DE L'ONGLET HISTORIQUE =====
                         
                         
