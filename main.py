@@ -57,19 +57,22 @@ def load_passwords():
         passwords = {}
         perms = {}
         for user in data.data:
-            passwords[user['role']] = user['password']
-            perms[user['role']] = {
+            key = user['nom'].strip().upper() # ✅ ON UTILISE NOM EN MAJUSCULE
+            passwords[key] = user['password']
+            perms[key] = {
                 'permissions': user.get('permissions', {}),
-                'categories_autorisees': user.get('categories_autorisees', [])
+                'categories_autorisees': user.get('categories_autorisees', []),
+                'role': user.get('role')
             }
         st.session_state.permissions_db = perms
         return passwords
-    except:
+    except Exception as e:
+        st.warning("Mode hors ligne: Utilisation des mots de passe par défaut")
         st.session_state.permissions_db = {}
         return {
-            "PDG": "tsang2024",
-            "GERANTE": "asiya2024",
-            "UTILISATEUR": "basam2024"
+            "TSANG": "tsang2024", # ✅ CLÉS = NOMS
+            "ASIYA": "asiya2024",
+            "BASAM": "basam2024"
         }
 
 def generer_qrcode(data_text):
@@ -226,216 +229,7 @@ Tel: +243 995 105 623"""
     os.unlink(qr_path)
     return bytes(pdf.output(dest='S'))
 
-def generer_pdf_devis_consulting(numero, type_devis, client, titre_projet, parcelle, localisation, details_sections, devise="USD", tel_client="+243...", main_oeuvre=0):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=False, margin=10)
-    pdf.set_fill_color(20, 50, 40)
-    pdf.rect(0, 0, 210, 35, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", "B", 20)
-    pdf.set_xy(10, 8)
-    pdf.cell(0, 10, "ASYMAS CONSULTING", ln=True)
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(10, 16)
-    pdf.cell(0, 5, "Beni, Nord-Kivu, RDC | Tel: +243 995 105 623", ln=True)
-    pdf.set_xy(10, 21)
-    pdf.cell(0, 5, "Email: asamnesstsang636@gmail.com", ln=True)
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(150, 8)
-    pdf.cell(50, 6, "DEVIS N", ln=True, align="R")
-    pdf.set_font("Arial", "", 10)
-    pdf.set_xy(150, 14)
-    pdf.cell(50, 6, safe_pdf_txt(numero), ln=True, align="R")
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(150, 20)
-    pdf.cell(50, 6, f"Date: {date.today().strftime('%d/%m/%Y')}", ln=True, align="R")
-    y_pos = 45
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_xy(10, y_pos)
-    pdf.multi_cell(0, 6, safe_pdf_txt(titre_projet.upper()), align="C")
-    y_pos = pdf.get_y() + 3
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(10, y_pos)
-    if parcelle:
-        pdf.cell(0, 6, f"PARCELLE N {safe_pdf_txt(parcelle)}", ln=True)
-        y_pos += 6
-    pdf.set_xy(10, y_pos)
-    if localisation:
-        pdf.cell(0, 6, f"LOCALISATION: {safe_pdf_txt(localisation)}", ln=True)
-        y_pos += 6
-    pdf.set_xy(10, y_pos)
-    pdf.cell(0, 6, f"CLIENT: {safe_pdf_txt(client)}", ln=True)
-    y_pos += 6
-    if tel_client:
-        pdf.set_xy(10, y_pos)
-        pdf.cell(0, 6, f"TEL: {safe_pdf_txt(tel_client)}", ln=True)
-        y_pos += 6
-    y_pos += 5
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(220, 220, 220)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(10, 7, "N", 1, 0, 'C', True)
-    pdf.cell(90, 7, "DESIGNATION DES OUVRAGES", 1, 0, 'C', True)
-    pdf.cell(15, 7, "Unité", 1, 0, 'C', True)
-    pdf.cell(20, 7, "Qté", 1, 0, 'C', True)
-    pdf.cell(25, 7, "Prix U", 1, 0, 'C', True)
-    pdf.cell(30, 7, "Prix total", 1, 1, 'C', True)
-    y_pos += 7
-    pdf.set_font("Arial", "", 8)
-    grand_total = 0
-    for section in details_sections:
-        if y_pos > 240:
-            pdf.add_page()
-            y_pos = 30
-        pdf.set_font("Arial", "B", 9)
-        pdf.set_fill_color(200, 200, 200)
-        pdf.set_xy(10, y_pos)
-        pdf.cell(10, 6, section['numero'], 1, 0, 'L', True)
-        pdf.cell(180, 6, safe_pdf_txt(section['titre']), 1, 1, 'L', True)
-        y_pos += 6
-        pdf.set_font("Arial", "", 8)
-        sous_total = 0
-        for item in section['items']:
-            if y_pos > 250:
-                pdf.add_page()
-                y_pos = 30
-            qte = item.get('qte', 0)
-            pu = item.get('pu', 0)
-            total_item = qte * pu
-            sous_total += total_item
-            pdf.set_xy(10, y_pos)
-            pdf.cell(10, 5, item.get('num', ''), 1, 0, 'C')
-            pdf.cell(90, 5, safe_pdf_txt(item.get('designation', '')), 1, 0, 'L')
-            pdf.cell(15, 5, item.get('unite', ''), 1, 0, 'C')
-            pdf.cell(20, 5, f"{qte:,.2f}" if qte else "", 1, 0, 'R')
-            pdf.cell(25, 5, f"{pu:,.0f}" if pu else "", 1, 0, 'R')
-            pdf.cell(30, 5, f"{total_item:,.0f}" if total_item else "", 1, 1, 'R')
-            y_pos += 5
-        pdf.set_font("Arial", "B", 8)
-        pdf.set_xy(10, y_pos)
-        pdf.cell(160, 6, "Sous Total", 1, 0, 'R', True)
-        pdf.cell(30, 6, f"{sous_total:,.0f}", 1, 1, 'R', True)
-        y_pos += 6
-        grand_total += sous_total
-    if main_oeuvre > 0:
-        if y_pos > 250:
-            pdf.add_page()
-            y_pos = 30
-        pdf.set_xy(10, y_pos)
-        pdf.cell(160, 6, "MAIN D'OEUVRE", 1, 0, 'R')
-        pdf.cell(30, 6, f"{main_oeuvre:,.0f}", 1, 1, 'R')
-        y_pos += 6
-        grand_total += main_oeuvre
-    pdf.set_fill_color(255, 204, 0)
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(160, 8, f"TOTAL GENERAL ({devise})", 1, 0, 'R', True)
-    pdf.cell(30, 8, f"{grand_total:,.0f}", 1, 1, 'R', True)
-    y_pos += 15
-    if y_pos > 220:
-        pdf.add_page()
-        y_pos = 30
-    pdf.set_xy(10, y_pos)
-    pdf.set_font("Arial", "B", 10)
-    if type_devis == "Industriel":
-        ingenieur = "SAMY TSANGYA"
-        tel_ing = "+243 995 105 623"
-        adresse_ing = "Beni, Nord-Kivu, RDC"
-    else:
-        ingenieur = "ESDRAS TSANGYA"
-        tel_ing = "+243 972 888 690"
-        adresse_ing = "Beni, Nord-Kivu, RDC | esdrastsangya@gmail.com"
-    pdf.cell(0, 8, "SIGNATURE INGENIEUR RESPONSABLE:", ln=True)
-    y_pos += 11
-    pdf.set_draw_color(0, 0, 0)
-    pdf.line(10, y_pos, 100, y_pos)
-    y_pos += 1
-    pdf.set_font("Arial", "", 9)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Ing. {ingenieur}", ln=True)
-    y_pos += 5
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Tel: {tel_ing}", ln=True)
-    y_pos += 5
-    pdf.set_xy(10, y_pos)
-    pdf.cell(90, 5, f"Adresse: {safe_pdf_txt(adresse_ing)}", ln=True)
-    y_pos += 8
-    pdf.set_font("Arial", "I", 9)
-    pdf.set_text_color(0, 102, 0)
-    pdf.set_xy(10, y_pos)
-    pdf.cell(0, 6, "Devis estimatif - Valable 30 jours", ln=True, align="C")
-    return bytes(pdf.output(dest='S'))
-
-def creer_facture_auto(type_op, client, details, montant, devise="FC", details_list=None, tel="+243...", periode="", type_facture="Simple"):
-    numero_facture = f"AS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    if details_list is None:
-        details_list = [{"nom": details, "qte": 1, "pu": montant}]
-    pdf_bytes = generer_pdf_facture(numero_facture, type_op, client, details_list, montant, devise, tel, periode, type_facture)
-    try:
-        colonnes_compta = get_table_columns("compta")
-        data_compta = {
-            "type": "Revenu",
-            "description": str(f"{type_op} - {client} - {details}"),
-            "montant": float(montant),
-            "date": str(date.today()),
-            "utilisateur": st.session_state.user_name
-        }
-        if "categorie" in colonnes_compta:
-            data_compta["categorie"] = str(type_op)
-        if "devise" in colonnes_compta:
-            data_compta["devise"] = str(devise)
-        if "numero_facture" in colonnes_compta:
-            data_compta["numero_facture"] = str(numero_facture)
-        if "details" in colonnes_compta:
-            data_compta["details"] = json.dumps(details_list)
-        supabase.table("compta").insert(data_compta).execute()
-        st.toast(f"✅ Enregistré par {st.session_state.user_name}", icon="✅")
-    except Exception as e:
-        st.error("❌ ERREUR INSERTION COMPTA")
-        st.code(repr(e))
-    return numero_facture, pdf_bytes
-
-def generer_excel_pro(df_data, titre="Relevé Comptable", total_revenu=0, total_depense=0, solde=0):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_data.to_excel(writer, sheet_name='Releve', index=False, startrow=6)
-        workbook = writer.book
-        worksheet = writer.sheets['Releve']
-        worksheet.merge_cells('A1:F1')
-        worksheet['A1'] = 'ASYMAS BUSINESS'
-        worksheet['A1'].font = Font(size=20, bold=True, color='006600')
-        worksheet['A1'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A2:F2')
-        worksheet['A2'] = 'Beni, Nord-Kivu, RDC | Tel: +243 995 105 623 | asamnesstsang636@gmail.com'
-        worksheet['A2'].font = Font(size=10, italic=True)
-        worksheet['A2'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A3:F3')
-        worksheet['A3'] = f'{titre.upper()} - Edité le {date.today().strftime("%d/%m/%Y")}'
-        worksheet['A3'].font = Font(size=14, bold=True, color='FF6600')
-        worksheet['A3'].alignment = Alignment(horizontal='center')
-        worksheet.merge_cells('A4:F4')
-        worksheet['A4'] = f'Total Revenus: {total_revenu:,.0f} FC | Total Dépenses: {total_depense:,.0f} FC | Solde: {solde:,.0f} FC'
-        worksheet['A4'].font = Font(size=11, bold=True)
-        worksheet['A4'].alignment = Alignment(horizontal='center')
-        worksheet['A4'].fill = PatternFill(start_color='FFCC00', end_color='FFCC00', fill_type='solid')
-        header_fill = PatternFill(start_color='006600', end_color='006600', fill_type='solid')
-        header_font = Font(bold=True, color='FFFFFF')
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-        for col in range(1, len(df_data.columns) + 1):
-            cell = worksheet.cell(row=7, column=col)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal='center')
-            cell.border = thin_border
-        for row in range(7, len(df_data) + 8):
-            for col in range(1, len(df_data.columns) + 1):
-                worksheet.cell(row=row, column=col).border = thin_border
-                worksheet.cell(row=row, column=col).alignment = Alignment(horizontal='left')
-        for col in range(1, len(df_data.columns) + 1):
-            worksheet.column_dimensions[get_column_letter(col)].width = 18
-    return output.getvalue()
+#... GARDE TES AUTRES FONCTIONS PDF ET EXCEL ICI...
 
 st.markdown("""
 <link rel="manifest" href="data:application/manifest+json,{
@@ -477,9 +271,7 @@ a[href*="share.streamlit.io"] {display: none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-import pandas as pd
-import streamlit as st
-
+# === SYSTEME DE CONNEXION ===
 passwords_db = load_passwords()
 
 if 'user_role' not in st.session_state:
@@ -493,75 +285,57 @@ if st.session_state.user_role is None:
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("### Connectez-vous :")
-        
-        # CHAMPS VIDES
+
         nom_connect = st.text_input("Nom d'utilisateur", placeholder="", value="")
         password = st.text_input("Mot de passe", type="password", placeholder="", value="", key="pwd")
-        
+
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
+                    nom_key = nom_connect.strip().upper()
                     response = supabase.table("utilisateurs")\
-               .select("id, nom, role, permissions, categories_autorisees")\
-               .ilike("nom", nom_connect.strip())\
-               .execute()
-                    
+              .select("id, nom, role, permissions, categories_autorisees")\
+              .ilike("nom", nom_connect.strip())\
+              .execute()
+
                     df_users_login = pd.DataFrame(response.data)
-                    
+
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
-                        
-                        mdp_attendu = None
-                        for k, v in passwords_db.items():
-                            if k.upper() == nom_connect.strip().upper():
-                                mdp_attendu = v
-                                break
-                        
+                        mdp_attendu = passwords_db.get(nom_key)
+
                         if mdp_attendu and password == mdp_attendu:
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
-                            st.session_state.user_perms = user.get('permissions', {})
-                            st.session_state.user_cats = user.get('categories_autorisees', [])
+                            st.session_state.user_perms = st.session_state.permissions_db.get(nom_key, {}).get('permissions', {})
+                            st.session_state.user_cats = st.session_state.permissions_db.get(nom_key, {}).get('categories_autorisees', [])
                             st.success(f"Bienvenue {st.session_state.user_name}")
                             st.rerun()
                         else:
                             st.error("Nom d'utilisateur ou mot de passe incorrect")
                     else:
                         st.error("Nom d'utilisateur non trouvé")
-                        
+
                 except Exception as e:
                     st.error(f"Erreur de connexion à la base de données")
             else:
                 st.warning("Veuillez remplir tous les champs")
     st.stop()
 
+# === SIDEBAR APRÈS CONNEXION ===
 if st.session_state.user_role is not None:
     with st.sidebar:
-        st.write(f"👤 {st.session_state.user_name} - {st.session_state.user_role}")
-        if 'theme_choisi' not in st.session_state: 
+        st.success(f"👤 {st.session_state.user_name}")
+        st.caption(f"Rôle: {st.session_state.user_role}")
+        if 'theme_choisi' not in st.session_state:
             st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True):
+        theme = st.selectbox("🎨 Thème", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi")
+        if st.button("🚪 Déconnexion", width="stretch"):
             st.session_state.user_role=None
             st.session_state.user_name=None
             st.session_state.user_perms={}
             st.session_state.user_cats=[]
             st.rerun()
-                
-    
-
-if 'user_role' in st.session_state and st.session_state.user_role is not None:
-    with st.sidebar:
-        st.write(f"👤 {st.session_state.user_name}")
-        if 'theme_choisi' not in st.session_state: st.session_state.theme_choisi = "Sombre ASYMAS"
-        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
-        if st.button("🚪 Déconnexion", use_container_width=True):
-            st.session_state.user_role=None
-            st.session_state.user_name=None
-            st.session_state.user_perms={}
-            st.session_state.user_cats=[]
-            st.rerun()
-
     if theme=="Sombre ASYMAS": st.markdown("""<style>.stApp{background:#0E1117;color:#E0E0E0}h1,h2,h3{color:#14B814!important}</style>""",unsafe_allow_html=True)
     elif theme=="Bleu Pro": st.markdown("""<style>.stApp{background:#0A1929;color:#E3F2FD}h1,h2,h3{color:#2196F3!important}</style>""",unsafe_allow_html=True)
     elif theme=="Vert Agri": st.markdown("""<style>.stApp{background:#1B2A1B;color:#E8F5E9}h1,h2,h3{color:#4CAF50!important}</style>""",unsafe_allow_html=True)
