@@ -500,17 +500,29 @@ if st.session_state.user_role is None:
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
-                    # ICI J'AI CHANGE password EN mot_de_passe
+                    # 1. On récupère TOUTES les colonnes pour voir
                     response = supabase.table("utilisateurs")\
-                     .select("id, nom, role, mot_de_passe, permissions, categories_autorisees")\
-                     .ilike("nom", nom_connect)\
-                     .execute()
+                    .select("*")\
+                    .ilike("nom", nom_connect)\
+                    .execute()
                     
                     df_users_login = pd.DataFrame(response.data)
+                    st.write("Colonnes trouvées:", df_users_login.columns.tolist()) # DEBUG
                     
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
-                        if password == user['mot_de_passe']: # ICI AUSSI
+                        
+                        # 2. On teste les 3 noms possibles
+                        mdp_db = None
+                        if 'password' in user: mdp_db = user['password']
+                        elif 'mot_de_passe' in user: mdp_db = user['mot_de_passe']
+                        elif 'pwd' in user: mdp_db = user['pwd']
+                        elif 'mdp' in user: mdp_db = user['mdp']
+                        else:
+                            st.error(f"Colonne mdp introuvable. Colonnes dispo: {list(user.keys())}")
+                            st.stop()
+                        
+                        if password == mdp_db:
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
                             st.session_state.user_perms = user.get('permissions', {})
