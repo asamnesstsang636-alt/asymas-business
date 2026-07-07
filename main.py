@@ -500,28 +500,50 @@ if st.session_state.user_role is None:
         
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
-                # 2. LIGNE CORRIGEE - on utilise nom_connect
-                response = supabase.table("utilisateurs")\
-                   .select("id, nom, role, password, permissions, categories_autorisees")\
-                   .ilike("nom", nom_connect)\
-                   .execute()
-                
-                df_users_login = pd.DataFrame(response.data)
-                
-                if not df_users_login.empty and password == df_users_login.iloc[0]['password']:
-                    st.session_state.user_role = df_users_login.iloc[0]['role']
-                    st.session_state.user_name = df_users_login.iloc[0]['nom']
-                    st.session_state.user_perms = df_users_login.iloc[0].get('permissions', {})
-                    st.session_state.user_cats = df_users_login.iloc[0].get('categories_autorisees', [])
-                    st.success(f"Bienvenue {st.session_state.user_name}")
-                    st.rerun()
-                else:
-                    st.error("Nom d'utilisateur ou mot de passe incorrect")
-            try:
-    response = supabase.table("utilisateurs").select("*").ilike("nom", nom_connect).execute()
-except Exception as e:
-    st.error(f"Erreur Supabase: {e}")
+                try:
+                    # 2. REQUETE SUPABASE AVEC TRY/EXCEPT
+                    response = supabase.table("utilisateurs")\
+                      .select("id, nom, role, password, permissions, categories_autorisees")\
+                      .ilike("nom", nom_connect)\
+                      .execute()
+                    
+                    df_users_login = pd.DataFrame(response.data)
+                    
+                    if not df_users_login.empty:
+                        user = df_users_login.iloc[0]
+                        if password == user['password']:
+                            st.session_state.user_role = user['role']
+                            st.session_state.user_name = user['nom']
+                            st.session_state.user_perms = user.get('permissions', {})
+                            st.session_state.user_cats = user.get('categories_autorisees', [])
+                            st.success(f"Bienvenue {st.session_state.user_name}")
+                            st.rerun()
+                        else:
+                            st.error("Mot de passe incorrect")
+                    else:
+                        st.error("Nom d'utilisateur non trouvé")
+                        
+                except Exception as e:
+                    st.error(f"Erreur Supabase: {e}")
+                    st.info("Vérifie les Policies RLS sur la table 'utilisateurs' dans Supabase")
+                    st.stop()
+            else:
+                st.warning("Veuillez remplir tous les champs")
     st.stop()
+
+# PARTIE APRES CONNEXION
+if st.session_state.user_role is not None:
+    with st.sidebar:
+        st.write(f"👤 {st.session_state.user_name} - {st.session_state.user_role}")
+        if 'theme_choisi' not in st.session_state: 
+            st.session_state.theme_choisi = "Sombre ASYMAS"
+        theme = st.selectbox("🎨", ["Sombre ASYMAS","Bleu Pro","Vert Agri","Noir Luxe"], key="theme_choisi", label_visibility="collapsed")
+        if st.button("🚪 Déconnexion", use_container_width=True):
+            st.session_state.user_role=None
+            st.session_state.user_name=None
+            st.session_state.user_perms={}
+            st.session_state.user_cats=[]
+            st.rerun()
                 
     
 
