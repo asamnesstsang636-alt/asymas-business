@@ -2009,7 +2009,7 @@ if "📋 Devis" in tab_map:
                         st.rerun()
                  else:
                      st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
-            tab_idx += 1
+                 tab_idx += 1
 
         # ===== 2. ONGLET BATIMENT =====
         if peut_voir_bat:
