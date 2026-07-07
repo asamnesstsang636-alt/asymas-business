@@ -494,24 +494,23 @@ if st.session_state.user_role is None:
     with col2:
         st.markdown("### Connectez-vous :")
         
-        # 1. ON TAPE AU LIEU DE CHOISIR
         nom_connect = st.text_input("Nom d'utilisateur", placeholder="Ex: TSANG - PDG")
         password = st.text_input("Mot de passe", type="password", key="pwd")
         
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
-                    # 2. REQUETE SUPABASE AVEC TRY/EXCEPT
+                    # ICI J'AI CHANGE password EN mot_de_passe
                     response = supabase.table("utilisateurs")\
-                      .select("id, nom, role, password, permissions, categories_autorisees")\
-                      .ilike("nom", nom_connect)\
-                      .execute()
+                     .select("id, nom, role, mot_de_passe, permissions, categories_autorisees")\
+                     .ilike("nom", nom_connect)\
+                     .execute()
                     
                     df_users_login = pd.DataFrame(response.data)
                     
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
-                        if password == user['password']:
+                        if password == user['mot_de_passe']: # ICI AUSSI
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
                             st.session_state.user_perms = user.get('permissions', {})
@@ -525,13 +524,10 @@ if st.session_state.user_role is None:
                         
                 except Exception as e:
                     st.error(f"Erreur Supabase: {e}")
-                    st.info("Vérifie les Policies RLS sur la table 'utilisateurs' dans Supabase")
-                    st.stop()
             else:
                 st.warning("Veuillez remplir tous les champs")
     st.stop()
 
-# PARTIE APRES CONNEXION
 if st.session_state.user_role is not None:
     with st.sidebar:
         st.write(f"👤 {st.session_state.user_name} - {st.session_state.user_role}")
