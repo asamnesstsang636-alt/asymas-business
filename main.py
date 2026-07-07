@@ -2007,8 +2007,8 @@ if "📋 Devis" in tab_map:
                         st.session_state.devis_sections_ind = []
                         if 'pdf_devis_ind' in st.session_state: del st.session_state.pdf_devis_ind
                         st.rerun()
-                else:
-                    st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
+                 else:
+                     st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
             tab_idx += 1
 
         # ===== 2. ONGLET BATIMENT =====
