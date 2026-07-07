@@ -2013,7 +2013,7 @@ if "📋 Devis" in tab_map:
                     st.subheader("🏗️ Nouveau Devis Bâtiment - ASYMAS CONSULTING")
                     ing_nom_bat = "ESDRAS"
                     ing_tel_bat = "+243 972 888 690"
-                    st.info(f"**Ingénieur Bâtiment:** {ing_nom_bat} | **Tél:** {ing_tel_bat} | **Email:** ESDRAStsangya@gmail.com")
+                    st.info(f"**Ingénieur Bâtiment:** {ing_nom_bat} | **Tél:** {ing_tel_bat} | **Email:** esdrastsangya@gmail.com")
 
                     if not st.session_state.devis_bat_sections:
                         st.session_state.devis_bat_sections = [
