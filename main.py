@@ -293,22 +293,24 @@ if st.session_state.user_role is None:
             if nom_connect and password:
                 try:
                     nom_key = nom_connect.strip().upper()
+
+                    # ✅ AJOUT DE password DANS LE SELECT
                     response = supabase.table("utilisateurs")\
-              .select("id, nom, role, permissions, categories_autorisees")\
-              .ilike("nom", nom_connect.strip())\
-              .execute()
+             .select("id, nom, role, password, permissions, categories_autorisees")\
+             .ilike("nom", nom_connect.strip())\
+             .execute()
 
                     df_users_login = pd.DataFrame(response.data)
 
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
-                        mdp_attendu = passwords_db.get(nom_key)
+                        mdp_attendu = user['password'] # ✅ ON PREND LE MDP DE LA DB DIRECT
 
                         if mdp_attendu and password == mdp_attendu:
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
-                            st.session_state.user_perms = st.session_state.permissions_db.get(nom_key, {}).get('permissions', {})
-                            st.session_state.user_cats = st.session_state.permissions_db.get(nom_key, {}).get('categories_autorisees', [])
+                            st.session_state.user_perms = user.get('permissions', {})
+                            st.session_state.user_cats = user.get('categories_autorisees', [])
                             st.success(f"Bienvenue {st.session_state.user_name}")
                             st.rerun()
                         else:
@@ -317,7 +319,8 @@ if st.session_state.user_role is None:
                         st.error("Nom d'utilisateur non trouvé")
 
                 except Exception as e:
-                    st.error(f"Erreur de connexion à la base de données")
+                    st.error(f"❌ ERREUR CONNEXION: {repr(e)}") # ✅ AFFICHE L'ERREUR RÉELLE
+                    st.code(str(e))
             else:
                 st.warning("Veuillez remplir tous les champs")
     st.stop()
