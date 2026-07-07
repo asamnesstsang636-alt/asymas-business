@@ -1901,11 +1901,12 @@ if "📋 Devis" in tab_map:
         if peut_voir_bat: tabs_list.append("🏗️ Devis Bâtiment")
         if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment") # <-- NOUVEAU
         # AVANT
-        if peut_hist: tabs_list.append("📜 Historique Global")
+        if peut_voir_ind and peut_hist_ind: tabs_list.append("📜 Historique Industriel")
+        if peut_voir_bat and peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")
 
-        # APRÈS
-        if peut_voir_ind and peut_hist: tabs_list.append("📜 Historique Industriel")
-        if peut_voir_bat and peut_hist: tabs_list.append("📜 Historique Bâtiment")
+        
+        
+        
 
         tabs = st.tabs(tabs_list)
         tab_idx = 0
@@ -2529,12 +2530,13 @@ if "👥 Utilisateurs" in tab_map:
                         if current_perms.get('devis_industriel'): st.write("✅ Créer")
                         if current_perms.get('devis_industriel_download'): st.write("✅ Télécharger")
                         if current_perms.get('devis_industriel_print'): st.write("✅ Imprimer")
+                        if current_perms.get('devis_historique_industriel'): st.write("✅ Historique")
                     with c3:
                         st.write("**Devis Bâtiment :**")
                         if current_perms.get('devis_batiment'): st.write("✅ Créer")
                         if current_perms.get('devis_batiment_download'): st.write("✅ Télécharger")
                         if current_perms.get('devis_batiment_print'): st.write("✅ Imprimer")
-                        if current_perms.get('devis_historique'): st.write("✅ Historique")
+                        if current_perms.get('devis_historique_batiment'): st.write("✅ Historique")
 
                     st.divider()
                     
@@ -2559,27 +2561,33 @@ if "👥 Utilisateurs" in tab_map:
                                 perm_users = col2.checkbox("👥 Gérer Utilisateurs", value=current_perms.get('users', False), key=f"edit_users_{user['id']}")
 
                                 st.markdown("**📋 Devis Industriel :**")
-                                col_i1, col_i2, col_i3 = st.columns(3)
+                                col_i1, col_i2, col_i3, col_i4 = st.columns(4)
                                 perm_devis_ind = col_i1.checkbox("Créer", value=current_perms.get('devis_industriel', False), key=f"edit_ind_{user['id']}")
                                 perm_devis_ind_dl = col_i2.checkbox("Télécharger", value=current_perms.get('devis_industriel_download', False), key=f"edit_ind_dl_{user['id']}")
                                 perm_devis_ind_pr = col_i3.checkbox("Imprimer", value=current_perms.get('devis_industriel_print', False), key=f"edit_ind_pr_{user['id']}")
+                                perm_devis_hist_ind = col_i4.checkbox("Historique", value=current_perms.get('devis_historique_industriel', False), key=f"edit_hist_ind_{user['id']}") # <-- NOUVEAU
 
                                 st.markdown("**📋 Devis Bâtiment :**")
                                 col_b1, col_b2, col_b3, col_b4 = st.columns(4)
                                 perm_devis_bat = col_b1.checkbox("Créer", value=current_perms.get('devis_batiment', False), key=f"edit_bat_{user['id']}")
                                 perm_devis_bat_dl = col_b2.checkbox("Télécharger", value=current_perms.get('devis_batiment_download', False), key=f"edit_bat_dl_{user['id']}")
                                 perm_devis_bat_pr = col_b3.checkbox("Imprimer", value=current_perms.get('devis_batiment_print', False), key=f"edit_bat_pr_{user['id']}")
-                                perm_devis_hist = col_b4.checkbox("Historique", value=current_perms.get('devis_historique', False), key=f"edit_hist_{user['id']}")
+                                perm_devis_hist_bat = col_b4.checkbox("Historique", value=current_perms.get('devis_historique_batiment', False), key=f"edit_hist_bat_{user['id']}") # <-- NOUVEAU
 
                                 if st.form_submit_button("💾 Enregistrer Permissions", type="primary", width="stretch"):
                                     new_perms = {
                                         "dashboard": perm_dashboard, "commerce": perm_commerce, "stock": perm_stock,
                                         "immobilier": perm_immobilier, "automobile": perm_automobile, "parc": perm_parc,
                                         "comptabilite": perm_comptabilite, "factures": perm_factures, "supprimer": perm_supprimer,
-                                        "users": perm_users, "devis_industriel": perm_devis_ind,
-                                        "devis_industriel_download": perm_devis_ind_dl, "devis_industriel_print": perm_devis_ind_pr,
-                                        "devis_batiment": perm_devis_bat, "devis_batiment_download": perm_devis_bat_dl,
-                                        "devis_batiment_print": perm_devis_bat_pr, "devis_historique": perm_devis_hist
+                                        "users": perm_users, 
+                                        "devis_industriel": perm_devis_ind,
+                                        "devis_industriel_download": perm_devis_ind_dl, 
+                                        "devis_industriel_print": perm_devis_ind_pr,
+                                        "devis_historique_industriel": perm_devis_hist_ind, # <-- NOUVEAU
+                                        "devis_batiment": perm_devis_bat, 
+                                        "devis_batiment_download": perm_devis_bat_dl,
+                                        "devis_batiment_print": perm_devis_bat_pr, 
+                                        "devis_historique_batiment": perm_devis_hist_bat # <-- NOUVEAU
                                     }
                                     try:
                                         supabase.table("utilisateurs").update({"permissions": new_perms}).eq("id", int(user['id'])).execute()
