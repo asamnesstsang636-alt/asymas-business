@@ -2360,7 +2360,7 @@ if "📋 Devis" in tab_map:
                                 """, height=60)
                                 else:
                                     st.warning("🔒 Pas de permission impression")
-            tab_idx += 1
+                                    tab_idx += 1
                             
                             # BOUTON TELECHARGER
                             with col2:
