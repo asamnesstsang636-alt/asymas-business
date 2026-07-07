@@ -1965,52 +1965,53 @@ if "📋 Devis" in tab_map:
                     cout_total_ind = total_general_ind + main_oeuvre_ind
                     st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis_ind}")
 
-                    if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
-                        if client_devis_ind and titre_devis_ind:
-                            numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                            try:
-                                data_devis = {
-                                    "numero": numero_devis, "type": "Industriel", "client": client_devis_ind,
-                                    "telephone": tel_client_devis_ind, "titre": titre_devis_ind, "parcelle": parcelle_devis_ind,
-                                    "localisation": localisation_devis_ind, "sections": json.dumps(st.session_state.devis_sections_ind, ensure_ascii=False),
-                                    "main_oeuvre": main_oeuvre_ind, "total": cout_total_ind, "devise": devise_devis_ind,
-                                    "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()
-                                }
-                                supabase.table('devis').insert(data_devis).execute()
-                                st.success(f"✅ Devis enregistré : {numero_devis}")
-                            except Exception as e:
-                                st.error("Erreur enregistrement")
-                                st.exception(e)
+    if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
+    if client_devis_ind and titre_devis_ind:
+        numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        try:
+            data_devis = {
+                "numero": numero_devis, "type": "Industriel", "client": client_devis_ind,
+                "telephone": tel_client_devis_ind, "titre": titre_devis_ind, "parcelle": parcelle_devis_ind,
+                "localisation": localisation_devis_ind, "sections": json.dumps(st.session_state.devis_sections_ind, ensure_ascii=False),
+                "main_oeuvre": main_oeuvre_ind, "total": cout_total_ind, "devise": devise_devis_ind,
+                "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()
+            }
+            supabase.table('devis').insert(data_devis).execute()
+            st.success(f"✅ Devis enregistré : {numero_devis}")
+        except Exception as e:
+            st.error("Erreur enregistrement")
+            st.exception(e)
 
-                            pdf_bytes = generer_pdf_devis_consulting(
-                                numero_devis, "Industriel", client_devis_ind, titre_devis_ind,
-                                parcelle_devis_ind, localisation_devis_ind, st.session_state.devis_sections_ind,
-                                devise_devis_ind, tel_client_devis_ind, main_oeuvre_ind, ing_nom_ind, ing_tel_ind
-                            )
-                            st.session_state.pdf_devis_ind = pdf_bytes
-                            st.session_state.num_devis_ind = numero_devis
-                            st.rerun()
-                        else:
-                            st.error("Client et Titre requis")
-                else:
-                    st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
-                    col_btn1, col_btn2 = st.columns(2)
-                    with col_btn1:
-                        if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_dl_ind:
-                            st.download_button("📥 Télécharger PDF", data=st.session_state.pdf_devis_ind, file_name=f"{st.session_state.num_devis_ind}.pdf", mime="application/pdf", key="dl_devis_ind", width="stretch")
-                    with col_btn2:
-                        if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_pr_ind:
-                            pdf_b64 = base64.b64encode(st.session_state.pdf_devis_ind).decode()
-                            st.components.v1.html(f"""<button onclick="printPDF_ind()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER</button><script>function printPDF_ind(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
+        pdf_bytes = generer_pdf_devis_consulting(
+            numero_devis, "Industriel", client_devis_ind, titre_devis_ind,
+            parcelle_devis_ind, localisation_devis_ind, st.session_state.devis_sections_ind,
+            devise_devis_ind, tel_client_devis_ind, main_oeuvre_ind, ing_nom_ind, ing_tel_ind
+        )
+        st.session_state.pdf_devis_ind = pdf_bytes
+        st.session_state.num_devis_ind = numero_devis
+        st.rerun()
+    else:
+        st.error("Client et Titre requis")
 
-                    if st.button("🔄 Nouveau devis Industriel", key="reset_devis_ind"):
-                        st.session_state.devis_sections_ind = []
-                        if 'pdf_devis_ind' in st.session_state: del st.session_state.pdf_devis_ind
-                        st.rerun()
-                 else:
-                     st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
-                 tab_idx += 1
+else: # <-- CE ELSE EST POUR "if peut_creer_ind:"
+    st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
 
+# Boutons Télécharger / Imprimer / Reset
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_dl_ind:
+        st.download_button("📥 Télécharger PDF", data=st.session_state.pdf_devis_ind, file_name=f"{st.session_state.num_devis_ind}.pdf", mime="application/pdf", key="dl_devis_ind", width="stretch")
+with col_btn2:
+    if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_pr_ind:
+        pdf_b64 = base64.b64encode(st.session_state.pdf_devis_ind).decode()
+        st.components.v1.html(f"""<button onclick="printPDF_ind()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER</button><script>function printPDF_ind(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
+
+if st.button("🔄 Nouveau devis Industriel", key="reset_devis_ind"):
+    st.session_state.devis_sections_ind = []
+    if 'pdf_devis_ind' in st.session_state: del st.session_state.pdf_devis_ind
+    st.rerun()
+
+tab_idx += 1
         # ===== 2. ONGLET BATIMENT =====
         if peut_voir_bat:
             with tabs[tab_idx]:
