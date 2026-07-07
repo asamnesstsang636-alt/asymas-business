@@ -480,7 +480,7 @@ a[href*="share.streamlit.io"] {display: none!important;}
 import pandas as pd
 import streamlit as st
 
-passwords_db = load_passwords()
+passwords_db = load_passwords() # TON DICT AVEC LES MDP
 
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
@@ -500,29 +500,18 @@ if st.session_state.user_role is None:
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
-                    # 1. On récupère TOUTES les colonnes pour voir
                     response = supabase.table("utilisateurs")\
-                    .select("*")\
-                    .ilike("nom", nom_connect)\
-                    .execute()
+                   .select("id, nom, role, permissions, categories_autorisees")\
+                   .ilike("nom", nom_connect)\
+                   .execute()
                     
                     df_users_login = pd.DataFrame(response.data)
-                    st.write("Colonnes trouvées:", df_users_login.columns.tolist()) # DEBUG
                     
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
                         
-                        # 2. On teste les 3 noms possibles
-                        mdp_db = None
-                        if 'password' in user: mdp_db = user['password']
-                        elif 'mot_de_passe' in user: mdp_db = user['mot_de_passe']
-                        elif 'pwd' in user: mdp_db = user['pwd']
-                        elif 'mdp' in user: mdp_db = user['mdp']
-                        else:
-                            st.error(f"Colonne mdp introuvable. Colonnes dispo: {list(user.keys())}")
-                            st.stop()
-                        
-                        if password == mdp_db:
+                        # ON VERIFIE LE MDP DANS passwords_db AU LIEU DE SUPABASE
+                        if nom_connect in passwords_db and password == passwords_db[nom_connect]:
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
                             st.session_state.user_perms = user.get('permissions', {})
