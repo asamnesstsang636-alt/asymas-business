@@ -1900,7 +1900,12 @@ if "📋 Devis" in tab_map:
         if peut_voir_ind: tabs_list.append("🏭 Devis Industriel")
         if peut_voir_bat: tabs_list.append("🏗️ Devis Bâtiment")
         if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment") # <-- NOUVEAU
+        # AVANT
         if peut_hist: tabs_list.append("📜 Historique Global")
+
+        # APRÈS
+        if peut_voir_ind and peut_hist: tabs_list.append("📜 Historique Industriel")
+        if peut_voir_bat and peut_hist: tabs_list.append("📜 Historique Bâtiment")
 
         tabs = st.tabs(tabs_list)
         tab_idx = 0
