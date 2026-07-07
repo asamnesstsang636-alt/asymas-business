@@ -2207,24 +2207,155 @@ if "📋 Devis" in tab_map:
             tab_idx += 1
 
         # ===== 4. ONGLET HISTORIQUE GLOBAL =====
-        if peut_hist:
+        # ===== 4. ONGLET HISTORIQUE INDUSTRIEL =====
+        if peut_voir_ind and peut_hist:
             with tabs[tab_idx]:
-                st.subheader("📜 Historique des Devis")
+                st.subheader("📜 Historique Devis Industriels")
                 try:
-                    devis_list = supabase.table('devis').select("*").order("created_at", desc=True).limit(20).execute().data
+                    devis_list = supabase.table('devis').select("*").eq('type', 'Industriel').order("created_at", desc=True).limit(20).execute().data
                 except:
                     devis_list = []
 
                 if not devis_list:
-                    st.info("Aucun devis enregistré")
+                    st.info("Aucun devis industriel enregistré")
                 else:
                     for d in devis_list:
-                        with st.expander(f"{d.get('type')} - {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+                        with st.expander(f"🏭 {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
                             st.write(f"**Titre:** {d.get('titre')}")
                             st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
                             st.write(f"**Localisation:** {d.get('localisation','')}")
                             
-                            col1, col2, col3 = st.columns([3,1,1])
+                            col1, col2 = st.columns([3,2])
+                            
+                            # BOUTON TELECHARGER
+                            with col1:
+                                if peut_dl_ind:
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        d.get('numero'), "Industriel", d.get('client'), d.get('titre'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
+                                        d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428"
+                                    )
+                                    st.download_button(
+                                        "📥 Télécharger PDF", 
+                                        data=pdf_bytes, 
+                                        file_name=f"{d.get('numero')}.pdf", 
+                                        mime="application/pdf", 
+                                        key=f"dl_hist_ind_{d.get('numero')}", 
+                                        width="stretch"
+                                    )
+                                else:
+                                    st.warning("🔒 Pas de permission téléchargement")
+                            
+                            # BOUTON IMPRIMER
+                            with col2:
+                                if peut_pr_ind:
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        d.get('numero'), "Industriel", d.get('client'), d.get('titre'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
+                                        d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428"
+                                    )
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = str(d.get('numero','DEV')).replace('-', '_').replace('.', '_')
+                                    
+                                    st.components.v1.html(f"""<button onclick="printPDF_ind_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                        🖨️ IMPRIMER
+                                    </button>
+                                    <script>
+                                    function printPDF_ind_{safe_id}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, height=60)
+                                else:
+                                    st.warning("🔒 Pas de permission impression")
+            tab_idx += 1
+
+        # ===== 5. ONGLET HISTORIQUE BATIMENT =====
+        if peut_voir_bat and peut_hist:
+            with tabs[tab_idx]:
+                st.subheader("📜 Historique Devis Bâtiment")
+                try:
+                    devis_list = supabase.table('devis').select("*").eq('type', 'Bâtiment').order("created_at", desc=True).limit(20).execute().data
+                except:
+                    devis_list = []
+
+                if not devis_list:
+                    st.info("Aucun devis bâtiment enregistré")
+                else:
+                    for d in devis_list:
+                        with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+                            st.write(f"**Titre:** {d.get('titre')}")
+                            st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
+                            st.write(f"**Localisation:** {d.get('localisation','')}")
+                            
+                            col1, col2 = st.columns([3,2])
+                            
+                            # BOUTON TELECHARGER
+                            with col1:
+                                if peut_dl_bat:
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
+                                        d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690"
+                                    )
+                                    st.download_button(
+                                        "📥 Télécharger PDF", 
+                                        data=pdf_bytes, 
+                                        file_name=f"{d.get('numero')}.pdf", 
+                                        mime="application/pdf", 
+                                        key=f"dl_hist_bat_{d.get('numero')}", 
+                                        width="stretch"
+                                    )
+                                else:
+                                    st.warning("🔒 Pas de permission téléchargement")
+                            
+                            # BOUTON IMPRIMER
+                            with col2:
+                                if peut_pr_bat:
+                                    sections_data = d.get('sections')
+                                    if isinstance(sections_data, str):
+                                        sections_data = json.loads(sections_data)
+                                        
+                                    pdf_bytes = generer_pdf_devis_consulting(
+                                        d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'),
+                                        d.get('parcelle'), d.get('localisation'), sections_data,
+                                        d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690"
+                                    )
+                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                    safe_id = str(d.get('numero','DEV')).replace('-', '_').replace('.', '_')
+                                    
+                                    st.components.v1.html(f"""<button onclick="printPDF_bat_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                        🖨️ IMPRIMER
+                                    </button>
+                                    <script>
+                                    function printPDF_bat_{safe_id}() {{
+                                        const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                        const win = window.open('', '_blank');
+                                        win.document.write('<iframe src="' + pdfData + '" width="100%" height="100%" style="border:none;"></iframe>');
+                                        win.document.close();
+                                        setTimeout(() => {{ win.print(); }}, 1000);
+                                    }}
+                                    </script>
+                                """, height=60)
+                                else:
+                                    st.warning("🔒 Pas de permission impression")
+            tab_idx += 1
                             
                             # BOUTON TELECHARGER
                             with col2:
