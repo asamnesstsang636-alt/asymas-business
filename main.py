@@ -517,9 +517,13 @@ if st.session_state.user_role is None:
                     st.rerun()
                 else:
                     st.error("Nom d'utilisateur ou mot de passe incorrect")
-            else:
-                st.warning("Veuillez remplir tous les champs")
+            try:
+    response = supabase.table("utilisateurs").select("*").ilike("nom", nom_connect).execute()
+except Exception as e:
+    st.error(f"Erreur Supabase: {e}")
     st.stop()
+                
+    
 
 if 'user_role' in st.session_state and st.session_state.user_role is not None:
     with st.sidebar:
