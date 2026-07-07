@@ -2125,12 +2125,22 @@ if "📋 Devis" in tab_map:
                 st.subheader("🧾 Facture Travaux Exécutés - Bâtiment")
                 st.info(f"**Ingénieur:** ESDRAS | **Tél:** +243 972 888 690 | **Email:** ESDRAStsangya@gmail.com")
 
+                # INIT TITRE FACTURE
+                if 'titre_fact_bat' not in st.session_state:
+                    st.session_state.titre_fact_bat = "FACTURE A HONORER - TRAVAUX EXECUTES"
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     client_fact_bat = st.text_input("👤 Client", key="client_fact_bat")
                     num_devis_ref = st.text_input("📄 N° Devis Référence", key="num_devis_ref_bat")
                 with col2:
-                    titre_fact_bat = st.text_input("📋 Intitulé Travaux", value="FACTURE A HONORER", key="titre_fact_bat")
+                    # TITRE EDITABLE
+                    st.session_state.titre_fact_bat = st.text_input(
+                        "📋 Intitulé des Travaux",
+                        value=st.session_state.titre_fact_bat,
+                        key="titre_fact_bat_input",
+                        help="Ex: FACTURE A HONORER - SITUATION N°1 - FONDATION"
+                    )
                     date_fact_bat = st.date_input("📅 Date Facture", value=datetime.now().date(), key="date_fact_bat")
                 with col3:
                     st.session_state.facture_bat_pourcentage = st.number_input("📊 % Travaux Exécutés", min_value=0.0, max_value=100.0, value=st.session_state.facture_bat_pourcentage, key="pourc_fact_bat", format="%.2f")
@@ -2183,12 +2193,12 @@ if "📋 Devis" in tab_map:
                 st.markdown("**Architecte VINCENT KALAVI**")
 
                 if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="gen_fact_bat"):
-                    if client_fact_bat and titre_fact_bat:
+                    if client_fact_bat and st.session_state.titre_fact_bat:
                         numero_fact = f"FACT-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         try:
                             data_fact = {
                                 "numero": numero_fact, "type": "Facture Bâtiment", "client": client_fact_bat,
-                                "titre": titre_fact_bat, "date": str(date_fact_bat), "num_devis_ref": num_devis_ref,
+                                "titre": st.session_state.titre_fact_bat, "date": str(date_fact_bat), "num_devis_ref": num_devis_ref,
                                 "sections": st.session_state.facture_bat_sections, "pourcentage": st.session_state.facture_bat_pourcentage,
                                 "retenue": retenue, "total": total_facture, "net_a_payer": net_a_payer, "devise": devise_fact_bat,
                                 "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()
@@ -2200,18 +2210,19 @@ if "📋 Devis" in tab_map:
                             st.code(repr(e))
 
                         pdf_bytes = generer_pdf_facture_consulting(
-                            numero_fact, client_fact_bat, titre_fact_bat, date_fact_bat, num_devis_ref,
+                            numero_fact, client_fact_bat, st.session_state.titre_fact_bat, date_fact_bat, num_devis_ref,
                             st.session_state.facture_bat_sections, devise_fact_bat, total_facture,
                             montant_retenue, net_a_payer, "ESDRAS", "+243 972 888 690"
                         )
                         st.session_state.pdf_fact_bat = pdf_bytes
                         st.session_state.num_fact_bat = numero_fact
                         st.rerun()
+                    else:
+                        st.error("Client et Intitulé des travaux requis")
 
                 if 'pdf_fact_bat' in st.session_state and st.session_state.pdf_fact_bat:
                     st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_fact_bat, file_name=f"{st.session_state.num_fact_bat}.pdf", mime="application/pdf", width="stretch")
             tab_idx += 1
-
         # ===== 4. ONGLET HISTORIQUE GLOBAL =====
         # ===== 4. ONGLET HISTORIQUE INDUSTRIEL =====
         if peut_voir_ind and peut_hist:
