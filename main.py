@@ -1878,10 +1878,9 @@ if "📋 Devis" in tab_map:
         if 'facture_bat_pourcentage' not in st.session_state:
             st.session_state.facture_bat_pourcentage = 30.0
 
-        # === VERIFIER PERMISSIONS ===
-        # === VERIFIER PERMISSIONS ===
-        peut_voir_ind = is_pdg or perms.get('devis_industriel', False) or perms.get('devis_industriel_download', False) or perms.get('devis_industriel_print', False)
-        peut_voir_bat = is_pdg or perms.get('devis_batiment', False) or perms.get('devis_batiment_download', False) or perms.get('devis_batiment_print', False)
+       # === VERIFIER PERMISSIONS ===
+        peut_voir_ind = is_pdg or perms.get('devis_industriel', False) or perms.get('devis_industriel_download', False) or perms.get('devis_industriel_print', False) or perms.get('devis_historique_industriel', False)
+        peut_voir_bat = is_pdg or perms.get('devis_batiment', False) or perms.get('devis_batiment_download', False) or perms.get('devis_batiment_print', False) or perms.get('devis_historique_batiment', False)
         peut_facture_bat = is_pdg or perms.get('facture_batiment', False)
 
         peut_creer_ind = is_pdg or perms.get('devis_industriel', False)
@@ -1890,10 +1889,10 @@ if "📋 Devis" in tab_map:
         peut_dl_bat = is_pdg or perms.get('devis_batiment_download', False)
         peut_pr_ind = is_pdg or perms.get('devis_industriel_print', False)
         peut_pr_bat = is_pdg or perms.get('devis_batiment_print', False)
-        peut_hist_ind = is_pdg or perms.get('devis_historique_industriel', False) # <-- AJOUTE ÇA
-        peut_hist_bat = is_pdg or perms.get('devis_historique_batiment', False)   # <-- AJOUTE ÇA
+        peut_hist_ind = is_pdg or perms.get('devis_historique_industriel', False)
+        peut_hist_bat = is_pdg or perms.get('devis_historique_batiment', False)
 
-        if not peut_voir_ind and not peut_voir_bat and not peut_facture_bat and not peut_hist_ind and not peut_hist_bat:
+        if not peut_voir_ind and not peut_voir_bat and not peut_facture_bat:
             st.warning("🔒 Vous n'avez aucune permission pour les devis")
             st.stop()
 
@@ -1902,14 +1901,15 @@ if "📋 Devis" in tab_map:
         if peut_voir_ind: tabs_list.append("🏭 Devis Industriel")
         if peut_voir_bat: tabs_list.append("🏗️ Devis Bâtiment")
         if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment")
-        if peut_voir_ind and peut_hist_ind: tabs_list.append("📜 Historique Industriel") # <-- CORRIGÉ
-        if peut_voir_bat and peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")     # <-- CORRIGÉ
+        if peut_hist_ind: tabs_list.append("📜 Historique Industriel")
+        if peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")
 
         tabs = st.tabs(tabs_list)
         tab_idx = 0
         # ===== 1. ONGLET INDUSTRIEL =====
         if peut_voir_ind:
             with tabs[tab_idx]:
+                tab_idx += 1
                 if peut_creer_ind:
                     st.subheader("🏭 Nouveau Devis Industriel")
                     st.session_state.devis_type = "Industriel"
@@ -1933,7 +1933,7 @@ if "📋 Devis" in tab_map:
 
                     st.divider()
 
-                    if not st.session_state.devis_sections_ind:
+                    if 'devis_sections_ind' not in st.session_state or not st.session_state.devis_sections_ind:
                         items = [
                             {"num": "1", "designation": "OZONEUR", "detail": "", "unite": "pc", "qte": 1.00, "pu": 450},
                             {"num": "2", "designation": "LAMPE UV", "detail": "", "unite": "pc", "qte": 2.00, "pu": 200},
@@ -1990,7 +1990,10 @@ if "📋 Devis" in tab_map:
                             st.session_state.pdf_devis_ind = pdf_bytes
                             st.session_state.num_devis_ind = numero_devis
                             st.rerun()
-
+                        else:
+                            st.error("Client et Titre requis")
+                else:
+                    st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
                         if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_dl_ind:
