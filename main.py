@@ -494,24 +494,28 @@ if st.session_state.user_role is None:
     with col2:
         st.markdown("### Connectez-vous :")
         
-        nom_connect = st.text_input("Nom d'utilisateur", placeholder="Ex: TSANG").strip().upper()
-        password = st.text_input("Mot de passe", type="password", key="pwd")
+        # CHAMPS VIDES
+        nom_connect = st.text_input("Nom d'utilisateur", placeholder="", value="")
+        password = st.text_input("Mot de passe", type="password", placeholder="", value="", key="pwd")
         
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
                     response = supabase.table("utilisateurs")\
-                 .select("id, nom, role, permissions, categories_autorisees")\
-                 .ilike("nom", nom_connect)\
-                 .execute()
+               .select("id, nom, role, permissions, categories_autorisees")\
+               .ilike("nom", nom_connect.strip())\
+               .execute()
                     
                     df_users_login = pd.DataFrame(response.data)
                     
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
                         
-                        # On compare en ignorant la casse
-                        mdp_attendu = passwords_db.get(nom_connect.upper())
+                        mdp_attendu = None
+                        for k, v in passwords_db.items():
+                            if k.upper() == nom_connect.strip().upper():
+                                mdp_attendu = v
+                                break
                         
                         if mdp_attendu and password == mdp_attendu:
                             st.session_state.user_role = user['role']
