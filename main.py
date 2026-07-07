@@ -1879,9 +1879,10 @@ if "📋 Devis" in tab_map:
             st.session_state.facture_bat_pourcentage = 30.0
 
         # === VERIFIER PERMISSIONS ===
+        # === VERIFIER PERMISSIONS ===
         peut_voir_ind = is_pdg or perms.get('devis_industriel', False) or perms.get('devis_industriel_download', False) or perms.get('devis_industriel_print', False)
         peut_voir_bat = is_pdg or perms.get('devis_batiment', False) or perms.get('devis_batiment_download', False) or perms.get('devis_batiment_print', False)
-        peut_facture_bat = is_pdg or perms.get('facture_batiment', False) # <-- NOUVEAU
+        peut_facture_bat = is_pdg or perms.get('facture_batiment', False)
 
         peut_creer_ind = is_pdg or perms.get('devis_industriel', False)
         peut_creer_bat = is_pdg or perms.get('devis_batiment', False)
@@ -1889,9 +1890,10 @@ if "📋 Devis" in tab_map:
         peut_dl_bat = is_pdg or perms.get('devis_batiment_download', False)
         peut_pr_ind = is_pdg or perms.get('devis_industriel_print', False)
         peut_pr_bat = is_pdg or perms.get('devis_batiment_print', False)
-        peut_hist = is_pdg or perms.get('devis_historique', False)
+        peut_hist_ind = is_pdg or perms.get('devis_historique_industriel', False) # <-- AJOUTE ÇA
+        peut_hist_bat = is_pdg or perms.get('devis_historique_batiment', False)   # <-- AJOUTE ÇA
 
-        if not peut_voir_ind and not peut_voir_bat and not peut_facture_bat and not peut_hist:
+        if not peut_voir_ind and not peut_voir_bat and not peut_facture_bat and not peut_hist_ind and not peut_hist_bat:
             st.warning("🔒 Vous n'avez aucune permission pour les devis")
             st.stop()
 
@@ -1899,18 +1901,12 @@ if "📋 Devis" in tab_map:
         tabs_list = []
         if peut_voir_ind: tabs_list.append("🏭 Devis Industriel")
         if peut_voir_bat: tabs_list.append("🏗️ Devis Bâtiment")
-        if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment") # <-- NOUVEAU
-        # AVANT
-        if peut_voir_ind and peut_hist_ind: tabs_list.append("📜 Historique Industriel")
-        if peut_voir_bat and peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")
-
-        
-        
-        
+        if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment")
+        if peut_voir_ind and peut_hist_ind: tabs_list.append("📜 Historique Industriel") # <-- CORRIGÉ
+        if peut_voir_bat and peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")     # <-- CORRIGÉ
 
         tabs = st.tabs(tabs_list)
         tab_idx = 0
-
         # ===== 1. ONGLET INDUSTRIEL =====
         if peut_voir_ind:
             with tabs[tab_idx]:
