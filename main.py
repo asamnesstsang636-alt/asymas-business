@@ -2066,6 +2066,51 @@ if "📋 Devis" in tab_map:
 
         # ===== 3. ONGLET HISTORIQUE GLOBAL =====
         # ===== 3. ONGLET HISTORIQUE GLOBAL =====
+        def generer_pdf_facture_consulting(numero, client, titre, date, ref_devis, sections, devise, total, retenue, net, ing_nom, ing_tel):
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "FACTURE A HONORER - TRAVAUX EXECUTES", 0, 1, "C")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 6, f"N°: {numero} | Date: {date} | Ref Devis: {ref_devis}", 0, 1, "C")
+    pdf.ln(5)
+    pdf.cell(0, 6, f"Client: {client}", 0, 1)
+    pdf.cell(0, 6, f"Ingénieur: {ing_nom} | Tel: {ing_tel}", 0, 1)
+    pdf.ln(5)
+
+    # Tableau
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(10, 6, "N°", 1)
+    pdf.cell(70, 6, "DESIGNATION", 1)
+    pdf.cell(15, 6, "UNITE", 1)
+    pdf.cell(20, 6, "QTE TOT", 1)
+    pdf.cell(20, 6, "QTE EXE", 1)
+    pdf.cell(20, 6, "PU", 1)
+    pdf.cell(25, 6, "MONTANT", 1, 1)
+
+    pdf.set_font("Arial", "", 8)
+    for section in sections:
+        pdf.cell(0, 6, f"{section['numero']}. {section['titre']}", 1, 1)
+        for item in section['items']:
+            montant = item.get('qte_execute',0) * item.get('pu',0)
+            pdf.cell(10, 6, str(item.get('num','')), 1)
+            pdf.cell(70, 6, item.get('designation',''), 1)
+            pdf.cell(15, 6, item.get('unite',''), 1)
+            pdf.cell(20, 6, str(item.get('qte_totale',0)), 1)
+            pdf.cell(20, 6, str(item.get('qte_execute',0)), 1)
+            pdf.cell(20, 6, f"{item.get('pu',0):.2f}", 1)
+            pdf.cell(25, 6, f"{montant:.2f}", 1, 1)
+
+    pdf.ln(3)
+    pdf.cell(135, 6, "TOTAL TRAVAUX EXECUTES:", 1)
+    pdf.cell(45, 6, f"{total:,.2f} {devise}", 1, 1, "R")
+    pdf.cell(135, 6, "RETENUE GARANTIE:", 1)
+    pdf.cell(45, 6, f"{retenue:,.2f} {devise}", 1, 1, "R")
+    pdf.cell(135, 6, "NET A PAYER:", 1)
+    pdf.cell(45, 6, f"{net:,.2f} {devise}", 1, 1, "R")
+
+    return pdf.output(dest='S').encode('latin1')
         if peut_hist:
             with tabs[tab_idx]:
                 st.subheader("📜 Historique des Devis")
