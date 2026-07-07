@@ -1965,7 +1965,7 @@ if "📋 Devis" in tab_map:
                     cout_total_ind = total_general_ind + main_oeuvre_ind
                     st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis_ind}")
 
-    if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
+ if st.button("📄 GÉNÉRER DEVIS PDF", type="primary", width="stretch", key="gen_devis_ind"):
     if client_devis_ind and titre_devis_ind:
         numero_devis = f"DEV-IND-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         try:
