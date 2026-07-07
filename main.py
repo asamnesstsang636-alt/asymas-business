@@ -480,7 +480,7 @@ a[href*="share.streamlit.io"] {display: none!important;}
 import pandas as pd
 import streamlit as st
 
-passwords_db = load_passwords() # TON DICT AVEC LES MDP
+passwords_db = load_passwords()
 
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
@@ -494,24 +494,26 @@ if st.session_state.user_role is None:
     with col2:
         st.markdown("### Connectez-vous :")
         
-        nom_connect = st.text_input("Nom d'utilisateur", placeholder="Ex: TSANG - PDG")
+        nom_connect = st.text_input("Nom d'utilisateur", placeholder="Ex: TSANG").strip().upper()
         password = st.text_input("Mot de passe", type="password", key="pwd")
         
         if st.button("SE CONNECTER", width="stretch", type="primary"):
             if nom_connect and password:
                 try:
                     response = supabase.table("utilisateurs")\
-                   .select("id, nom, role, permissions, categories_autorisees")\
-                   .ilike("nom", nom_connect)\
-                   .execute()
+                 .select("id, nom, role, permissions, categories_autorisees")\
+                 .ilike("nom", nom_connect)\
+                 .execute()
                     
                     df_users_login = pd.DataFrame(response.data)
                     
                     if not df_users_login.empty:
                         user = df_users_login.iloc[0]
                         
-                        # ON VERIFIE LE MDP DANS passwords_db AU LIEU DE SUPABASE
-                        if nom_connect in passwords_db and password == passwords_db[nom_connect]:
+                        # On compare en ignorant la casse
+                        mdp_attendu = passwords_db.get(nom_connect.upper())
+                        
+                        if mdp_attendu and password == mdp_attendu:
                             st.session_state.user_role = user['role']
                             st.session_state.user_name = user['nom']
                             st.session_state.user_perms = user.get('permissions', {})
@@ -519,12 +521,12 @@ if st.session_state.user_role is None:
                             st.success(f"Bienvenue {st.session_state.user_name}")
                             st.rerun()
                         else:
-                            st.error("Mot de passe incorrect")
+                            st.error("Nom d'utilisateur ou mot de passe incorrect")
                     else:
                         st.error("Nom d'utilisateur non trouvé")
                         
                 except Exception as e:
-                    st.error(f"Erreur Supabase: {e}")
+                    st.error(f"Erreur de connexion à la base de données")
             else:
                 st.warning("Veuillez remplir tous les champs")
     st.stop()
