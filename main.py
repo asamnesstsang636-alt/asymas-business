@@ -2042,7 +2042,7 @@ if "📋 Devis" in tab_map:
         if peut_facture_bat:
             with tabs[tab_idx]:
                 st.subheader("🧾 Facture Travaux Exécutés - Bâtiment")
-                st.info(f"**Ingénieur:** ESDRAS | **Tél:** +243 972 888 690 | **Email:** ESDRAStsangya@gmail.com")
+                st.info(f"**Ingénieur:** ESDRAS | **Tél:** +243 972 888 690 | **Email:** esdrastsangya@gmail.com")
                 if 'titre_fact_bat' not in st.session_state: st.session_state.titre_fact_bat = "FACTURE A HONORER - TRAVAUX EXECUTES"
                 col1, col2, col3 = st.columns(3)
                 with col1: client_fact_bat = st.text_input("👤 Client", key="client_fact_bat"); num_devis_ref = st.text_input("📄 N° Devis Référence", key="num_devis_ref_bat")
