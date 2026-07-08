@@ -1868,19 +1868,23 @@ if "📋 Devis" in tab_map:
         import base64
 
         # === INIT SESSION STATE ===
-        if 'devis_sections_ind' not in st.session_state: st.session_state.devis_sections_ind = []
-        if 'devis_bat_sections' not in st.session_state: st.session_state.devis_bat_sections = []
-        if 'devis_bat_titre' not in st.session_state: st.session_state.devis_bat_titre = "DEVIS BATIMENT"
-        if 'devis_bat_main_oeuvre' not in st.session_state: st.session_state.devis_bat_main_oeuvre = 0.0
-        if 'facture_bat_sections' not in st.session_state: st.session_state.facture_bat_sections = []
-        if 'facture_bat_pourcentage' not in st.session_state: st.session_state.facture_bat_pourcentage = 30.0
+        if 'devis_sections_ind' not in st.session_state:
+            st.session_state.devis_sections_ind = []
+        if 'devis_bat_sections' not in st.session_state:
+            st.session_state.devis_bat_sections = []
+        if 'devis_bat_titre' not in st.session_state:
+            st.session_state.devis_bat_titre = "DEVIS BATIMENT"
+        if 'devis_bat_main_oeuvre' not in st.session_state:
+            st.session_state.devis_bat_main_oeuvre = 0.0
+        if 'facture_bat_sections' not in st.session_state:
+            st.session_state.facture_bat_sections = []
+        if 'facture_bat_pourcentage' not in st.session_state:
+            st.session_state.facture_bat_pourcentage = 30.0
 
         # === VERIFIER PERMISSIONS ===
         peut_voir_ind = is_pdg or perms.get('devis_industriel', False) or perms.get('devis_industriel_download', False) or perms.get('devis_industriel_print', False) or perms.get('devis_historique_industriel', False)
         peut_voir_bat = is_pdg or perms.get('devis_batiment', False) or perms.get('devis_batiment_download', False) or perms.get('devis_batiment_print', False) or perms.get('devis_historique_batiment', False)
-        peut_facture_bat = is_pdg or perms.get('facture_batiment', False) # Pour créer facture
-        peut_dl_fact_bat = is_pdg or perms.get('facture_batiment_download', False) # <-- AJOUT
-        peut_pr_fact_bat = is_pdg or perms.get('facture_batiment_print', False) # <-- AJOUT
+        peut_facture_bat = is_pdg or perms.get('facture_batiment', False)
 
         peut_creer_ind = is_pdg or perms.get('devis_industriel', False)
         peut_creer_bat = is_pdg or perms.get('devis_batiment', False)
@@ -1899,9 +1903,8 @@ if "📋 Devis" in tab_map:
         tabs_list = []
         if peut_voir_ind: tabs_list.append("🏭 Devis Industriel")
         if peut_voir_bat: tabs_list.append("🏗️ Devis Bâtiment")
-        # LA FACTURE N'EST PLUS UN ONGLET SEPARE
-        if peut_hist_ind: tabs_list.append("📜 Historique Industriel")
-        if peut_hist_bat: tabs_list.append("📜 Historique Bâtiment")
+        if peut_facture_bat: tabs_list.append("🧾 Facture Travaux Bâtiment")
+        if peut_hist_ind or peut_hist_bat: tabs_list.append("📜 Historique") # 1 seul onglet Historique
 
         tabs = st.tabs(tabs_list)
         tab_idx = 0
@@ -1914,8 +1917,10 @@ if "📋 Devis" in tab_map:
                     st.session_state.devis_type = "Industriel"
 
                     col_ing1, col_ing2 = st.columns(2)
-                    with col_ing1: ing_nom_ind = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
-                    with col_ing2: ing_tel_ind = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
+                    with col_ing1:
+                        ing_nom_ind = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
+                    with col_ing2:
+                        ing_tel_ind = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -1940,10 +1945,14 @@ if "📋 Devis" in tab_map:
 
                     total_general_ind = 0
                     for idx, section in enumerate(st.session_state.devis_sections_ind):
+                        col_titre1, col_titre2 = st.columns([0.2, 3]) # Titre éditable ligne par ligne
+                        with col_titre1: section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_ind_{idx}", label_visibility="collapsed")
+                        with col_titre2: section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_ind_{idx}", label_visibility="collapsed")
+                        
                         st.markdown(f"**{section['numero']}. {section['titre']}**")
                         sous_total_sec = 0
                         for i, item in enumerate(section['items']):
-                            col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 2.5, 2, 1, 1, 1, 1])
+                            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 2.5, 2, 1, 1, 1, 1, 0.5])
                             with col1: section['items'][i]['num'] = st.text_input("N°", value=item.get('num', ''), key=f"num_ind_{idx}_{i}", label_visibility="collapsed")
                             with col2: section['items'][i]['designation'] = st.text_input("Désignation", value=item.get('designation', ''), key=f"des_ind_{idx}_{i}", label_visibility="collapsed")
                             with col3: section['items'][i]['detail'] = st.text_input("Détail", value=item.get('detail', ''), key=f"detail_ind_{idx}_{i}", label_visibility="collapsed")
@@ -1954,6 +1963,10 @@ if "📋 Devis" in tab_map:
                                 pt = section['items'][i]['qte'] * section['items'][i]['pu']
                                 st.markdown(f"**{pt:,.2f}**")
                                 sous_total_sec += pt
+                            with col8:
+                                if st.button("❌", key=f"del_item_ind_{idx}_{i}"):
+                                    section['items'].pop(i)
+                                    st.rerun()
                         total_general_ind += sous_total_sec
                         st.markdown(f"**Sous-total: {sous_total_sec:,.2f}**")
                         st.divider()
@@ -1989,7 +2002,6 @@ if "📋 Devis" in tab_map:
                             st.rerun()
                         else:
                             st.error("Client et Titre requis")
-
                 else:
                     st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
 
@@ -2036,9 +2048,11 @@ if "📋 Devis" in tab_map:
                     st.divider()
                     total_general_bat = 0
                     for idx, section in enumerate(st.session_state.devis_bat_sections):
-                        num_sec = section.get('numero', str(idx+1))
-                        titre_sec = section.get('titre', 'Section')
-                        st.markdown(f"**{num_sec}. {titre_sec}**")
+                        col_titre1, col_titre2 = st.columns([0.2, 3]) # Titre éditable ligne par ligne
+                        with col_titre1: section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_bat_{idx}", label_visibility="collapsed")
+                        with col_titre2: section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_bat_{idx}", label_visibility="collapsed")
+                        
+                        st.markdown(f"**{section['numero']}. {section['titre']}**")
                         sous_total_sec = 0
                         for i, item in enumerate(section.get('items', [])):
                             col1, col2, col3, col4, col5, col6, col7 = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
@@ -2101,7 +2115,7 @@ if "📋 Devis" in tab_map:
                     with col_btn2:
                         if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat and peut_pr_bat:
                             pdf_b64 = base64.b64encode(st.session_state.pdf_devis_bat).decode()
-                            st.components.v1.html(f"""<button onclick="printPDF_bat()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px;">🖨️ IMPRIMER LE DEVIS</button><script>function printPDF_bat(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
+                            st.components.v1.html(f"""<button onclick="printPDF_bat()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER LE DEVIS</button><script>function printPDF_bat(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
                     with col_btn3:
                         if st.button("🔄 Réinitialiser", key="reset_devis_bat_1", width="stretch"):
                             st.session_state.devis_bat_sections = []
@@ -2111,97 +2125,306 @@ if "📋 Devis" in tab_map:
                     st.info("🔒 Vous n'avez pas la permission de créer des devis bâtiment")
             tab_idx += 1
 
-        # ===== 3. ONGLET HISTORIQUE INDUSTRIEL =====
-        if peut_voir_ind and peut_hist_ind:
+        # ===== 3. ONGLET FACTURE TRAVAUX BATIMENT =====
+        if peut_facture_bat:
             with tabs[tab_idx]:
-                st.subheader("📜 Historique Devis Industriels")
-                try: devis_list = supabase.table('devis').select("*").eq('type', 'Industriel').order("created_at", desc=True).limit(20).execute().data
-                except: devis_list = []
+                st.subheader("🧾 Facture Travaux Exécutés - Bâtiment")
+                st.info(f"**Ingénieur:** ESDRAS | **Tél:** +243 972 888 690 | **Email:** ESDRAStsangya@gmail.com")
 
-                if not devis_list: st.info("Aucun devis industriel enregistré")
-                else:
-                    for d in devis_list:
-                        with st.expander(f"🏭 {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
-                            st.write(f"**Titre:** {d.get('titre')}")
-                            st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if peut_dl_ind:
-                                    sections_data = d.get('sections')
-                                    if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                    pdf_bytes = generer_pdf_devis_consulting(d.get('numero'), "Industriel", d.get('client'), d.get('titre'), d.get('parcelle'), d.get('localisation'), sections_data, d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428")
-                                    st.download_button("📥 Télécharger PDF", data=pdf_bytes, file_name=f"{d.get('numero')}.pdf", mime="application/pdf", key=f"dl_hist_ind_{d.get('numero')}", width="stretch")
-                            with col2:
-                                if peut_pr_ind:
-                                    sections_data = d.get('sections')
-                                    if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                    pdf_bytes = generer_pdf_devis_consulting(d.get('numero'), "Industriel", d.get('client'), d.get('titre'), d.get('parcelle'), d.get('localisation'), sections_data, d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428")
-                                    pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                    safe_id = str(d.get('numero','DEV')).replace('-', '_')
-                                    st.components.v1.html(f"""<button onclick="printPDF_ind_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px;">🖨️ IMPRIMER</button><script>function printPDF_ind_{safe_id}(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
+                if 'titre_fact_bat' not in st.session_state:
+                    st.session_state.titre_fact_bat = "FACTURE A HONORER - TRAVAUX EXECUTES"
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    client_fact_bat = st.text_input("👤 Client", key="client_fact_bat")
+                    num_devis_ref = st.text_input("📄 N° Devis Référence", key="num_devis_ref_bat")
+                with col2:
+                    st.session_state.titre_fact_bat = st.text_input("📋 Intitulé des Travaux", value=st.session_state.titre_fact_bat, key="titre_fact_bat_input")
+                    date_fact_bat = st.date_input("📅 Date Facture", value=datetime.now().date(), key="date_fact_bat")
+                with col3:
+                    st.session_state.facture_bat_pourcentage = st.number_input("📊 % Travaux Exécutés", min_value=0.0, max_value=100.0, value=st.session_state.facture_bat_pourcentage, key="pourc_fact_bat", format="%.2f")
+                    devise_fact_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_fact_bat")
+
+                st.divider()
+
+                if not st.session_state.facture_bat_sections:
+                    st.session_state.facture_bat_sections = [
+                        {"numero": "I", "titre": "Installation chantier / Demolitions", "items": [{"num": "1", "designation": "Installation chantier", "unite": "ff", "qte_totale": 1, "pu": 200, "qte_execute": 1}]},
+                        {"numero": "II", "titre": "fondation", "items": [{"num": "1", "designation": "moellon", "unite": "Canters", "qte_totale": 9, "pu": 50, "qte_execute": 0}]},
+                    ]
+
+                total_facture = 0
+                for idx, section in enumerate(st.session_state.facture_bat_sections):
+                    col_titre1, col_titre2 = st.columns([0.2, 3]) # Titre éditable ligne par ligne
+                    with col_titre1: section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_fact_{idx}", label_visibility="collapsed")
+                    with col_titre2: section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_fact_{idx}", label_visibility="collapsed")
+                        
+                    st.markdown(f"**{section['numero']}. {section['titre']}**")
+                    sous_total_sec = 0
+                    for i, item in enumerate(section['items']):
+                        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1, 1.2, 1.2, 1.2, 1.2, 0.5])
+                        with col1: st.write(item.get('num',''))
+                        with col2: st.write(item.get('designation',''))
+                        with col3: st.write(item.get('unite',''))
+                        with col4: st.write(f"{item.get('qte_totale',0)}")
+                        with col5: st.write(f"{item.get('pu',0):,.2f}")
+                        with col6:
+                            qte_ex = st.number_input("Qté Exécutée", value=float(item.get('qte_execute',0)), min_value=0.0, key=f"qte_ex_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['qte_execute'] = qte_ex
+                        with col7:
+                            montant = qte_ex * item.get('pu',0)
+                            st.markdown(f"**{montant:,.2f}**")
+                            sous_total_sec += montant
+                        with col8:
+                            if st.button("❌", key=f"del_fact_bat_{idx}_{i}"):
+                                section['items'].pop(i)
+                                st.rerun()
+                    total_facture += sous_total_sec
+                    st.markdown(f"**Sous-total Exécuté: {sous_total_sec:,.2f}**")
+                    st.divider()
+
+                col_mo1, col_mo2, col_mo3 = st.columns(3)
+                with col_mo1:
+                    retenue = st.number_input("💰 Retenue Garantie %", value=5.0, min_value=0.0, max_value=100.0, key="retenue_fact_bat")
+                with col_mo2:
+                    montant_retenue = total_facture * (retenue/100)
+                    st.metric("MONTANT RETENUE", f"{montant_retenue:,.2f} {devise_fact_bat}")
+                with col_mo3:
+                    net_a_payer = total_facture - montant_retenue
+                    st.metric("NET A PAYER", f"{net_a_payer:,.2f} {devise_fact_bat}")
+
+                st.markdown("**Architecte VINCENT KALAVI**")
+
+                if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="gen_fact_bat"):
+                    if client_fact_bat and st.session_state.titre_fact_bat:
+                        numero_fact = f"FACT-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        try:
+                            data_fact = {
+                                "numero": numero_fact, "type": "Facture Bâtiment", "client": client_fact_bat,
+                                "titre": st.session_state.titre_fact_bat, "date": str(date_fact_bat), "num_devis_ref": num_devis_ref,
+                                "sections": st.session_state.facture_bat_sections, "pourcentage": st.session_state.facture_bat_pourcentage,
+                                "retenue": retenue, "total": total_facture, "net_a_payer": net_a_payer, "devise": devise_fact_bat,
+                                "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()
+                            }
+                            supabase.table('factures').insert(data_fact).execute()
+                            st.success(f"✅ Facture enregistrée : {numero_fact}")
+                        except Exception as e:
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+
+                        pdf_bytes = generer_pdf_facture_consulting(
+                            numero_fact, client_fact_bat, st.session_state.titre_fact_bat, date_fact_bat, num_devis_ref,
+                            st.session_state.facture_bat_sections, devise_fact_bat, total_facture,
+                            montant_retenue, net_a_payer, "ESDRAS", "+243 972 888 690"
+                        )
+                        st.session_state.pdf_fact_bat = pdf_bytes
+                        st.session_state.num_fact_bat = numero_fact
+                        st.rerun()
+                    else:
+                        st.error("Client et Intitulé des travaux requis")
+
+                if 'pdf_fact_bat' in st.session_state and st.session_state.pdf_fact_bat:
+                    st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_fact_bat, file_name=f"{st.session_state.num_fact_bat}.pdf", mime="application/pdf", width="stretch", key="dl_fact_bat_1")
             tab_idx += 1
 
-        # ===== 4. ONGLET HISTORIQUE BATIMENT + FACTURES =====
-        if peut_voir_bat and peut_hist_bat:
+        # ===== 4. ONGLET HISTORIQUE AVEC 2 SOUS-ONGLETS =====
+        if (peut_hist_ind or peut_hist_bat):
             with tabs[tab_idx]:
-                st.subheader("📜 Historique Devis & Factures Bâtiment")
-                tab_hist1, tab_hist2 = st.tabs(["📄 Devis Bâtiment", "🧾 Factures Travaux"])
+                st.subheader("📜 Historique")
+                
+                hist_tabs_list = []
+                if peut_hist_ind: hist_tabs_list.append("🏭 Devis Industriels")
+                if peut_hist_bat: hist_tabs_list.append("🏗️ Devis + Factures Bâtiment")
+                
+                hist_tabs = st.tabs(hist_tabs_list)
+                hist_idx = 0
 
-                # === SOUS ONGLET 1 : DEVIS BATIMENT ===
-                with tab_hist1:
-                    try: devis_list = supabase.table('devis').select("*").eq('type', 'Bâtiment').order("created_at", desc=True).limit(20).execute().data
-                    except: devis_list = []
-                    if not devis_list: st.info("Aucun devis bâtiment enregistré")
-                    else:
-                        for d in devis_list:
-                            with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
-                                st.write(f"**Titre:** {d.get('titre')}")
-                                st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if peut_dl_bat:
-                                        sections_data = d.get('sections')
-                                        if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                        pdf_bytes = generer_pdf_devis_consulting(d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'), d.get('parcelle'), d.get('localisation'), sections_data, d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690")
-                                        st.download_button("📥 Télécharger PDF", data=pdf_bytes, file_name=f"{d.get('numero')}.pdf", mime="application/pdf", key=f"dl_hist_bat_{d.get('numero')}", width="stretch")
-                                with col2:
-                                    if peut_pr_bat:
-                                        sections_data = d.get('sections')
-                                        if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                        pdf_bytes = generer_pdf_devis_consulting(d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'), d.get('parcelle'), d.get('localisation'), sections_data, d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690")
-                                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                        safe_id = str(d.get('numero','DEV')).replace('-', '_')
-                                        st.components.v1.html(f"""<button onclick="printPDF_bat_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px;">🖨️ IMPRIMER</button><script>function printPDF_bat_{safe_id}(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
+                # --- SOUS ONGLET 1: HISTORIQUE INDUSTRIEL ---
+                if peut_hist_ind:
+                    with hist_tabs[hist_idx]:
+                        try:
+                            devis_list = supabase.table('devis').select("*").eq('type', 'Industriel').order("created_at", desc=True).limit(20).execute().data
+                        except:
+                            devis_list = []
 
-                # === SOUS ONGLET 2 : FACTURES BATIMENT ===
-                with tab_hist2:
-                    try: fact_list = supabase.table('factures').select("*").eq('type', 'Facture Bâtiment').order("created_at", desc=True).limit(20).execute().data
-                    except: fact_list = []
-                    if not fact_list: st.info("Aucune facture travaux enregistrée")
-                    else:
-                        for f in fact_list:
-                            with st.expander(f"🧾 {f.get('numero')} - {f.get('client')} - NET: {f.get('net_a_payer',0):,.0f} {f.get('devise','USD')}"):
-                                st.write(f"**Intitulé:** {f.get('titre')}")
-                                st.write(f"**Date:** {f.get('date')} | **Réf Devis:** {f.get('num_devis_ref','')}")
-                                st.metric("Net à Payer", f"{f.get('net_a_payer',0):,.2f} {f.get('devise','USD')}")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if peut_dl_fact_bat:
-                                        sections_data = f.get('sections')
-                                        if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                        pdf_bytes = generer_pdf_facture_consulting(f.get('numero'), f.get('client'), f.get('titre'), f.get('date'), f.get('num_devis_ref'), sections_data, f.get('devise'), f.get('total'), f.get('total',0)*(f.get('retenue',0)/100), f.get('net_a_payer'), "ESDRAS", "+243 972 888 690")
-                                        st.download_button("📥 Télécharger Facture", data=pdf_bytes, file_name=f"{f.get('numero')}.pdf", mime="application/pdf", key=f"dl_hist_fact_{f.get('numero')}", width="stretch")
-                                    else: st.warning("🔒 Pas de permission téléchargement facture")
-                                with col2:
-                                    if peut_pr_fact_bat:
-                                        sections_data = f.get('sections')
-                                        if isinstance(sections_data, str): sections_data = json.loads(sections_data)
-                                        pdf_bytes = generer_pdf_facture_consulting(f.get('numero'), f.get('client'), f.get('titre'), f.get('date'), f.get('num_devis_ref'), sections_data, f.get('devise'), f.get('total'), f.get('total',0)*(f.get('retenue',0)/100), f.get('net_a_payer'), "ESDRAS", "+243 972 888 690")
-                                        pdf_b64 = base64.b64encode(pdf_bytes).decode()
-                                        safe_id = str(f.get('numero','FACT')).replace('-', '_')
-                                        st.components.v1.html(f"""<button onclick="printPDF_fact_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px;">🖨️ IMPRIMER FACTURE</button><script>function printPDF_fact_{safe_id}(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
-                                    else: st.warning("🔒 Pas de permission impression facture")
-            tab_idx += 1
+                        if not devis_list:
+                            st.info("Aucun devis industriel enregistré")
+                        else:
+                            for d in devis_list:
+                                with st.expander(f"🏭 {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+                                    st.write(f"**Titre:** {d.get('titre')}")
+                                    st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
+                                    st.write(f"**Localisation:** {d.get('localisation','')}")
+
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if peut_dl_ind:
+                                            sections_data = d.get('sections')
+                                            if isinstance(sections_data, str): sections_data = json.loads(sections_data)
+                                            pdf_bytes = generer_pdf_devis_consulting(
+                                                d.get('numero'), "Industriel", d.get('client'), d.get('titre'),
+                                                d.get('parcelle'),             d.get('localisation'), sections_data,
+                                d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428"
+                            )
+                            st.download_button(
+                                "📥 Télécharger PDF", 
+                                data=pdf_bytes, 
+                                file_name=f"{d.get('numero')}.pdf", 
+                                mime="application/pdf", 
+                                key=f"dl_hist_ind_{d.get('numero')}", 
+                                width="stretch"
+                            )
+                    with col2:
+                        if peut_pr_ind:
+                            sections_data = d.get('sections')
+                            if isinstance(sections_data, str): sections_data = json.loads(sections_data)
+                            
+                            pdf_bytes = generer_pdf_devis_consulting(
+                                d.get('numero'), "Industriel", d.get('client'), d.get('titre'),
+                                d.get('parcelle'), d.get('localisation'), sections_data,
+                                d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "SAMY TSANGYA", "+256766515428"
+                            )
+                            pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                            safe_id = str(d.get('numero','DEV')).replace('-', '_')
+                            
+                            st.components.v1.html(f"""<button onclick="printPDF_ind_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                🖨️ IMPRIMER
+                            </button>
+                            <script>
+                            function printPDF_ind_{safe_id}() {{
+                                const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                const win = window.open('', '_blank');
+                                win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
+                                win.document.close();
+                                setTimeout(()=>{{win.print();}},1000);
+                            }}
+                            </script>
+                        """, height=60)
+            hist_idx += 1
+
+                # --- SOUS ONGLET 2: HISTORIQUE BATIMENT ---
+                if peut_hist_bat:
+                    with hist_tabs[hist_idx]:
+                        sub_hist_tabs = st.tabs(["📄 Devis Bâtiment", "🧾 Factures Bâtiment"])
+                        
+                        # 1. DEVIS BATIMENT
+                        with sub_hist_tabs[0]:
+                            try:
+                                devis_list_bat = supabase.table('devis').select("*").eq('type', 'Bâtiment').order("created_at", desc=True).limit(20).execute().data
+                            except:
+                                devis_list_bat = []
+
+                            if not devis_list_bat:
+                                st.info("Aucun devis bâtiment enregistré")
+                            else:
+                                for d in devis_list_bat:
+                                    with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+                                        st.write(f"**Titre:** {d.get('titre')}")
+                                        st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
+                                        st.write(f"**Localisation:** {d.get('localisation','')}")
+
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            if peut_dl_bat:
+                                                sections_data = d.get('sections')
+                                                if isinstance(sections_data, str): sections_data = json.loads(sections_data)
+                                                pdf_bytes = generer_pdf_devis_consulting(
+                                                    d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'),
+                                                    d.get('parcelle'), d.get('localisation'), sections_data,
+                                                    d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690"
+                                                )
+                                                st.download_button(
+                                                    "📥 Télécharger PDF", 
+                                                    data=pdf_bytes, 
+                                                    file_name=f"{d.get('numero')}.pdf", 
+                                                    mime="application/pdf", 
+                                                    key=f"dl_hist_bat_devis_{d.get('numero')}", 
+                                                    width="stretch"
+                                                )
+                                        with col2:
+                                            if peut_pr_bat:
+                                                sections_data = d.get('sections')
+                                                if isinstance(sections_data, str): sections_data = json.loads(sections_data)
+                                                
+                                                pdf_bytes = generer_pdf_devis_consulting(
+                                                    d.get('numero'), "Bâtiment", d.get('client'), d.get('titre'),
+                                                    d.get('parcelle'), d.get('localisation'), sections_data,
+                                                    d.get('devise'), d.get('telephone'), d.get('main_oeuvre'), "ESDRAS", "+243 972 888 690"
+                                                )
+                                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                                safe_id = str(d.get('numero','DEV')).replace('-', '_')
+                                                
+                                                st.components.v1.html(f"""<button onclick="printPDF_bat_devis_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                                    🖨️ IMPRIMER
+                                                </button>
+                                                <script>
+                                                function printPDF_bat_devis_{safe_id}() {{
+                                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                                    const win = window.open('', '_blank');
+                                                    win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
+                                                    win.document.close();
+                                                    setTimeout(()=>{{win.print();}},1000);
+                                                }}
+                                                </script>
+                                            """, height=60)
+
+                        # 2. FACTURES BATIMENT
+                        with sub_hist_tabs[1]:
+                            try:
+                                factures_list_bat = supabase.table('factures').select("*").eq('type', 'Facture Bâtiment').order("created_at", desc=True).limit(20).execute().data
+                            except:
+                                factures_list_bat = []
+
+                            if not factures_list_bat:
+                                st.info("Aucune facture bâtiment enregistrée")
+                            else:
+                                for f in factures_list_bat:
+                                    with st.expander(f"🧾 {f.get('numero')} - {f.get('client')} - NET: {f.get('net_a_payer',0):,.0f} {f.get('devise','USD')}"):
+                                        st.write(f"**Intitulé:** {f.get('titre')}")
+                                        st.write(f"**Devis Ref:** {f.get('num_devis_ref','')}")
+                                        st.write(f"**Créé par:** {f.get('created_by')} le {str(f.get('created_at'))[:10]}")
+                                        st.write(f"**% Exécuté:** {f.get('pourcentage',0)}% | **Retenue:** {f.get('retenue',0)}%")
+
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            if peut_dl_bat:
+                                                pdf_bytes = generer_pdf_facture_consulting(
+                                                    f.get('numero'), f.get('client'), f.get('titre'), f.get('date'), f.get('num_devis_ref'),
+                                                    f.get('sections'), f.get('devise'), f.get('total'),
+                                                    f.get('total',0) * (f.get('retenue',0)/100), f.get('net_a_payer'), "ESDRAS", "+243 972 888 690"
+                                                )
+                                                st.download_button(
+                                                    "📥 Télécharger Facture", 
+                                                    data=pdf_bytes, 
+                                                    file_name=f"{f.get('numero')}.pdf", 
+                                                    mime="application/pdf", 
+                                                    key=f"dl_hist_bat_fact_{f.get('numero')}", 
+                                                    width="stretch"
+                                                )
+                                        with col2:
+                                            if peut_pr_bat:
+                                                pdf_bytes = generer_pdf_facture_consulting(
+                                                    f.get('numero'), f.get('client'), f.get('titre'), f.get('date'), f.get('num_devis_ref'),
+                                                    f.get('sections'), f.get('devise'), f.get('total'),
+                                                    f.get('total',0) * (f.get('retenue',0)/100), f.get('net_a_payer'), "ESDRAS", "+243 972 888 690"
+                                                )
+                                                pdf_b64 = base64.b64encode(pdf_bytes).decode()
+                                                safe_id = str(f.get('numero','FACT')).replace('-', '_')
+                                                
+                                                st.components.v1.html(f"""<button onclick="printPDF_bat_fact_{safe_id}()" style="width:100%; padding:10px; background:#ff9500; color:white; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">
+                                                    🖨️ IMPRIMER FACTURE
+                                                </button>
+                                                <script>
+                                                function printPDF_bat_fact_{safe_id}() {{
+                                                    const pdfData = 'data:application/pdf;base64,{pdf_b64}';
+                                                    const win = window.open('', '_blank');
+                                                    win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
+                                                    win.document.close();
+                                                    setTimeout(()=>{{win.print();}},1000);
+                                                }}
+                                                </script>
+                                            """, height=60)
+            tab_idx += 1 # <-- FERME L'ONGLET HISTORIQUE PRINCIPAL
                         
                         
 
