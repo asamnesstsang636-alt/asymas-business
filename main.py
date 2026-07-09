@@ -1917,7 +1917,6 @@ if "📋 Devis" in tab_map:
             c = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
             y = height - 2*cm
-            # ENTETE
             c.setFont("Helvetica-Bold", 16); c.drawString(2*cm, y, "ASYMAS CONSULTING")
             c.setFont("Helvetica-Bold", 12); c.drawRightString(width-2*cm, y, "FACTURE N"); y -= 0.5*cm
             c.setFont("Helvetica", 9); c.drawString(2*cm, y, f"Beni, Nord-Kivu, RDC | Tel: {ing_tel}")
@@ -1926,12 +1925,10 @@ if "📋 Devis" in tab_map:
             c.drawRightString(width-2*cm, y, f"Date: {date_fact}"); y -= 0.5*cm
             c.drawCentredString(width/2, y, "Etudes - Fournitures - Travaux Industriels Electriques & Batiment"); y -= 0.8*cm
             c.line(2*cm, y, width-2*cm, y); y -= 1*cm
-            # TITRE
             c.setFont("Helvetica-Bold", 14); c.drawCentredString(width/2, y, "FACTURE A HONORER - TRAVAUX EXECUTES"); y -= 0.8*cm
             c.setFont("Helvetica", 10); c.drawString(2*cm, y, f"CLIENT: {client}"); y -= 0.6*cm
             c.drawString(2*cm, y, f"REF DEVIS: {num_devis_ref}"); y -= 0.6*cm
             c.drawString(2*cm, y, f"PROJET: {titre}"); y -= 1*cm
-            # TABLEAU SANS QUANTITE
             c.setFont("Helvetica-Bold", 9); col_widths = [0.8*cm, 8*cm, 3*cm, 1.8*cm, 2*cm]
             headers = ["N", "DESIGNATION", "DETAIL", "Prix U", "Montant"]; x = 2*cm
             for i, h in enumerate(headers): c.drawString(x, y, h); x += col_widths[i]
@@ -1948,7 +1945,6 @@ if "📋 Devis" in tab_map:
                     y -= 0.6*cm
                 c.setFont("Helvetica-Bold", 9); c.drawRightString(width-2*cm, y, f"Sous Total {sous_total:.2f} {devise}"); y -= 0.8*cm; c.setFont("Helvetica", 9)
             y -= 0.3*cm; c.line(2*cm, y, width-2*cm, y); y -= 0.7*cm
-            # TOTAUX
             c.setFont("Helvetica-Bold", 10); c.drawString(12*cm, y, "TOTAL TRAVAUX EXECUTES:"); c.drawRightString(width-2*cm, y, f"{total:.2f} {devise}"); y -= 0.6*cm
             c.drawString(12*cm, y, "RETENUE GARANTIE:"); c.drawRightString(width-2*cm, y, f"{retenue_montant:.2f} {devise}"); y -= 0.6*cm
             c.drawString(12*cm, y, "NET A PAYER:"); c.drawRightString(width-2*cm, y, f"{net_a_payer:.2f} {devise}")
@@ -1994,7 +1990,6 @@ if "📋 Devis" in tab_map:
             with tabs[tab_idx]:
                 if peut_creer_ind:
                     st.subheader("🏭 Nouveau Devis Industriel")
-                    st.session_state.devis_type = "Industriel"
                     col_ing1, col_ing2 = st.columns(2)
                     with col_ing1: ing_nom_ind = st.text_input("👨‍🔧 Ingénieur", value="SAMY TSANGYA", key="ing_nom_ind")
                     with col_ing2: ing_tel_ind = st.text_input("📞 Tél Ingénieur", value="+256766515428", key="ing_tel_ind")
@@ -2022,8 +2017,12 @@ if "📋 Devis" in tab_map:
                             with col5: section['items'][i]['qte'] = st.number_input("Qté", value=float(item.get('qte', 0)), min_value=0.0, key=f"qte_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             with col6: section['items'][i]['pu'] = st.number_input("PU", value=float(item.get('pu', 0)), min_value=0.0, key=f"pu_ind_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             with col7: pt = section['items'][i]['qte'] * section['items'][i]['pu']; st.markdown(f"**{pt:,.2f}**"); sous_total_sec += pt
-                            with col8: if st.button("❌", key=f"del_item_ind_{idx}_{i}"): items_to_delete.append(i)
-                        for i in sorted(items_to_delete, reverse=True): section['items'].pop(i); st.rerun()
+                            with col8:
+                                if st.button("❌", key=f"del_item_ind_{idx}_{i}"):
+                                    items_to_delete.append(i)
+                        for i in sorted(items_to_delete, reverse=True):
+                            section['items'].pop(i)
+                            st.rerun()
                         total_general_ind += sous_total_sec; st.markdown(f"**Sous-total: {sous_total_sec:,.2f}**"); st.divider()
                     main_oeuvre_ind = st.number_input("👷 Main d'oeuvre", min_value=0.0, value=0.0, key="mo_devis_ind")
                     cout_total_ind = total_general_ind + main_oeuvre_ind; st.metric("COUT TOTAL DU PROJET", f"{cout_total_ind:,.2f} {devise_devis_ind}")
@@ -2070,8 +2069,12 @@ if "📋 Devis" in tab_map:
                             with col4: section['items'][i]['qte'] = st.number_input("Qté", value=float(item.get('qte',0)), min_value=0.0, key=f"qte_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             with col5: section['items'][i]['pu'] = st.number_input("PU", value=float(item.get('pu',0)), min_value=0.0, key=f"pu_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
                             with col6: pt = section['items'][i]['qte'] * section['items'][i]['pu']; st.markdown(f"**{pt:,.2f}**"); sous_total_sec += pt
-                            with col7: if st.button("❌", key=f"del_item_bat_{idx}_{i}"): items_to_delete.append(i)
-                        for i in sorted(items_to_delete, reverse=True): section['items'].pop(i); st.rerun()
+                            with col7:
+                                if st.button("❌", key=f"del_item_bat_{idx}_{i}"):
+                                    items_to_delete.append(i)
+                        for i in sorted(items_to_delete, reverse=True):
+                            section['items'].pop(i)
+                            st.rerun()
                         total_general_bat += sous_total_sec; st.markdown(f"**Sous-total: {sous_total_sec:,.2f}**")
                         if st.button("➕ Ajouter Ligne", key=f"add_line_bat_{idx}"): section['items'].append({"num": "", "designation": "", "unite": "ff", "qte": 0, "pu": 0}); st.rerun()
                         st.divider()
@@ -2113,16 +2116,18 @@ if "📋 Devis" in tab_map:
                 total_facture = 0
                 for idx, section in enumerate(st.session_state.facture_bat_sections):
                     col_titre1, col_titre2 = st.columns([0.2, 3])
-                    with col_titre1: section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_fact_{idx}", label_visibility="collapsed")
-                    with col_titre2: section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_fact_{idx}", label_visibility="collapsed")
+                    with col_titre1: 
+                        section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_fact_{idx}", label_visibility="collapsed")
+                    with col_titre2: 
+                        section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_fact_{idx}", label_visibility="collapsed")
 
                     st.markdown(f"**{section['numero']}. {section['titre']}**")
 
                     sous_total_sec = 0
                     items_to_delete = []
 
-                    # ===== EN TETE TABLEAU COMME DEVIS =====
-                    header_cols = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 0.5])
+                    # ===== EN TETE TABLEAU =====
+                    header_cols = st.columns([0.5, 4, 1.5, 1.5, 1.5, 1.5, 1.5, 0.5])
                     header_cols[0].write("**N°**")
                     header_cols[1].write("**DESIGNATION**")
                     header_cols[2].write("**UNITE**")
@@ -2130,6 +2135,7 @@ if "📋 Devis" in tab_map:
                     header_cols[4].write("**QTE EXE**")
                     header_cols[5].write("**P.U**")
                     header_cols[6].write("**MONTANT**")
+                    header_cols[7].write("")
                     st.divider()
 
                     for i, item in enumerate(section['items']):
@@ -2138,27 +2144,39 @@ if "📋 Devis" in tab_map:
                         with col2: st.write(item.get('designation',''))
                         with col3: st.write(item.get('unite',''))
                         with col4: st.write(f"{item.get('qte_totale',0)}")
-                        with col5: qte_ex = st.number_input("Qté Exécutée", value=float(item.get('qte_execute',0)), min_value=0.0, key=f"qte_ex_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f"); section['items'][i]['qte_execute'] = qte_ex
+                        with col5: 
+                            qte_ex = st.number_input("Qté Exécutée", value=float(item.get('qte_execute',0)), min_value=0.0, key=f"qte_ex_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f")
+                            section['items'][i]['qte_execute'] = qte_ex
                         with col6: st.write(f"{item.get('pu',0):,.2f}")
-                        with col7: montant = qte_ex * item.get('pu',0); st.markdown(f"**{montant:,.2f}**"); sous_total_sec += montant
+                        with col7: 
+                            montant = qte_ex * item.get('pu',0)
+                            st.markdown(f"**{montant:,.2f}**")
+                            sous_total_sec += montant
                         with col8:
-                            if st.button("❌", key=f"del_fact_bat_{idx}_{i}"): items_to_delete.append(i)
+                            if st.button("❌", key=f"del_fact_bat_{idx}_{i}"):
+                                items_to_delete.append(i)
 
-                    for i in sorted(items_to_delete, reverse=True): section['items'].pop(i); st.rerun()
+                    for i in sorted(items_to_delete, reverse=True):
+                        section['items'].pop(i)
+                        st.rerun()
+                    
                     total_facture += sous_total_sec
                     st.markdown(f"**Sous-total Exécuté: {sous_total_sec:,.2f} {devise_fact_bat}**")
 
                     if st.button("➕ Ajouter Ligne", key=f"add_line_fact_{idx}"):
-                        section['items'].append({"num": "", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}); st.rerun()
+                        section['items'].append({"num": "", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0})
+                        st.rerun()
                     st.divider()
 
                 if st.button("➕ Ajouter Section Facture", key="add_section_fact", width="stretch"):
                     new_num = f"Sec{len(st.session_state.facture_bat_sections)+1}"
-                    st.session_state.facture_bat_sections.append({"numero": new_num, "titre": "Nouvelle Section", "items": [{"num": "1", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}]}); st.rerun()
+                    st.session_state.facture_bat_sections.append({"numero": new_num, "titre": "Nouvelle Section", "items": [{"num": "1", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}]})
+                    st.rerun()
 
                 # ===== TOTAUX =====
                 col_mo1, col_mo2, col_mo3 = st.columns(3)
-                with col_mo1: retenue = st.number_input("💰 Retenue Garantie %", value=5.0, min_value=0.0, max_value=100.0, key="retenue_fact_bat")
+                with col_mo1: 
+                    retenue = st.number_input("💰 Retenue Garantie %", value=5.0, min_value=0.0, max_value=100.0, key="retenue_fact_bat")
                 with col_mo2:
                     montant_retenue = total_facture * (retenue/100)
                     st.metric("TOTAL TRAVAUX EXECUTES", f"{total_facture:,.2f} {devise_fact_bat}")
@@ -2174,40 +2192,33 @@ if "📋 Devis" in tab_map:
                         numero_fact = f"FACT-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                         try:
                             data_fact = {"numero": numero_fact, "type": "Facture Bâtiment", "client": client_fact_bat, "titre": st.session_state.titre_fact_bat, "date": str(date_fact_bat), "num_devis_ref": num_devis_ref, "sections": st.session_state.facture_bat_sections, "pourcentage": st.session_state.facture_bat_pourcentage, "retenue": retenue, "total": total_facture, "net_a_payer": net_a_payer, "devise": devise_fact_bat, "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()}
-                            supabase.table('factures').insert(data_fact).execute(); st.success(f"✅ Facture enregistrée : {numero_fact}")
-                        except Exception as e: st.error("Erreur enregistrement"); st.code(repr(e)); st.stop()
+                            supabase.table('factures').insert(data_fact).execute()
+                            st.success(f"✅ Facture enregistrée : {numero_fact}")
+                        except Exception as e: 
+                            st.error("Erreur enregistrement")
+                            st.code(repr(e))
+                            st.stop()
 
                         pdf_bytes = generer_pdf_facture_consulting(numero_fact, client_fact_bat, st.session_state.titre_fact_bat, str(date_fact_bat), num_devis_ref, st.session_state.facture_bat_sections, devise_fact_bat, total_facture, montant_retenue, net_a_payer, "ESDRAS", "+243 972 888 690")
-                        st.session_state.pdf_fact_bat = pdf_bytes; st.session_state.num_fact_bat = numero_fact; st.rerun()
-                    else: st.error("Client et Intitulé des travaux requis")
+                        st.session_state.pdf_fact_bat = pdf_bytes
+                        st.session_state.num_fact_bat = numero_fact
+                        st.rerun()
+                    else: 
+                        st.error("Client et Intitulé des travaux requis")
 
                 if 'pdf_fact_bat' in st.session_state and st.session_state.pdf_fact_bat:
-                    col_dl, col_pr, col_reset = st.columns(3)
+                    col_dl, col_pr = st.columns(2)
                     with col_dl:
                         st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_fact_bat, file_name=f"{st.session_state.num_fact_bat}.pdf", mime="application/pdf", width="stretch", key="dl_fact_bat_1")
                     with col_pr:
                         if peut_pr_bat:
                             pdf_b64 = base64.b64encode(st.session_state.pdf_fact_bat).decode()
                             st.components.v1.html(f"""<button onclick="printPDF_fact()" style="width:100%; padding:10px; background:#ff9500; color:white; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER FACTURE</button><script>function printPDF_fact(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
-                    with col_reset:
-                        if st.button("🔄 Réinitialiser", key="reset_fact_bat_1", width="stretch"): st.session_state.facture_bat_sections = []; st.rerun()
             tab_idx += 1
-
                         
                         
                             
                                 
-                            
-                                
-
-                            
-                                
-                            
-                                
-                                     
-                        
-                        
-
                         
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
