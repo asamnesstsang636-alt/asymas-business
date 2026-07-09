@@ -2130,16 +2130,16 @@ if "📋 Devis" in tab_map:
                                             pdf_b64 = base64.b64encode(pdf_bytes).decode(); safe_id = str(d.get('numero','DEV')).replace('-', '_')
                                             st.components.v1.html(f"""<button onclick="printPDF_ind_{safe_id}()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER</button><script>function printPDF_ind_{safe_id}() {{const pdfData = 'data:application/pdf;base64,{pdf_b64}';const win = window.open('', '_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
                     hist_idx += 1
- if peut_hist_bat:
-    with hist_tabs[hist_idx]:
-        sub_hist_tabs = st.tabs(["📄 Devis Bâtiment", "🧾 Factures Bâtiment"])
-        with sub_hist_tabs[0]:
-            try: devis_list_bat = supabase.table('devis').select("*").eq('type', 'Bâtiment').order("created_at", desc=True).limit(20).execute().data
-            except: devis_list_bat = []
-            if not devis_list_bat: st.info("Aucun devis bâtiment enregistré")
-            else:
-                for d in devis_list_bat:
-                    with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+                if peut_hist_bat:
+                    with hist_tabs[hist_idx]:
+                        sub_hist_tabs = st.tabs(["📄 Devis Bâtiment", "🧾 Factures Bâtiment"])
+                        with sub_hist_tabs[0]:
+                            try: devis_list_bat = supabase.table('devis').select("*").eq('type', 'Bâtiment').order("created_at", desc=True).limit(20).execute().data
+                            except: devis_list_bat = []
+                            if not devis_list_bat: st.info("Aucun devis bâtiment enregistré")
+                            else:
+                                for d in devis_list_bat:
+                                    with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
                         st.write(f"**Titre:** {d.get('titre')}")
                         st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
                         st.write(f"**Localisation:** {d.get('localisation','')}")
@@ -2257,7 +2257,6 @@ if "📋 Devis" in tab_map:
                             """, height=60)
 
     hist_idx += 1
-
                         
 if "👥 Utilisateurs" in tab_map:
     with tab_map["👥 Utilisateurs"]:
