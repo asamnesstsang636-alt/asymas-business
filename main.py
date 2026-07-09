@@ -1855,7 +1855,7 @@ def generer_pdf_facture_consulting(numero, client, titre, date, ref_devis, secti
     pdf.cell(135, 6, "NET A PAYER:", 1)
     pdf.cell(45, 6, f"{net:,.2f} {devise}", 1, 1, "R")
 
-    return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output())
 
 # ===== INTERFACE STREAMLIT =====
 if "📋 Devis" in tab_map:
