@@ -2048,43 +2048,87 @@ if "📋 Devis" in tab_map:
             with tabs[tab_idx]:
                 st.subheader("🧾 Facture Travaux Exécutés - Bâtiment")
                 st.info(f"**Ingénieur:** ESDRAS | **Tél:** +243 972 888 690 | **Email:** esdrastsangya@gmail.com")
+
                 col1, col2, col3 = st.columns(3)
-                with col1: client_fact_bat = st.text_input("👤 Client", key="client_fact_bat"); num_devis_ref = st.text_input("📄 N° Devis Référence", key="num_devis_ref_bat")
-                with col2: st.session_state.titre_fact_bat = st.text_input("📋 Intitulé des Travaux", value=st.session_state.titre_fact_bat, key="titre_fact_bat_input"); date_fact_bat = st.date_input("📅 Date Facture", value=datetime.now().date(), key="date_fact_bat")
-                with col3: st.session_state.facture_bat_pourcentage = st.number_input("📊 % Travaux Exécutés", min_value=0.0, max_value=100.0, value=st.session_state.facture_bat_pourcentage, key="pourc_fact_bat", format="%.2f"); devise_fact_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_fact_bat")
+                with col1:
+                    client_fact_bat = st.text_input("👤 Client", key="client_fact_bat")
+                    num_devis_ref = st.text_input("📄 N° Devis Référence", key="num_devis_ref_bat")
+                with col2:
+                    st.session_state.titre_fact_bat = st.text_input("📋 Intitulé des Travaux", value=st.session_state.titre_fact_bat, key="titre_fact_bat_input")
+                    date_fact_bat = st.date_input("📅 Date Facture", value=datetime.now().date(), key="date_fact_bat")
+                with col3:
+                    st.session_state.facture_bat_pourcentage = st.number_input("📊 % Travaux Exécutés", min_value=0.0, max_value=100.0, value=st.session_state.facture_bat_pourcentage, key="pourc_fact_bat", format="%.2f")
+                    devise_fact_bat = st.selectbox("💵 Devise", ["USD", "FC", "€"], key="devise_fact_bat")
+
                 st.divider()
-                if not st.session_state.facture_bat_sections: st.session_state.facture_bat_sections = [{"numero": "I", "titre": "Installation chantier / Demolitions", "items": [{"num": "1", "designation": "Installation chantier", "unite": "ff", "qte_totale": 1, "pu": 200, "qte_execute": 1}]},{"numero": "II", "titre": "fondation", "items": [{"num": "1", "designation": "moellon", "unite": "Canters", "qte_totale": 9, "pu": 50, "qte_execute": 0}]}]
+
+                # Données par défaut
+                if not st.session_state.facture_bat_sections:
+                    st.session_state.facture_bat_sections = [
+                        {"numero": "I", "titre": "Installation chantier / Demolitions", "items": [{"num": "1", "designation": "Installation chantier", "unite": "ff", "qte_totale": 1, "pu": 200, "qte_execute": 1}]},
+                        {"numero": "II", "titre": "fondation", "items": [{"num": "1", "designation": "moellon", "unite": "Canters", "qte_totale": 9, "pu": 50, "qte_execute": 0}]}
+                    ]
+
                 total_facture = 0
                 for idx, section in enumerate(st.session_state.facture_bat_sections):
                     col_titre1, col_titre2 = st.columns([0.2, 3])
                     with col_titre1: section['numero'] = st.text_input("N°Sec", value=section['numero'], key=f"numsec_fact_{idx}", label_visibility="collapsed")
                     with col_titre2: section['titre'] = st.text_input("Titre Section", value=section['titre'], key=f"titresec_fact_{idx}", label_visibility="collapsed")
+
                     st.markdown(f"**{section['numero']}. {section['titre']}**")
+
                     sous_total_sec = 0
                     items_to_delete = []
+
+                    # ===== EN TETE TABLEAU COMME DEVIS =====
+                    header_cols = st.columns([0.5, 3, 1, 1, 1, 1, 1.2, 0.5])
+                    header_cols[0].write("**N°**")
+                    header_cols[1].write("**DESIGNATION**")
+                    header_cols[2].write("**UNITE**")
+                    header_cols[3].write("**QTE TOT**")
+                    header_cols[4].write("**QTE EXE**")
+                    header_cols[5].write("**P.U**")
+                    header_cols[6].write("**MONTANT**")
+                    header_cols[7].write("")
+                    st.divider()
+
                     for i, item in enumerate(section['items']):
-                        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1, 1.2, 1.2, 1.2, 1.2, 0.5])
+                        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([0.5, 3, 1, 1, 1, 1, 1.2, 0.5])
                         with col1: st.write(item.get('num',''))
                         with col2: st.write(item.get('designation',''))
                         with col3: st.write(item.get('unite',''))
                         with col4: st.write(f"{item.get('qte_totale',0)}")
-                        with col5: st.write(f"{item.get('pu',0):,.2f}")
-                        with col6: qte_ex = st.number_input("Qté Exécutée", value=float(item.get('qte_execute',0)), min_value=0.0, key=f"qte_ex_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f"); section['items'][i]['qte_execute'] = qte_ex
+                        with col5: qte_ex = st.number_input("Qté Exécutée", value=float(item.get('qte_execute',0)), min_value=0.0, key=f"qte_ex_bat_{idx}_{i}", label_visibility="collapsed", format="%.2f"); section['items'][i]['qte_execute'] = qte_ex
+                        with col6: st.write(f"{item.get('pu',0):,.2f}")
                         with col7: montant = qte_ex * item.get('pu',0); st.markdown(f"**{montant:,.2f}**"); sous_total_sec += montant
                         with col8:
                             if st.button("❌", key=f"del_fact_bat_{idx}_{i}"): items_to_delete.append(i)
+
                     for i in sorted(items_to_delete, reverse=True): section['items'].pop(i); st.rerun()
-                    total_facture += sous_total_sec; st.markdown(f"**Sous-total Exécuté: {sous_total_sec:,.2f}**")
-                    if st.button("➕ Ajouter Ligne", key=f"add_line_fact_{idx}"): section['items'].append({"num": "", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}); st.rerun()
+                    total_facture += sous_total_sec
+                    st.markdown(f"**Sous-total Exécuté: {sous_total_sec:,.2f} {devise_fact_bat}**")
+
+                    if st.button("➕ Ajouter Ligne", key=f"add_line_fact_{idx}"):
+                        section['items'].append({"num": "", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}); st.rerun()
                     st.divider()
+
                 if st.button("➕ Ajouter Section Facture", key="add_section_fact", width="stretch"):
                     new_num = f"Sec{len(st.session_state.facture_bat_sections)+1}"
                     st.session_state.facture_bat_sections.append({"numero": new_num, "titre": "Nouvelle Section", "items": [{"num": "1", "designation": "", "unite": "ff", "qte_totale": 0, "pu": 0, "qte_execute": 0}]}); st.rerun()
+
+                # ===== TOTAUX COMME DEVIS =====
                 col_mo1, col_mo2, col_mo3 = st.columns(3)
                 with col_mo1: retenue = st.number_input("💰 Retenue Garantie %", value=5.0, min_value=0.0, max_value=100.0, key="retenue_fact_bat")
-                with col_mo2: montant_retenue = total_facture * (retenue/100); st.metric("MONTANT RETENUE", f"{montant_retenue:,.2f} {devise_fact_bat}")
-                with col_mo3: net_a_payer = total_facture - montant_retenue; st.metric("NET A PAYER", f"{net_a_payer:,.2f} {devise_fact_bat}")
+                with col_mo2:
+                    montant_retenue = total_facture * (retenue/100)
+                    st.metric("TOTAL TRAVAUX EXECUTES", f"{total_facture:,.2f} {devise_fact_bat}")
+                with col_mo3:
+                    net_a_payer = total_facture - montant_retenue
+                    st.metric("NET A PAYER", f"{net_a_payer:,.2f} {devise_fact_bat}")
+
+                st.metric("MONTANT RETENUE", f"{montant_retenue:,.2f} {devise_fact_bat}")
                 st.markdown("**Ingénieur: ESDRAS | Tél: +243 972 888 690 | Email: esdrastsangya@gmail.com**")
+
                 if st.button("📄 GÉNÉRER FACTURE PDF", type="primary", width="stretch", key="gen_fact_bat"):
                     if client_fact_bat and st.session_state.titre_fact_bat:
                         numero_fact = f"FACT-BAT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -2092,10 +2136,13 @@ if "📋 Devis" in tab_map:
                             data_fact = {"numero": numero_fact, "type": "Facture Bâtiment", "client": client_fact_bat, "titre": st.session_state.titre_fact_bat, "date": str(date_fact_bat), "num_devis_ref": num_devis_ref, "sections": st.session_state.facture_bat_sections, "pourcentage": st.session_state.facture_bat_pourcentage, "retenue": retenue, "total": total_facture, "net_a_payer": net_a_payer, "devise": devise_fact_bat, "created_by": st.session_state.user_name, "created_at": datetime.now().isoformat()}
                             supabase.table('factures').insert(data_fact).execute(); st.success(f"✅ Facture enregistrée : {numero_fact}")
                         except Exception as e: st.error("Erreur enregistrement"); st.code(repr(e)); st.stop()
-                        pdf_bytes = generer_pdf_facture_consulting(numero_fact, client_fact_bat, st.session_state.titre_fact_bat, date_fact_bat, num_devis_ref, st.session_state.facture_bat_sections, devise_fact_bat, total_facture, montant_retenue, net_a_payer, "ESDRAS", "+243 972 888 690")
+
+                        pdf_bytes = generer_pdf_facture_consulting(numero_fact, client_fact_bat, st.session_state.titre_fact_bat, str(date_fact_bat), num_devis_ref, st.session_state.facture_bat_sections, devise_fact_bat, total_facture, montant_retenue, net_a_payer, "ESDRAS", "+243 972 888 690")
                         st.session_state.pdf_fact_bat = pdf_bytes; st.session_state.num_fact_bat = numero_fact; st.rerun()
                     else: st.error("Client et Intitulé des travaux requis")
-                if 'pdf_fact_bat' in st.session_state and st.session_state.pdf_fact_bat: st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_fact_bat, file_name=f"{st.session_state.num_fact_bat}.pdf", mime="application/pdf", width="stretch", key="dl_fact_bat_1")
+
+                if 'pdf_fact_bat' in st.session_state and st.session_state.pdf_fact_bat:
+                    st.download_button("📥 Télécharger Facture PDF", data=st.session_state.pdf_fact_bat, file_name=f"{st.session_state.num_fact_bat}.pdf", mime="application/pdf", width="stretch", key="dl_fact_bat_1")
             tab_idx += 1
 
         # ===== 4. ONGLET HISTORIQUE =====
