@@ -2092,7 +2092,8 @@ if "📋 Devis" in tab_map:
                             st.session_state.pdf_devis_bat = pdf_bytes; st.session_state.num_devis_bat = numero_devis; st.rerun()
                         else: st.error("Client et Titre requis")
                     col_btn1, col_btn2, col_btn3 = st.columns(3)
-                    with col_btn1: if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat and peut_dl_bat: st.download_button("📥 Télécharger PDF", data=st.session_state.pdf_devis_bat, file_name=f"{st.session_state.num_devis_bat}.pdf", mime="application/pdf", width="stretch", key="dl_devis_bat_1")
+                    with col_btn1:
+                    if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat and peut_dl_bat:
                     with col_btn2: if 'pdf_devis_bat' in st.session_state and st.session_state.pdf_devis_bat and peut_pr_bat: pdf_b64 = base64.b64encode(st.session_state.pdf_devis_bat).decode(); st.components.v1.html(f"""<button onclick="printPDF_bat()" style="width:100%; padding:10px; background:#00ff41; color:black; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">🖨️ IMPRIMER LE DEVIS</button><script>function printPDF_bat(){{const pdfData='data:application/pdf;base64,{pdf_b64}';const win=window.open('','_blank');win.document.write('<iframe src="'+pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');win.document.close();setTimeout(()=>{{win.print();}},1000);}}</script>""", height=60)
                     with col_btn3: if st.button("🔄 Réinitialiser", key="reset_devis_bat_1", width="stretch"): st.session_state.devis_bat_sections = []; st.rerun()
                 else: st.info("🔒 Vous n'avez pas la permission de créer des devis bâtiment")
