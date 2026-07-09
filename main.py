@@ -2139,7 +2139,7 @@ if "📋 Devis" in tab_map:
                             if not devis_list_bat: st.info("Aucun devis bâtiment enregistré")
                             else:
                                 for d in devis_list_bat:
-                                    with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
+    with st.expander(f"🏗️ {d.get('numero')} - {d.get('client')} - {d.get('total',0):,.0f} {d.get('devise','USD')}"):
         st.write(f"**Titre:** {d.get('titre')}")
         st.write(f"**Créé par:** {d.get('created_by')} le {str(d.get('created_at'))[:10]}")
         st.write(f"**Localisation:** {d.get('localisation','')}")
