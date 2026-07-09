@@ -2036,8 +2036,9 @@ if "📋 Devis" in tab_map:
                         else: st.error("Client et Titre requis")
                 else: st.info("🔒 Vous n'avez pas la permission de créer des devis industriels")
                 col_btn1, col_btn2 = st.columns(2)
-                with col_btn1: if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_dl_ind: st.download_button("📥 Télécharger PDF", data=st.session_state.pdf_devis_ind, file_name=f"{st.session_state.num_devis_ind}.pdf", mime="application/pdf", key="dl_devis_ind_1", width="stretch")
-                with col_btn2: if st.button("🔄 Nouveau devis Industriel", key="reset_devis_ind_1"): st.session_state.devis_sections_ind = []; st.rerun()
+                with col_btn1:
+                    if 'pdf_devis_ind' in st.session_state and st.session_state.pdf_devis_ind and peut_dl_ind:
+                        st.download_button("📥 Télécharger PDF", data=st.session_state.pdf_devis_ind, file_name=f"{st.session_state.num_devis_ind}.pdf", mime="application/pdf", key="dl_devis_ind_1", width="stretch")
             tab_idx += 1
 
         # ===== 2. ONGLET BATIMENT =====
