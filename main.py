@@ -2494,16 +2494,18 @@ import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from supabase import create_client # Nouveau
 
 class FLOKI:
-    def __init__(self, supabase_client, dataframes):
-        self.supabase = supabase_client
-        self.df = dataframes
+    def __init__(self, supabase_url, supabase_key):
+        # 1. CONNEXION DIRECTE MCP - Plus de df statiques
+        self.supabase = create_client(supabase_url, supabase_key)
         self.system_knowledge = self._get_supabase_schema()
+        self.memory = self._load_memory() # Il se souvient
 
     def _get_supabase_schema(self):
         schema = {}
-        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs"]
+        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs", "orders", "users"] # J'ai ajouté orders et users
         for t in tables:
             try:
                 result = self.supabase.table(t).select("*").limit(1).execute()
@@ -2512,12 +2514,27 @@ class FLOKI:
                 schema[t] = []
         return schema
 
+    def _load_memory(self):
+        # FLOKI lit ses anciens logs pour apprendre
+        try:
+            res = self.supabase.table("floki_logs").select("*").order("date", desc=True).limit(50).execute()
+            return res.data
+        except:
+            return []
+
     def ask(self, question):
         q = question.lower().strip()
         log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
 
         if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel. Donnez l'ordre."
+            return "Présent chef. FLOKI opérationnel avec synchro complète. Donnez l'ordre."
+
+        # NOUVEAU: Surveillance auto
+        if any(k in q for k in ["surveille", "bilan", "rapport", "que se passe"]):
+            result = self._action_surveillance()
+            log_entry.update({"action": "surveillance", "reponse": result})
+            self._log_action(log_entry)
+            return result
 
         if "envoie" in q and "message" in q and "numero" in q:
             result = self._action_send_whatsapp(question)
@@ -2525,123 +2542,107 @@ class FLOKI:
             self._log_action(log_entry)
             return result
 
-        if any(k in q for k in ["redige", "rédige", "lettre", "relance", "convocation"]):
-            result = self._action_rediger(question)
-            log_entry.update({"action": "redaction", "reponse": result})
-            self._log_action(log_entry)
-            return result
-
         if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
-            result = self._action_conseil(q)
+            result = self._action_conseil_avance(q) # Version améliorée
             log_entry.update({"action": "conseil", "reponse": result})
             self._log_action(log_entry)
             return result
 
+        if any(k in q for k in ["marche", "potentiel", "tendance", "vendre"]):
+            result = self._action_analyse_marche(q)
+            log_entry.update({"action": "analyse_marche", "reponse": result})
+            self._log_action(log_entry)
+            return result
+
+        # Recherche améliorée avec vrai DB
         q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
-        rep = self._search_asymas(q_clean)
+        rep = self._search_asymas_live(q_clean) # Version LIVE
         if rep:
             log_entry.update({"source": "ASYMAS", "reponse": rep})
             self._log_action(log_entry)
-            return rep + "\n\nSource: ASYMAS"
+            return rep + "\n\nSource: ASYMAS DB"
 
         web_rep = self._search_web(question)
         log_entry.update({"source": "WEB", "reponse": web_rep})
         self._log_action(log_entry)
         return web_rep + "\n\nSource: WEB"
 
-    def _search_asymas(self, q):
-        # Voiture moins chère
+    def _search_asymas_live(self, q):
+        # Maintenant il query direct Supabase à chaque fois
         if "voiture" in q and ("moins cher" in q or "prix" in q):
-            return self._get_voiture_moins_cher()
-
-        # Liste voitures
-        if "voiture" in q and ("liste" in q or "donne" in q):
-            return self._get_voitures_stock()
-
-        # Produit
-        rep = self._search_product(q)
-        if rep: return rep
-
-        # Pertes commerce
-        if "perte" in q and "commerce" in q:
-            return self._get_pertes_commerce()
-
-        # Stock bas
+            return self._get_voiture_moins_cher_live()
+        if "voiture" in q:
+            return self._get_voitures_stock_live()
         if any(k in q for k in ["stock bas", "rupture", "manque"]):
-            return self._stock_bas()
-
-        # CA
+            return self._stock_bas_live()
         if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
-            return self._chiffre_affaires()
+            return self._chiffre_affaires_live()
 
-        return None
+        # Recherche produit intelligente
+        return self._search_product_live(q)
 
-    def _get_voiture_moins_cher(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        prix_col = next((col for col in ['prix', 'prix_vente', 'prix_achat', 'montant'] if col in self.df['voitures'].columns), None)
-        if not prix_col:
-            return "Chef, je ne trouve pas la colonne prix dans voitures."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 1) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        moins_chere = dispo.loc[dispo[prix_col].idxmin()]
-        modele = moins_chere.get('modele', moins_chere.get('nom', 'N/A'))
-        prix = float(moins_chere[prix_col])
-        return f"Voiture la moins chère: {modele} à {prix:,.0f} FC"
+    def _get_voiture_moins_cher_live(self):
+        res = self.supabase.table("voitures").select("*").gt("quantite", 0).order("prix_vente", asc=True).limit(1).execute()
+        if not res.data: return "Pas de voitures en stock chef."
+        v = res.data[0]
+        return f"Voiture la moins chère: {v.get('modele')} à {float(v.get('prix_vente',0)):,.0f} FC"
 
-    def _get_voitures_stock(self):
-        if self.df['voitures'].empty:
-            return "Pas de données voitures chef."
-        dispo = self.df['voitures'][self.df['voitures'].get('quantite', 0) > 0]
-        if dispo.empty:
-            return "Aucune voiture en stock chef."
-        txt = "\n".join([f"- {r.get('modele', r.get('nom', 'N/A'))}: {int(r.get('quantite', 0))} unités - {float(r.get('prix', r.get('prix_vente', 0))):,.0f} FC" for _, r in dispo.iterrows()])
+    def _get_voitures_stock_live(self):
+        res = self.supabase.table("voitures").select("*").gt("quantite", 0).execute()
+        if not res.data: return "Aucune voiture en stock chef."
+        txt = "\n".join([f"- {r['modele']}: {r['quantite']} unités - {float(r['prix_vente']):,.0f} FC" for r in res.data])
         return f"Voitures en stock:\n{txt}"
 
-    def _get_pertes_commerce(self):
-        try:
-            result = self.supabase.table("mouvements_stock").select("*").eq("type", "perte").eq("categorie", "commerce").order("date", desc=True).limit(10).execute()
-            if not result.data:
-                return "Aucune perte commerce enregistrée chef."
-            txt = "\n".join([f"- {r.get('article', 'N/A')}: {r.get('montant', 0):,.0f} FC le {r.get('date', '')[:10]}" for r in result.data])
-            return f"Dernières pertes commerce:\n{txt}"
-        except Exception as e:
-            return f"Erreur lecture pertes: {e}. Vérifiez RLS sur mouvements_stock."
+    def _stock_bas_live(self):
+        res = self.supabase.table("articles").select("*").lt("stock", 5).execute()
+        if not res.data: return "Stock OK chef. Rien en dessous de 5 unités."
+        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for r in res.data])
+        return f"⚠️ Alert Stock bas:\n{txt}"
 
-    def _search_product(self, q):
-        if self.df['articles'].empty:
-            return None
-        articles = self.df['articles'].copy()
-        articles['nom_clean'] = articles['nom_article'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s+', ' ', regex=True).str.strip()
-        q_clean = re.sub(r'[^a-z0-9\s]', '', q).strip()
-        mots_q = [w for w in q_clean.split() if len(w) > 2]
-        if mots_q:
-            for _, r in articles.iterrows():
-                if all(word in r['nom_clean'] for word in mots_q):
-                    return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-        noms = articles['nom_clean'].tolist()
-        closest = difflib.get_close_matches(q_clean, noms, n=1, cutoff=0.45)
-        if closest:
-            r = articles[articles['nom_clean'] == closest[0]].iloc[0]
-            return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-        return None
+    def _chiffre_affaires_live(self):
+        rev_res = self.supabase.table("compta").select("montant").eq("type", "Revenu").execute()
+        dep_res = self.supabase.table("compta").select("montant").eq("type", "Dépense").execute()
+        rev = sum([r['montant'] for r in rev_res.data])
+        dep = sum([r['montant'] for r in dep_res.data])
+        return f"Rapport compta LIVE:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
 
-    def _stock_bas(self):
-        if self.df['articles'].empty:
-            return "Pas d'articles chef."
-        low = self.df['articles'][self.df['articles']['stock'] < 5]
-        if low.empty:
-            return "Stock OK chef. Rien en dessous de 5 unités."
-        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for _, r in low.iterrows()])
-        return f"Attention chef, stock bas:\n{txt}"
+    def _search_product_live(self, q):
+        res = self.supabase.table("articles").select("*").ilike("nom_article", f"%{q}%").limit(1).execute()
+        if not res.data: return None
+        r = res.data[0]
+        return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
 
-    def _chiffre_affaires(self):
-        if self.df['compta'].empty:
-            return "Pas de données compta chef."
-        rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-        dep = self.df['compta'][self.df['compta']['type'] == 'Dépense']['montant'].sum()
-        return f"Rapport compta:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
+    def _action_surveillance(self):
+        # Qui a fait quoi et quand
+        last_orders = self.supabase.table("orders").select("*").order("created_at", desc=True).limit(3).execute()
+        last_users = self.supabase.table("users").select("*").order("created_at", desc=True).limit(3).execute()
+
+        txt = "RAPPORT SURVEILLANCE:\n"
+        txt += "Dernières commandes:\n" + "\n".join([f"- {o['id']} par {o['user_id']} le {o['created_at'][:16]}" for o in last_orders.data]) + "\n"
+        txt += "Nouveaux clients:\n" + "\n".join([f"- {u['email']} le {u['created_at'][:16]}" for u in last_users.data])
+        return txt
+
+    def _action_conseil_avance(self, q):
+        # Analyse + Conseil + Risque
+        stock_bas = len(self.supabase.table("articles").select("id").lt("stock", 5).execute().data)
+        rev = sum([r['montant'] for r in self.supabase.table("compta").select("montant").eq("type", "Revenu").execute().data])
+        dep = sum([r['montant'] for r in self.supabase.table("compta").select("montant").eq("type", "Dépense").execute().data])
+        benef = rev - dep
+
+        conseil = "CONSEIL: Tout va bien chef."
+        risque = "RISQUE: Faible."
+        if stock_bas > 5: conseil = f"CONSEIL: Réapprovisionne {stock_bas} articles urgent."
+        if benef < 0: risque = "RISQUE: Perte détectée. Coupe les dépenses non essentielles."
+
+        return f"FAIT: CA {rev:,.0f} FC. Bénéfice {benef:,.0f} FC. {stock_bas} articles en stock bas.\n{conseil}\n{risque}"
+
+    def _action_analyse_marche(self, q):
+        # Cherche ce qui se vend le moins vs ce qui est demandé
+        top_ventes = self.supabase.table("mouvements_stock").select("article").eq("type", "vente").limit(10).execute()
+        articles = self.supabase.table("articles").select("*").order("stock", desc=True).limit(5).execute()
+        invendus = [a['nom_article'] for a in articles.data if a['stock'] > 50]
+
+        return f"ANALYSE MARCHE:\nTendance: {top_ventes.data[0]['article'] if top_ventes.data else 'N/A'}\nOPPORTUNITÉ: Vous avez {len(invendus)} articles en sur-stock. Faites promo.\nMANQUE: Vérifiez les recherches clients non satisfaites."
 
     def _search_web(self, q):
         try:
@@ -2654,17 +2655,9 @@ class FLOKI:
         except:
             return "Le web ne répond pas chef."
 
-    def _action_rediger(self, question):
-        if "relance" in question.lower():
-            return "Objet: Relance de paiement\nMonsieur/Madame,\n\nNous constatons que la facture reste impayée.\nMerci de régulariser sous 48h.\n\nASYMAS BUSINESS"
-        if "convocation" in question.lower():
-            return "Objet: Convocation\nVous êtes convoqué(e) le [DATE] à [HEURE] pour [OBJET].\n\nASYMAS BUSINESS"
-        return "Chef, précise: 'redige une relance' ou 'redige une convocation'."
-
     def _action_send_whatsapp(self, question):
         nums = re.findall(r'\+?\d{9,15}', question)
-        if not nums:
-            return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
+        if not nums: return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
         numero = nums[0].replace("+", "")
         message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
         url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
@@ -2672,20 +2665,10 @@ class FLOKI:
 
     def notify_internal(self, message):
         try:
-            self.supabase.table("notifications").insert({
-                "message": f"[{st.session_state.get('user_name', 'PDG')}]: {message}",
-                "created_at": datetime.now().isoformat()
-            }).execute()
+            self.supabase.table("notifications").insert({"message": f"[PDG]: {message}", "created_at": datetime.now().isoformat()}).execute()
             return "Notification envoyée à l’équipe chef."
         except Exception as e:
             return f"Échec notification: {e}"
-
-    def _action_conseil(self, q):
-        if not self.df['articles'].empty and not self.df['compta'].empty:
-            stock_bas = len(self.df['articles'][self.df['articles']['stock'] < 5])
-            rev = self.df['compta'][self.df['compta']['type'] == 'Revenu']['montant'].sum()
-            return f"FAIT: {stock_bas} articles en stock bas. CA: {rev:,.0f} FC.\nCONSEIL: Réapprovisionne sous 48h.\nRISQUE: Rupture = perte de vente."
-        return "Chef, je croise vos données ASYMAS pour donner fait, conseil, risque."
 
     def _log_action(self, log_entry):
         try:
@@ -2695,29 +2678,21 @@ class FLOKI:
 
 # === UI FLOKI ===
 if 'floki' not in st.session_state:
-    dataframes = {
-        "articles": df_articles,
-        "compta": df_compta,
-        "biens": df_biens,
-        "voitures": df_voitures
-    }
-    st.session_state.floki = FLOKI(supabase, dataframes)
+    st.session_state.floki = FLOKI(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"]) # Utilise secrets
 
 with st.sidebar:
     st.divider()
-    st.markdown("### 🤖 FLOKI")
-    st.caption("Conseiller du PDG - Comprend le système ASYMAS")
+    st.markdown("### 🤖 FLOKI v2.0")
+    st.caption("DG d’ASYMAS - Synchro 24/7")
 
     q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: liste de mes voitures, voiture moins cher, CA du mois")
-
-    st.info("🎤 Micro désactivé temporairement. Utilisez Chrome + localhost pour l'activer plus tard.")
+                      placeholder="Ex: Fais le bilan, surveille, analyse marché")
 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Exécuter", type="primary", use_container_width=True):
             if q:
-                with st.spinner("FLOKI réfléchit..."):
+                with st.spinner("FLOKI analyse Asymas..."):
                     rep = st.session_state.floki.ask(q)
                     st.session_state.floki_rep = rep
 
@@ -2729,15 +2704,5 @@ with st.sidebar:
 
     if 'floki_rep' in st.session_state:
         rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-        st.components.v1.html(f"""
-            <script>
-            if ('speechSynthesis' in window) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                msg.lang = 'fr-FR';
-                msg.rate = 1;
-                window.speechSynthesis.speak(msg);
-            }}
-            </script>
-        """, height=0)
+        st.components.v1.html(f"""<script>if ('speechSynthesis' in window) {{window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance("{rep_clean}"); msg.lang = 'fr-FR'; msg.rate = 1; window.speechSynthesis.speak(msg);}}</script>""", height=0)
         st.success(st.session_state.floki_rep)
