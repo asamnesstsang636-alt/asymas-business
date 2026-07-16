@@ -2486,66 +2486,66 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v4.1 - CORRIGE + VOIX =====
+# ===== FLOKI v4.2 FINAL - SANS ERREUR =====
+import urllib.parse
+
+class FLOKI:
+    def __init__(self):
+        pass # Il utilise direct df_articles, df_compta etc qui sont déjà chargés
+
+    def ask(self, question):
+        q = question.lower().strip()
+
+        if "combien" in q and "article" in q:
+            if df_articles.empty: return "Aucun article en base chef."
+            return f"Chef, nous avons {len(df_articles)} articles en base."
+
+        if "combien" in q:
+            mots = q.replace("combien de", "").replace("avons nous", "").strip()
+            if not df_articles.empty:
+                mask = df_articles['nom_article'].str.contains(mots, case=False, na=False)
+                resultats = df_articles[mask]
+                if not resultats.empty:
+                    r = resultats.iloc[0]
+                    return f"{r['nom_article']}: {int(r['stock'])} unités en stock. Prix: {float(r['prix_vente']):,.0f} FC"
+            return f"Chef, je n'ai pas trouvé '{mots}'"
+
+        if "bilan" in q or "ca" in q:
+            if df_compta.empty: return "Pas de données compta chef."
+            rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+            dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
+            return f"BILAN: Revenus {rev:,.0f} FC | Dépenses {dep:,.0f} FC | Bénéfice {rev-dep:,.0f} FC"
+
+        if "envoie message" in q:
+            nums = re.findall(r'\+?\d{9,15}', question)
+            if nums:
+                url = f"https://wa.me/{nums[0].replace('+','')}"
+                return f"Lien WhatsApp prêt: {url}"
+            return "Donnez-moi un numéro chef"
+
+        return "Ordre non compris chef. Essayez: 'combien de novida', 'bilan', 'stock'"
+
+# === INITIALISATION SECURISÉE ===
 if 'floki' not in st.session_state:
-    st.session_state.floki = FLOKI(supabase)
+    st.session_state.floki = FLOKI()
 
 peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
 
-if peut_voir_floki:  # <-- ICI C'ETAIT ; AU LIEU DE :
-    st.markdown("""
-    <style>
-   .floki-rond {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 99999;
-        background: radial-gradient(circle, #00ff41 0%, #009900 100%);
-        color: black;
-        border: 3px solid white;
-        border-radius: 50%;
-        width: 70px;
-        height: 70px;
-        font-size: 35px;
-        cursor: pointer;
-        box-shadow: 0 0 20px #00ff41;
-        animation: pulse 2s infinite;
-    }
-   .floki-panel {
-        position: fixed;
-        bottom: 100px;
-        right: 20px;
-        width: 400px;
-        z-index: 99999;
-        background: #0E1117;
-        border: 2px solid #00ff41;
-        border-radius: 15px;
-        padding: 15px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+if peut_voir_floki:
+    st.markdown("""<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:65px;height:65px;font-size:32px;border:3px solid white;}</style>""", unsafe_allow_html=True)
 
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-
     if st.button("🤖", key="btn_floki_rond"):
         st.session_state.show_floki = not st.session_state.show_floki
 
     if st.session_state.show_floki:
-        st.markdown('<div class="floki-panel">', unsafe_allow_html=True)
-        st.markdown("### 🤖 FLOKI - Conseiller du PDG")
-        st.caption("Mode: MANUEL. J'écoute vos ordres.")
-
-        ordre = st.text_input("Votre Ordre:", key="ordre_floki_final", placeholder="Ex: combien de novida avons nous")
-
-        if st.button("Exécuter", key="exec_floki_final", type="primary"):
+        st.markdown('<div style="position:fixed;bottom:90px;right:20px;width:380px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;border-radius:10px;">', unsafe_allow_html=True)
+        st.markdown("### 🤖 FLOKI - DG ASYMAS")
+        ordre = st.text_input("Ordre:", key="ordre_floki_final")
+        if st.button("Exécuter", type="primary"):
             if ordre:
                 rep = st.session_state.floki.ask(ordre)
-                st.session_state.floki_rep = rep
-
-        if 'floki_rep' in st.session_state:
-            st.success(st.session_state.floki_rep)
-            # VOIX
-            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", ". ")
-            st.components.v1.html(f"""<script>var msg = new SpeechSynthesisUtterance("{rep_clean}"); msg.lang = 'fr-FR'; window.speechSynthesis.speak(msg);</script>""", height=0)
-        
+                st.success(rep)
+                # VOIX
+                st.components.v1.html(f"""<script>var msg = new SpeechSynthesisUtterance("{rep}"); msg.lang = 'fr-FR'; window.speechSynthesis.speak(msg);</script>""", height=0)
         st.markdown('</div>', unsafe_allow_html=True)
