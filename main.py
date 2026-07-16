@@ -2486,56 +2486,83 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v7.0 FINAL - TOUT EN 1 BLOC =====
-import urllib.parse, re
-from fpdf import FPDF
-from datetime import datetime
+# ===== FLOKI v8.0 - DG QUI LIT TOUTE LA DB =====
+import re, urllib.parse
 
 class FLOKI:
     def __init__(self): pass
 
-    def ask(self, q):
-        q = q.lower()
-        try:
-            if "qui" in q and "devis" in q:
-                res = supabase.table("devis").select("*").order("created_at", desc=True).limit(1).execute()
-                if res.data:
-                    d = res.data[0]
-                    return f"Dernier devis N°{d.get('numero')} par {d.get('created_by')} pour {d.get('client')}"
-                return "Aucun devis"
+    def ask(self, question):
+        q = question.lower()
+        
+        # 1. PERTES VOITURES
+        if "perte" in q and "voiture" in q:
+            return self._derniere_perte_voiture()
+        
+        # 2. DERNIER DEVIS
+        if "dernier" in q and "devis" in q:
+            return self._query("devis", 1, "Dernier devis")
+        
+        # 3. STOCK INTELLIGENT
+        if "combien" in q:
+            mots = q.replace("combien de", "").replace("avons nous", "").strip()
+            return self._cher_stock(mots)
+        
+        # 4. BILAN
+        if "bilan" in q or "ca" in q:
+            return self._bilan()
             
-            if "combien" in q and not df_articles.empty:
-                mots = q.replace("combien de", "").strip()
-                mask = df_articles['nom_article'].str.contains(mots, case=False, na=False)
-                if mask.any():
-                    r = df_articles.iloc[0]
-                    return f"{r['nom_article']}: {int(r['stock'])} unités à {float(r['prix_vente']):,.0f} FC"
-                return f"Je n'ai pas trouvé {mots}"
-            
-            if "bilan" in q and not df_compta.empty:
-                rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-                dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-                return f"Bilan: Revenus {rev:,.0f} FC | Dépenses {dep:,.0f} FC"
-            
-            return "Chef dites: 'qui a fait le dernier devis', 'combien de novida', 'bilan'"
-        except Exception as e:
-            return f"Erreur: {e}"
+        return f"Chef je peux chercher dans: Articles, Voitures, Devis, Compta, Pertes"
 
-# === BOUTON + PANEL ===
+    def _derniere_perte_voiture(self):
+        try:
+            # Cherche dans mouvements_stock les pertes de type voiture
+            res = supabase.table("mouvements_stock").select("*").eq("type","PERTE").order("created_at", desc=True).limit(1).execute()
+            if res.data:
+                p = res.data[0]
+                return f"DERNIERE PERTE VOITURE:\nArticle: {p.get('article_nom')}\nQuantité: {abs(p.get('quantite'))}\nValeur: {p.get('valeur'):,.0f} FC\nDate: {str(p.get('created_at'))[:10]}"
+            return "Aucune perte voiture enregistrée chef."
+        except Exception as e:
+            return f"Erreur lecture pertes: {e}"
+
+    def _query(self, table, limite, titre):
+        try:
+            res = supabase.table(table).select("*").order("created_at", desc=True).limit(limite).execute()
+            if not res.data: return f"Aucun {table}"
+            d = res.data[0]
+            return f"{titre}: N°{d.get('numero')} | Client: {d.get('client')} | Par: {d.get('created_by')} | {float(d.get('total',0)):,.0f} {d.get('devise')}"
+        except Exception as e:
+            return f"Erreur {table}: {e}"
+
+    def _chercher_stock(self, mots):
+        if df_articles.empty: return "Base articles vide"
+        mask = df_articles['nom_article'].str.contains(mots, case=False, na=False)
+        resultats = df_articles
+        if resultats.empty: return f"'{mots}' introuvable"
+        r = resultats.iloc[0]
+        return f"{r['nom_article']}: {int(r['stock'])} unités | {float(r['prix_vente']):,.0f} FC"
+
+    def _bilan(self):
+        if df_compta.empty: return "Pas de compta"
+        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+        dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
+        return f"BILAN: +{rev:,.0f} FC | -{dep:,.0f} FC | ={(rev-dep):,.0f} FC"
+
+
+# === INITIALISATION + BOUTON ===
 if 'floki' not in st.session_state:
     st.session_state.floki = FLOKI()
 
-if st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False):
-    st.markdown('<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:70px;height:70px;font-size:35px;border:3px solid white;}</style>', unsafe_allow_html=True)
-    
+if st.session_state.user_role == "PDG":
+    st.markdown('<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:70px;height:70px;font-size:35px;}</style>', unsafe_allow_html=True)
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-    if st.button("🤖", key="btn_floki_rond"): st.session_state.show_floki = not st.session_state.show_floki
-
+    if st.button("🤖", key="btn_floki"): st.session_state.show_floki = not st.session_state.show_floki
+    
     if st.session_state.show_floki:
-        st.markdown('<div style="position:fixed;bottom:100px;right:20px;width:400px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;">', unsafe_allow_html=True)
-        st.markdown("### 🤖 FLOKI")
-        ordre = st.text_input("Ordre:", key="ordre_final")
-        if st.button("Exécuter", type="primary") and ordre:
+        st.markdown('<div style="position:fixed;bottom:100px;right:20px;width:420px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;border-radius:10px;">', unsafe_allow_html=True)
+        st.markdown("### 🤖 FLOKI DG")
+        ordre = st.text_input("Ordre:", key="ordre")
+        if st.button("Exécuter", type="primary"):
             rep = st.session_state.floki.ask(ordre)
             st.success(rep)
             st.components.v1.html(f"""<script>var m=new SpeechSynthesisUtterance("{rep}");m.lang='fr-FR';window.speechSynthesis.speak(m);</script>""", height=0)
