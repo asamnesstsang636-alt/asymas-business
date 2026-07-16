@@ -2486,66 +2486,78 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v4.2 FINAL - SANS ERREUR =====
-import urllib.parse
+# ===== FLOKI v6.0 - IA QUI LIT TOUTE TA BASE =====
+import json
 
 class FLOKI:
     def __init__(self):
-        pass # Il utilise direct df_articles, df_compta etc qui sont déjà chargés
+        self.tables = {
+            "articles": df_articles,
+            "voitures": df_voitures, 
+            "compta": df_compta,
+            "biens": df_biens,
+        }
+        self.supabase_tables = ["devis", "utilisateurs", "mouvements_stock", "notifications"]
 
     def ask(self, question):
-        q = question.lower().strip()
+        q = question.lower()
+        
+        try:
+            # === LOGIQUE INTELLIGENTE ===
+            if "qui" in q and "devis" in q:
+                return self._query_supabase("devis", "order", "created_at", "desc", 1)
+            
+            if "liste" in q and "devis" in q:
+                return self._query_supabase("devis", "order", "created_at", "desc", 5)
+            
+            if "combien" in q:
+                for nom_table, df in self.tables.items():
+                    if nom_table in q or "stock" in q:
+                        mots = q.replace("combien de", "").replace("avons nous", "").strip()
+                        if not df.empty:
+                            mask = df['nom_article'].str.contains(mots, case=False, na=False) if 'nom_article' in df.columns else False
+                            if mask.any():
+                                r = df[mask].iloc[0]
+                                return f"{r['nom_article']}: {int(r['stock'])} unités"
+                return "Je n'ai rien trouvé chef."
+            
+            if "bilan" in q or "ca" in q or "perte" in q:
+                return self._bilan_complet()
 
-        if "combien" in q and "article" in q:
-            if df_articles.empty: return "Aucun article en base chef."
-            return f"Chef, nous avons {len(df_articles)} articles en base."
+            if "envoie" in q:
+                return self._action_send_whatsapp(question)
 
-        if "combien" in q:
-            mots = q.replace("combien de", "").replace("avons nous", "").strip()
-            if not df_articles.empty:
-                mask = df_articles['nom_article'].str.contains(mots, case=False, na=False)
-                resultats = df_articles[mask]
-                if not resultats.empty:
-                    r = resultats.iloc[0]
-                    return f"{r['nom_article']}: {int(r['stock'])} unités en stock. Prix: {float(r['prix_vente']):,.0f} FC"
-            return f"Chef, je n'ai pas trouvé '{mots}'"
+            return f"Chef, dites moi: 'qui a fait le dernier devis', 'combien de ciment', 'bilan', 'liste utilisateurs'"
 
-        if "bilan" in q or "ca" in q:
-            if df_compta.empty: return "Pas de données compta chef."
-            rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
-            dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
-            return f"BILAN: Revenus {rev:,.0f} FC | Dépenses {dep:,.0f} FC | Bénéfice {rev-dep:,.0f} FC"
+        except Exception as e:
+            return f"Erreur FLOKI: {e}"
 
-        if "envoie message" in q:
-            nums = re.findall(r'\+?\d{9,15}', question)
-            if nums:
-                url = f"https://wa.me/{nums[0].replace('+','')}"
-                return f"Lien WhatsApp prêt: {url}"
-            return "Donnez-moi un numéro chef"
+    def _query_supabase(self, table, action, colonne, ordre, limite):
+        try:
+            res = supabase.table(table).select("*").order(colonne, desc=(ordre=="desc")).limit(limite).execute()
+            if not res.data: return f"Aucune donnée dans {table}"
+            if limite == 1:
+                d = res.data[0]
+                return f"Dernier {table}: N°{d.get('numero')} | Client: {d.get('client')} | Par: {d.get('created_by')} | Total: {d.get('total')}"
+            else:
+                txt = f"DERNIERS {limite} {table.upper()}:\n"
+                for d in res.data:
+                    txt += f"- {d.get('numero')} | {d.get('client')} | {d.get('total')} | Par: {d.get('created_by')}\n"
+                return txt
+        except Exception as e:
+            return f"Erreur lecture {table}: {e}"
 
-        return "Ordre non compris chef. Essayez: 'combien de novida', 'bilan', 'stock'"
+    def _bilan_complet(self):
+        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
+        dep = df_compta[df_compta['type']=='Dépense']['montant'].sum() if not df_compta.empty else 0
+        pertes = supabase.table("mouvements_stock").select("valeur").eq("type","PERTE").execute()
+        total_pertes = sum([p['valeur'] for p in pertes.data]) if pertes.data else 0
+        return f"BILAN GLOBAL CHEF:\n💰 Revenus: {rev:,.0f} FC\n💸 Dépenses: {dep:,.0f} FC\n📉 Pertes: {total_pertes:,.0f} FC\n📊 Bénéfice: {rev-dep-total_pertes:,.0f} FC"
 
-# === INITIALISATION SECURISÉE ===
+    def _action_send_whatsapp(self, q):
+        nums = re.findall(r'\+?\d{9,15}', q)
+        return f"Lien: https://wa.me/{nums[0].replace('+','')}" if nums else "Donnez numéro"
+
+# INITIALISATION
 if 'floki' not in st.session_state:
     st.session_state.floki = FLOKI()
-
-peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
-
-if peut_voir_floki:
-    st.markdown("""<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:65px;height:65px;font-size:32px;border:3px solid white;}</style>""", unsafe_allow_html=True)
-
-    if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-    if st.button("🤖", key="btn_floki_rond"):
-        st.session_state.show_floki = not st.session_state.show_floki
-
-    if st.session_state.show_floki:
-        st.markdown('<div style="position:fixed;bottom:90px;right:20px;width:380px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;border-radius:10px;">', unsafe_allow_html=True)
-        st.markdown("### 🤖 FLOKI - DG ASYMAS")
-        ordre = st.text_input("Ordre:", key="ordre_floki_final")
-        if st.button("Exécuter", type="primary"):
-            if ordre:
-                rep = st.session_state.floki.ask(ordre)
-                st.success(rep)
-                # VOIX
-                st.components.v1.html(f"""<script>var msg = new SpeechSynthesisUtterance("{rep}"); msg.lang = 'fr-FR'; window.speechSynthesis.speak(msg);</script>""", height=0)
-        st.markdown('</div>', unsafe_allow_html=True)
