@@ -2486,92 +2486,57 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v6.1 FINAL - VISIBLE + MICRO =====
+# ===== FLOKI v7.0 FINAL - TOUT EN 1 BLOC =====
+import urllib.parse, re
+from fpdf import FPDF
+from datetime import datetime
 
+class FLOKI:
+    def __init__(self): pass
+
+    def ask(self, q):
+        q = q.lower()
+        try:
+            if "qui" in q and "devis" in q:
+                res = supabase.table("devis").select("*").order("created_at", desc=True).limit(1).execute()
+                if res.data:
+                    d = res.data[0]
+                    return f"Dernier devis N°{d.get('numero')} par {d.get('created_by')} pour {d.get('client')}"
+                return "Aucun devis"
+            
+            if "combien" in q and not df_articles.empty:
+                mots = q.replace("combien de", "").strip()
+                mask = df_articles['nom_article'].str.contains(mots, case=False, na=False)
+                if mask.any():
+                    r = df_articles.iloc[0]
+                    return f"{r['nom_article']}: {int(r['stock'])} unités à {float(r['prix_vente']):,.0f} FC"
+                return f"Je n'ai pas trouvé {mots}"
+            
+            if "bilan" in q and not df_compta.empty:
+                rev = df_compta[df_compta['type']=='Revenu']['montant'].sum()
+                dep = df_compta[df_compta['type']=='Dépense']['montant'].sum()
+                return f"Bilan: Revenus {rev:,.0f} FC | Dépenses {dep:,.0f} FC"
+            
+            return "Chef dites: 'qui a fait le dernier devis', 'combien de novida', 'bilan'"
+        except Exception as e:
+            return f"Erreur: {e}"
+
+# === BOUTON + PANEL ===
 if 'floki' not in st.session_state:
     st.session_state.floki = FLOKI()
 
-peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
-
-if peut_voir_floki:
-    st.markdown("""
-    <style>
-   .floki-rond {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 99999;
-        background: radial-gradient(circle, #00ff41 0%, #009900 100%);
-        color: black;
-        border: 3px solid white;
-        border-radius: 50%;
-        width: 70px;
-        height: 70px;
-        font-size: 35px;
-        cursor: pointer;
-        box-shadow: 0 0 20px #00ff41;
-    }
-   .floki-panel {
-        position: fixed;
-        bottom: 100px;
-        right: 20px;
-        width: 420px;
-        z-index: 99999;
-        background: #0E1117;
-        border: 2px solid #00ff41;
-        border-radius: 15px;
-        padding: 15px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
+if st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False):
+    st.markdown('<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:70px;height:70px;font-size:35px;border:3px solid white;}</style>', unsafe_allow_html=True)
+    
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-    if 'ecoute' not in st.session_state: st.session_state.ecoute = False
+    if st.button("🤖", key="btn_floki_rond"): st.session_state.show_floki = not st.session_state.show_floki
 
-    # LE BOUTON ROND
-    if st.button("🤖", key="btn_floki_rond"):
-        st.session_state.show_floki = not st.session_state.show_floki
-
-    # LE PANEL
     if st.session_state.show_floki:
-        st.markdown('<div class="floki-panel">', unsafe_allow_html=True)
-        st.markdown("### 🤖 FLOKI - DG ASYMAS")
-        
-        col1, col2 = st.columns([1,3])
-        with col1:
-            if st.button("🎤", key="btn_micro"):
-                st.session_state.ecoute = True
-                st.rerun()
-        with col2:
-            if st.button("Fermer"):
-                st.session_state.show_floki = False
-                st.rerun()
-
-        # MICRO : il écoute et remplit le champ
-        if st.session_state.ecoute:
-            st.info("J'écoute chef... parlez")
-            st.components.v1.html("""
-            <script>
-            var r = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            r.lang = 'fr-FR'; r.start();
-            r.onresult = function(e) {
-                var txt = e.results[0][0].transcript;
-                window.parent.postMessage({type: 'streamlit:setComponentValue', key: 'ordre_vocal', value: txt}, '*');
-            };
-            </script>
-            """, height=0)
-            st.session_state.ecoute = False
-
-        # CHAMP ORDRE
-        if 'ordre_vocal' not in st.session_state: st.session_state.ordre_vocal = ""
-        ordre = st.text_input("Ordre:", key="ordre_vocal", value=st.session_state.ordre_vocal)
-
-        if st.button("Exécuter", type="primary"):
-            if ordre:
-                rep = st.session_state.floki.ask(ordre)
-                st.success(rep)
-                # VOIX : il répond
-                rep_clean = rep.replace('"','\\"').replace("\n",". ")
-                st.components.v1.html(f"""<script>var m=new SpeechSynthesisUtterance("{rep_clean}");m.lang='fr-FR';window.speechSynthesis.speak(m);</script>""", height=0)
-
+        st.markdown('<div style="position:fixed;bottom:100px;right:20px;width:400px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;">', unsafe_allow_html=True)
+        st.markdown("### 🤖 FLOKI")
+        ordre = st.text_input("Ordre:", key="ordre_final")
+        if st.button("Exécuter", type="primary") and ordre:
+            rep = st.session_state.floki.ask(ordre)
+            st.success(rep)
+            st.components.v1.html(f"""<script>var m=new SpeechSynthesisUtterance("{rep}");m.lang='fr-FR';window.speechSynthesis.speak(m);</script>""", height=0)
         st.markdown('</div>', unsafe_allow_html=True)
