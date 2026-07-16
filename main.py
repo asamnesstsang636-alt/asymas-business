@@ -2486,129 +2486,11 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v3.0 - DG ASYMAS =====
-import difflib, re, urllib.parse, json, requests
-from datetime import datetime, timedelta
-
-class FLOKI:
-    def __init__(self, supabase_client):
-        self.supabase = supabase_client
-
-    def ask(self, question):
-        q = question.lower().strip()
-
-        if any(g in q for g in ["slt", "salut", "bonjour"]):
-            return "Présent chef. FLOKI à vos ordres."
-
-        # 1. MESSAGES
-        if "envoie" in q and "message" in q:
-            return self._action_send_whatsapp(question)
-
-        # 2. APPEL
-        if "appelle" in q or "appel" in q:
-            return self._action_appel(question)
-
-        # 3. ORGANISER SEANCE
-        if "organise" in q and "reunion" in q or "seance" in q:
-            return self._action_organiser_seance(question)
-
-        # 4. DOCUMENTS ADMIN
-        if "genere" in q and "lettre" in q:
-            return self._action_generer_document(question, "lettre")
-        if "genere" in q and "convocation" in q:
-            return self._action_generer_document(question, "convocation")
-        if "genere" in q and "rapport" in q:
-            return self._action_generer_document(question, "rapport")
-
-        # 5. BILAN
-        if "bilan" in q: return self._bilan_rapide()
-        if "stock bas" in q: return self._stock_bas()
-        if "ca" in q: return self._chiffre_affaires()
-
-        return "Ordre non compris chef. Dites: 'bilan', 'envoie message', 'organise reunion', 'genere lettre'"
-
-    def _action_send_whatsapp(self, question):
-        nums = re.findall(r'\+?\d{9,15}', question)
-        if not nums: return "Chef, donne-moi un numéro. Ex: 'envoie message au +243995105623 bonjour'"
-        numero = nums[0].replace("+", "")
-        message = re.sub(r'envoie.*?message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
-        url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-        return f"Lien WhatsApp prêt chef:\n{url}"
-
-    def _action_appel(self, question):
-        nums = re.findall(r'\+?\d{9,15}', question)
-        if not nums: return "Chef, donne-moi un numéro à appeler."
-        numero = nums[0]
-        return f"Lien d'appel direct:\n`tel:{numero}`\nCliquez et votre téléphone va composer."
-
-    def _action_organiser_seance(self, question):
-        # Extrait date et heure du texte
-        date_match = re.search(r'(\d{1,2}/\d{1,2})', question)
-        heure_match = re.search(r'(\d{1,2}h\d{0,2})', question)
-        objet = re.sub(r'organise.*?reunion|seance', '', question).strip()
-
-        try:
-            self.supabase.table("notifications").insert({
-                "message": f"[SEANCE PDG] {objet} | Le: {date_match.group(1) if date_match else 'A définir'} à {heure_match.group(1) if heure_match else 'A définir'}",
-                "created_at": datetime.now().isoformat(),
-                "type": "seance"
-            }).execute()
-            return f"✅ Séance organisée chef:\nObjet: {objet}\nDate: {date_match.group(1) if date_match else 'A définir'}\nEquipe notifiée."
-        except Exception as e:
-            return f"Erreur organisation: {e}"
-
-    def _action_generer_document(self, question, type_doc):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, f"{type_doc.upper()} - ASYMAS BUSINESS", 0, 1, "C")
-        pdf.ln(10)
-        pdf.set_font("Arial", "", 12)
-        if type_doc == "lettre":
-            pdf.cell(0, 8, f"Beni, le {date.today().strftime('%d/%m/%Y')}", 0, 1, "R")
-            pdf.ln(10)
-            pdf.cell(0, 8, "Objet: " + question.replace("genere lettre", ""), 0, 1)
-            pdf.ln(10)
-            pdf.multi_cell(0, 8, "Monsieur/Madame,\n\n[Contenu à compléter par FLOKI]\n\nVeuillez agréer...")
-        if type_doc == "convocation":
-            pdf.cell(0, 8, f"CONVOCATION", 0, 1, "C")
-            pdf.ln(10)
-            pdf.multi_cell(0, 8, "Vous êtes convoqué(e) le [DATE] à [HEURE] pour: " + question)
-
-        pdf_bytes = bytes(pdf.output(dest='S'))
-        nom_fichier = f"{type_doc}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-
-        # On met le pdf dans session_state pour le download_button
-        st.session_state[f"pdf_floki_{type_doc}"] = pdf_bytes
-        st.session_state[f"nom_floki_{type_doc}"] = nom_fichier
-
-        return f"✅ {type_doc.capitalize()} générée chef. Cliquez sur 'Télécharger' ci-dessous."
-
-    def _bilan_rapide(self):
-        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
-        return f"RAPPORT CHEF:\nCA: {rev:,.0f} FC"
-
-    def _stock_bas(self):
-        low = df_articles[df_articles['stock'] < 5] if not df_articles.empty else pd.DataFrame()
-        if low.empty: return "Stock OK chef."
-        return "⚠️ Stock bas: " + ", ".join([r['nom_article'] for _, r in low.iterrows()])
-
-    def _chiffre_affaires(self):
-        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
-        dep = df_compta[df_compta['type']=='Dépense']['montant'].sum() if not df_compta.empty else 0
-        return f"CA: {rev:,.0f} FC | Dépenses: {dep:,.0f} FC | Bénéfice: {rev-dep:,.0f} FC"
-
-# === INITIALISATION + VERROU PDG ===
-if 'floki' not in st.session_state:
-    st.session_state.floki = FLOKI(supabase)
-
-peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
-
+# ===== FLOKI v4.0 AVEC VOIX =====
 if peut_voir_floki:
-    # BOUTON ROND FLOTTANT PRES DU CURSEUR
     st.markdown("""
     <style>
-   .floki-rond {
+  .floki-rond {
         position: fixed;
         bottom: 20px;
         right: 20px;
@@ -2617,65 +2499,118 @@ if peut_voir_floki:
         color: black;
         border: 3px solid white;
         border-radius: 50%;
-        width: 65px;
-        height: 65px;
-        font-size: 32px;
+        width: 70px;
+        height: 70px;
+        font-size: 35px;
         cursor: pointer;
-        box-shadow: 0 0 15px #00ff41;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        box-shadow: 0 0 20px #00ff41;
+        animation: pulse 2s infinite;
     }
-   .floki-panel {
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 255, 65, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
+    }
+  .floki-panel {
         position: fixed;
-        bottom: 95px;
+        bottom: 100px;
         right: 20px;
-        width: 380px;
+        width: 400px;
         z-index: 99999;
         background: #0E1117;
         border: 2px solid #00ff41;
         border-radius: 15px;
         padding: 15px;
-        box-shadow: 0 0 20px rgba(0,255,65,0.5);
+        box-shadow: 0 0 25px rgba(0,255,65,0.6);
     }
     </style>
     """, unsafe_allow_html=True)
 
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
+    if 'ecoute_active' not in st.session_state: st.session_state.ecoute_active = False
 
-    if st.button("🤖", key="btn_floki_rond", help="FLOKI DG"):
+    if st.button("🤖", key="btn_floki_rond", help="Appuyer pour parler à FLOKI"):
         st.session_state.show_floki = not st.session_state.show_floki
 
     if st.session_state.show_floki:
         st.markdown('<div class="floki-panel">', unsafe_allow_html=True)
         st.markdown("### 🤖 FLOKI - Conseiller du PDG")
-        st.caption("Mode: MANUEL. J'attends vos ordres.")
+        st.caption("Mode: MANUEL. Cliquez micro pour parler.")
 
-        ordre = st.text_input("Votre Ordre:", key="ordre_floki_v3", placeholder="Ex: organise reunion demain 14h")
+        # 1. BOUTON MICRO POUR PARLER
+        col_mic, col_close = st.columns([1,4])
+        with col_mic:
+            if st.button("🎤 Parler", key="btn_micro", type="primary"):
+                st.session_state.ecoute_active = True
+                st.rerun()
+            if st.session_state.ecoute_active:
+                st.info("J'écoute chef...")
+
+        with col_close:
+            if st.button("Fermer", key="close_floki_v4"):
+                st.session_state.show_floki = False
+                st.session_state.ecoute_active = False
+                st.rerun()
+
+        # 2. RECONNAISSANCE VOCALE via navigateur
+        if st.session_state.ecoute_active:
+            st.components.v1.html("""
+            <script>
+            var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'fr-FR';
+            recognition.start();
+            recognition.onresult = function(event) {
+                var speechResult = event.results[0][0].transcript;
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
+            };
+            recognition.onerror = function() { window.parent.postMessage({type: 'streamlit:setComponentValue', value: 'erreur'}, '*'); }
+            </script>
+            """, height=0)
+            ordre = st.text_input("Votre Ordre:", value="", key="ordre_vocal", label_visibility="collapsed")
+            if ordre and ordre!= "erreur":
+                st.session_state.ecoute_active = False
+                st.session_state.ordre_floki_v4 = ordre
+                st.rerun()
+
+        # 3. ZONE DE TEXTE + EXECUTER
+        if 'ordre_floki_v4' not in st.session_state: st.session_state.ordre_floki_v4 = ""
+        ordre = st.text_input("Ou tapez votre ordre:", key="ordre_floki_v4")
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Exécuter", key="exec_floki_v3", type="primary"):
+            if st.button("Exécuter", key="exec_floki_v4", type="primary"):
                 if ordre:
-                    rep = st.session_state.floki.ask(ordre)
-                    st.session_state.floki_rep = rep
-        with col2:
-            if st.button("Fermer", key="close_floki_v3"):
-                st.session_state.show_floki = False
-                st.rerun()
+                    with st.spinner("FLOKI réfléchit..."):
+                        rep = st.session_state.floki.ask(ordre)
+                        st.session_state.floki_rep = rep
+                        st.session_state.floki_rep_voix = rep # pour la voix
 
+        # 4. REPONSE + VOIX
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
 
-            # Boutons de téléchargement si PDF généré
-            for type_doc in ["lettre", "convocation", "rapport"]:
-                if f"pdf_floki_{type_doc}" in st.session_state:
-                    st.download_button(
-                        f"📥 Télécharger {type_doc}",
-                        data=st.session_state[f"pdf_floki_{type_doc}"],
-                        file_name=st.session_state[f"nom_floki_{type_doc}"],
-                        mime="application/pdf",
-                        key=f"dl_floki_{type_doc}"
-                    )
+            # PARLER LA REPONSE
+            rep_clean = st.session_state.floki_rep_voix.replace('"', '\\"').replace("\n", ". ").replace("'", "\\'")
+            st.components.v1.html(f"""
+            <script>
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("{rep_clean}");
+                msg.lang = 'fr-FR';
+                msg.rate = 0.9;
+                msg.pitch = 1;
+                window.speechSynthesis.speak(msg);
+            }}
+            </script>
+            """, height=0)
+
+            # Téléchargement PDF si généré
+            if "pdf_floki_doc" in st.session_state:
+                st.download_button(
+                    "📥 Télécharger Document",
+                    data=st.session_state["pdf_floki_doc"],
+                    file_name=st.session_state["nom_floki_doc"],
+                    mime="application/pdf"
+                )
 
         st.markdown('</div>', unsafe_allow_html=True)
