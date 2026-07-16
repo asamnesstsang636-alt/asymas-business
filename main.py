@@ -2486,223 +2486,196 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-import difflib
-import re
-import urllib.parse
-import json
-import requests
-import streamlit as st
-import pandas as pd
-from datetime import datetime
-from supabase import create_client # Nouveau
+# ===== FLOKI v3.0 - DG ASYMAS =====
+import difflib, re, urllib.parse, json, requests
+from datetime import datetime, timedelta
 
 class FLOKI:
-    def __init__(self, supabase_url, supabase_key):
-        # 1. CONNEXION DIRECTE MCP - Plus de df statiques
-        self.supabase = create_client(supabase_url, supabase_key)
-        self.system_knowledge = self._get_supabase_schema()
-        self.memory = self._load_memory() # Il se souvient
-
-    def _get_supabase_schema(self):
-        schema = {}
-        tables = ["articles", "compta", "biens", "voitures", "mouvements_stock", "devis", "notifications", "floki_logs", "orders", "users"] # J'ai ajouté orders et users
-        for t in tables:
-            try:
-                result = self.supabase.table(t).select("*").limit(1).execute()
-                schema[t] = list(result.data[0].keys()) if result.data else []
-            except:
-                schema[t] = []
-        return schema
-
-    def _load_memory(self):
-        # FLOKI lit ses anciens logs pour apprendre
-        try:
-            res = self.supabase.table("floki_logs").select("*").order("date", desc=True).limit(50).execute()
-            return res.data
-        except:
-            return []
+    def __init__(self, supabase_client):
+        self.supabase = supabase_client
 
     def ask(self, question):
         q = question.lower().strip()
-        log_entry = {"demande": question, "date": datetime.now().isoformat(), "source": "ASYMAS"}
 
-        if any(g in q for g in ["slt", "salut", "bonjour", "hello", "yo"]):
-            return "Présent chef. FLOKI opérationnel avec synchro complète. Donnez l'ordre."
+        if any(g in q for g in ["slt", "salut", "bonjour"]):
+            return "Présent chef. FLOKI à vos ordres."
 
-        # NOUVEAU: Surveillance auto
-        if any(k in q for k in ["surveille", "bilan", "rapport", "que se passe"]):
-            result = self._action_surveillance()
-            log_entry.update({"action": "surveillance", "reponse": result})
-            self._log_action(log_entry)
-            return result
+        # 1. MESSAGES
+        if "envoie" in q and "message" in q:
+            return self._action_send_whatsapp(question)
 
-        if "envoie" in q and "message" in q and "numero" in q:
-            result = self._action_send_whatsapp(question)
-            log_entry.update({"action": "whatsapp_send", "reponse": result})
-            self._log_action(log_entry)
-            return result
+        # 2. APPEL
+        if "appelle" in q or "appel" in q:
+            return self._action_appel(question)
 
-        if any(k in q for k in ["conseil", "avis", "opportunite", "risque", "que faire"]):
-            result = self._action_conseil_avance(q) # Version améliorée
-            log_entry.update({"action": "conseil", "reponse": result})
-            self._log_action(log_entry)
-            return result
+        # 3. ORGANISER SEANCE
+        if "organise" in q and "reunion" in q or "seance" in q:
+            return self._action_organiser_seance(question)
 
-        if any(k in q for k in ["marche", "potentiel", "tendance", "vendre"]):
-            result = self._action_analyse_marche(q)
-            log_entry.update({"action": "analyse_marche", "reponse": result})
-            self._log_action(log_entry)
-            return result
+        # 4. DOCUMENTS ADMIN
+        if "genere" in q and "lettre" in q:
+            return self._action_generer_document(question, "lettre")
+        if "genere" in q and "convocation" in q:
+            return self._action_generer_document(question, "convocation")
+        if "genere" in q and "rapport" in q:
+            return self._action_generer_document(question, "rapport")
 
-        # Recherche améliorée avec vrai DB
-        q_clean = re.sub(r'(trouve moi|donne moi|donne|trouve|cherche|le prix de|prix du|du|de|le|la|un|une|pour moi|combien)', '', q).strip()
-        rep = self._search_asymas_live(q_clean) # Version LIVE
-        if rep:
-            log_entry.update({"source": "ASYMAS", "reponse": rep})
-            self._log_action(log_entry)
-            return rep + "\n\nSource: ASYMAS DB"
+        # 5. BILAN
+        if "bilan" in q: return self._bilan_rapide()
+        if "stock bas" in q: return self._stock_bas()
+        if "ca" in q: return self._chiffre_affaires()
 
-        web_rep = self._search_web(question)
-        log_entry.update({"source": "WEB", "reponse": web_rep})
-        self._log_action(log_entry)
-        return web_rep + "\n\nSource: WEB"
-
-    def _search_asymas_live(self, q):
-        # Maintenant il query direct Supabase à chaque fois
-        if "voiture" in q and ("moins cher" in q or "prix" in q):
-            return self._get_voiture_moins_cher_live()
-        if "voiture" in q:
-            return self._get_voitures_stock_live()
-        if any(k in q for k in ["stock bas", "rupture", "manque"]):
-            return self._stock_bas_live()
-        if any(k in q for k in ["ca", "chiffre", "revenu", "vente", "argent", "benefice", "solde"]):
-            return self._chiffre_affaires_live()
-
-        # Recherche produit intelligente
-        return self._search_product_live(q)
-
-    def _get_voiture_moins_cher_live(self):
-        res = self.supabase.table("voitures").select("*").gt("quantite", 0).order("prix_vente", asc=True).limit(1).execute()
-        if not res.data: return "Pas de voitures en stock chef."
-        v = res.data[0]
-        return f"Voiture la moins chère: {v.get('modele')} à {float(v.get('prix_vente',0)):,.0f} FC"
-
-    def _get_voitures_stock_live(self):
-        res = self.supabase.table("voitures").select("*").gt("quantite", 0).execute()
-        if not res.data: return "Aucune voiture en stock chef."
-        txt = "\n".join([f"- {r['modele']}: {r['quantite']} unités - {float(r['prix_vente']):,.0f} FC" for r in res.data])
-        return f"Voitures en stock:\n{txt}"
-
-    def _stock_bas_live(self):
-        res = self.supabase.table("articles").select("*").lt("stock", 5).execute()
-        if not res.data: return "Stock OK chef. Rien en dessous de 5 unités."
-        txt = "\n".join([f"- {r['nom_article']}: {r['stock']} unités" for r in res.data])
-        return f"⚠️ Alert Stock bas:\n{txt}"
-
-    def _chiffre_affaires_live(self):
-        rev_res = self.supabase.table("compta").select("montant").eq("type", "Revenu").execute()
-        dep_res = self.supabase.table("compta").select("montant").eq("type", "Dépense").execute()
-        rev = sum([r['montant'] for r in rev_res.data])
-        dep = sum([r['montant'] for r in dep_res.data])
-        return f"Rapport compta LIVE:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nSolde: {rev-dep:,.0f} FC"
-
-    def _search_product_live(self, q):
-        res = self.supabase.table("articles").select("*").ilike("nom_article", f"%{q}%").limit(1).execute()
-        if not res.data: return None
-        r = res.data[0]
-        return f"{r['nom_article']}: Stock {int(r['stock'])} unités, Prix {float(r['prix_vente']):,.0f} FC"
-
-    def _action_surveillance(self):
-        # Qui a fait quoi et quand
-        last_orders = self.supabase.table("orders").select("*").order("created_at", desc=True).limit(3).execute()
-        last_users = self.supabase.table("users").select("*").order("created_at", desc=True).limit(3).execute()
-
-        txt = "RAPPORT SURVEILLANCE:\n"
-        txt += "Dernières commandes:\n" + "\n".join([f"- {o['id']} par {o['user_id']} le {o['created_at'][:16]}" for o in last_orders.data]) + "\n"
-        txt += "Nouveaux clients:\n" + "\n".join([f"- {u['email']} le {u['created_at'][:16]}" for u in last_users.data])
-        return txt
-
-    def _action_conseil_avance(self, q):
-        # Analyse + Conseil + Risque
-        stock_bas = len(self.supabase.table("articles").select("id").lt("stock", 5).execute().data)
-        rev = sum([r['montant'] for r in self.supabase.table("compta").select("montant").eq("type", "Revenu").execute().data])
-        dep = sum([r['montant'] for r in self.supabase.table("compta").select("montant").eq("type", "Dépense").execute().data])
-        benef = rev - dep
-
-        conseil = "CONSEIL: Tout va bien chef."
-        risque = "RISQUE: Faible."
-        if stock_bas > 5: conseil = f"CONSEIL: Réapprovisionne {stock_bas} articles urgent."
-        if benef < 0: risque = "RISQUE: Perte détectée. Coupe les dépenses non essentielles."
-
-        return f"FAIT: CA {rev:,.0f} FC. Bénéfice {benef:,.0f} FC. {stock_bas} articles en stock bas.\n{conseil}\n{risque}"
-
-    def _action_analyse_marche(self, q):
-        # Cherche ce qui se vend le moins vs ce qui est demandé
-        top_ventes = self.supabase.table("mouvements_stock").select("article").eq("type", "vente").limit(10).execute()
-        articles = self.supabase.table("articles").select("*").order("stock", desc=True).limit(5).execute()
-        invendus = [a['nom_article'] for a in articles.data if a['stock'] > 50]
-
-        return f"ANALYSE MARCHE:\nTendance: {top_ventes.data[0]['article'] if top_ventes.data else 'N/A'}\nOPPORTUNITÉ: Vous avez {len(invendus)} articles en sur-stock. Faites promo.\nMANQUE: Vérifiez les recherches clients non satisfaites."
-
-    def _search_web(self, q):
-        try:
-            url = f"https://api.duckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
-            r = requests.get(url, timeout=4)
-            data = r.json()
-            if data.get('AbstractText'):
-                return f"Info vérifiée: {data['AbstractText']}"
-            return f"Négatif chef. Rien de vérifiable sur le web pour '{q}'."
-        except:
-            return "Le web ne répond pas chef."
+        return "Ordre non compris chef. Dites: 'bilan', 'envoie message', 'organise reunion', 'genere lettre'"
 
     def _action_send_whatsapp(self, question):
         nums = re.findall(r'\+?\d{9,15}', question)
-        if not nums: return "Chef, donne-moi un numéro. Ex: 'envoie un message au +243995105623 salut'"
+        if not nums: return "Chef, donne-moi un numéro. Ex: 'envoie message au +243995105623 bonjour'"
         numero = nums[0].replace("+", "")
-        message = re.sub(r'envoie un message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
+        message = re.sub(r'envoie.*?message.*?\+?\d{9,15}', '', question).strip() or "Message de ASYMAS BUSINESS"
         url = f"https://wa.me/{numero}?text={urllib.parse.quote(message)}"
-        return f"Lien WhatsApp prêt: {url}"
+        return f"Lien WhatsApp prêt chef:\n{url}"
 
-    def notify_internal(self, message):
+    def _action_appel(self, question):
+        nums = re.findall(r'\+?\d{9,15}', question)
+        if not nums: return "Chef, donne-moi un numéro à appeler."
+        numero = nums[0]
+        return f"Lien d'appel direct:\n`tel:{numero}`\nCliquez et votre téléphone va composer."
+
+    def _action_organiser_seance(self, question):
+        # Extrait date et heure du texte
+        date_match = re.search(r'(\d{1,2}/\d{1,2})', question)
+        heure_match = re.search(r'(\d{1,2}h\d{0,2})', question)
+        objet = re.sub(r'organise.*?reunion|seance', '', question).strip()
+
         try:
-            self.supabase.table("notifications").insert({"message": f"[PDG]: {message}", "created_at": datetime.now().isoformat()}).execute()
-            return "Notification envoyée à l’équipe chef."
+            self.supabase.table("notifications").insert({
+                "message": f"[SEANCE PDG] {objet} | Le: {date_match.group(1) if date_match else 'A définir'} à {heure_match.group(1) if heure_match else 'A définir'}",
+                "created_at": datetime.now().isoformat(),
+                "type": "seance"
+            }).execute()
+            return f"✅ Séance organisée chef:\nObjet: {objet}\nDate: {date_match.group(1) if date_match else 'A définir'}\nEquipe notifiée."
         except Exception as e:
-            return f"Échec notification: {e}"
+            return f"Erreur organisation: {e}"
 
-    def _log_action(self, log_entry):
-        try:
-            self.supabase.table("floki_logs").insert(log_entry).execute()
-        except:
-            pass
+    def _action_generer_document(self, question, type_doc):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, f"{type_doc.upper()} - ASYMAS BUSINESS", 0, 1, "C")
+        pdf.ln(10)
+        pdf.set_font("Arial", "", 12)
+        if type_doc == "lettre":
+            pdf.cell(0, 8, f"Beni, le {date.today().strftime('%d/%m/%Y')}", 0, 1, "R")
+            pdf.ln(10)
+            pdf.cell(0, 8, "Objet: " + question.replace("genere lettre", ""), 0, 1)
+            pdf.ln(10)
+            pdf.multi_cell(0, 8, "Monsieur/Madame,\n\n[Contenu à compléter par FLOKI]\n\nVeuillez agréer...")
+        if type_doc == "convocation":
+            pdf.cell(0, 8, f"CONVOCATION", 0, 1, "C")
+            pdf.ln(10)
+            pdf.multi_cell(0, 8, "Vous êtes convoqué(e) le [DATE] à [HEURE] pour: " + question)
 
-# === UI FLOKI ===
+        pdf_bytes = bytes(pdf.output(dest='S'))
+        nom_fichier = f"{type_doc}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+
+        # On met le pdf dans session_state pour le download_button
+        st.session_state[f"pdf_floki_{type_doc}"] = pdf_bytes
+        st.session_state[f"nom_floki_{type_doc}"] = nom_fichier
+
+        return f"✅ {type_doc.capitalize()} générée chef. Cliquez sur 'Télécharger' ci-dessous."
+
+    def _bilan_rapide(self):
+        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
+        return f"RAPPORT CHEF:\nCA: {rev:,.0f} FC"
+
+    def _stock_bas(self):
+        low = df_articles[df_articles['stock'] < 5] if not df_articles.empty else pd.DataFrame()
+        if low.empty: return "Stock OK chef."
+        return "⚠️ Stock bas: " + ", ".join([r['nom_article'] for _, r in low.iterrows()])
+
+    def _chiffre_affaires(self):
+        rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
+        dep = df_compta[df_compta['type']=='Dépense']['montant'].sum() if not df_compta.empty else 0
+        return f"CA: {rev:,.0f} FC | Dépenses: {dep:,.0f} FC | Bénéfice: {rev-dep:,.0f} FC"
+
+# === INITIALISATION + VERROU PDG ===
 if 'floki' not in st.session_state:
-    st.session_state.floki = FLOKI(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"]) # Utilise secrets
+    st.session_state.floki = FLOKI(supabase)
 
-with st.sidebar:
-    st.divider()
-    st.markdown("### 🤖 FLOKI v2.0")
-    st.caption("DG d’ASYMAS - Synchro 24/7")
+peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
 
-    q = st.text_input("Ordre pour FLOKI", key="floki_input",
-                      placeholder="Ex: Fais le bilan, surveille, analyse marché")
+if peut_voir_floki:
+    # BOUTON ROND FLOTTANT PRES DU CURSEUR
+    st.markdown("""
+    <style>
+   .floki-rond {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 99999;
+        background: radial-gradient(circle, #00ff41 0%, #009900 100%);
+        color: black;
+        border: 3px solid white;
+        border-radius: 50%;
+        width: 65px;
+        height: 65px;
+        font-size: 32px;
+        cursor: pointer;
+        box-shadow: 0 0 15px #00ff41;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+   .floki-panel {
+        position: fixed;
+        bottom: 95px;
+        right: 20px;
+        width: 380px;
+        z-index: 99999;
+        background: #0E1117;
+        border: 2px solid #00ff41;
+        border-radius: 15px;
+        padding: 15px;
+        box-shadow: 0 0 20px rgba(0,255,65,0.5);
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Exécuter", type="primary", use_container_width=True):
-            if q:
-                with st.spinner("FLOKI analyse Asymas..."):
-                    rep = st.session_state.floki.ask(q)
+    if 'show_floki' not in st.session_state: st.session_state.show_floki = False
+
+    if st.button("🤖", key="btn_floki_rond", help="FLOKI DG"):
+        st.session_state.show_floki = not st.session_state.show_floki
+
+    if st.session_state.show_floki:
+        st.markdown('<div class="floki-panel">', unsafe_allow_html=True)
+        st.markdown("### 🤖 FLOKI - Conseiller du PDG")
+        st.caption("Mode: MANUEL. J'attends vos ordres.")
+
+        ordre = st.text_input("Votre Ordre:", key="ordre_floki_v3", placeholder="Ex: organise reunion demain 14h")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Exécuter", key="exec_floki_v3", type="primary"):
+                if ordre:
+                    rep = st.session_state.floki.ask(ordre)
                     st.session_state.floki_rep = rep
+        with col2:
+            if st.button("Fermer", key="close_floki_v3"):
+                st.session_state.show_floki = False
+                st.rerun()
 
-    with col2:
-        if st.button("Notifier équipe", use_container_width=True):
-            if q:
-                msg = st.session_state.floki.notify_internal(q)
-                st.toast(msg)
+        if 'floki_rep' in st.session_state:
+            st.success(st.session_state.floki_rep)
 
-    if 'floki_rep' in st.session_state:
-        rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", " ").replace("'", "\\'")
-        st.components.v1.html(f"""<script>if ('speechSynthesis' in window) {{window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance("{rep_clean}"); msg.lang = 'fr-FR'; msg.rate = 1; window.speechSynthesis.speak(msg);}}</script>""", height=0)
-        st.success(st.session_state.floki_rep)
+            # Boutons de téléchargement si PDF généré
+            for type_doc in ["lettre", "convocation", "rapport"]:
+                if f"pdf_floki_{type_doc}" in st.session_state:
+                    st.download_button(
+                        f"📥 Télécharger {type_doc}",
+                        data=st.session_state[f"pdf_floki_{type_doc}"],
+                        file_name=st.session_state[f"nom_floki_{type_doc}"],
+                        mime="application/pdf",
+                        key=f"dl_floki_{type_doc}"
+                    )
+
+        st.markdown('</div>', unsafe_allow_html=True)
