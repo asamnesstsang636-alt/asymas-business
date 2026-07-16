@@ -2486,112 +2486,79 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v10.0 - DG QUI A ACCES A TOUTE LA DB =====
-import re, urllib.parse, json
+# ===== FLOKI v11.0 FINAL - SECURISÉ + INTELLIGENT =====
+import re
 
 class FLOKI:
-    def __init__(self):
-        # Je lui donne tout
-        self.data = {
-            "articles": df_articles,
-            "voitures": df_voitures,
-            "biens": df_biens,
-            "compta": df_compta,
-        }
-        self.tables_supabase = ["devis", "lignes_devis", "utilisateurs", "mouvements_stock"]
+    def __init__(self): pass
 
     def ask(self, question):
         q = question.lower()
-        
         try:
-            # === 1. CHERCHER DANS SUPABASE AUTOMATIQUEMENT ===
-            if "devis" in q:
-                return self._search_supabase("devis", q)
+            # 1. QUANTITE DANS DERNIER DEVIS
+            if "quantite" in q and "devis" in q:
+                mots = q.replace("quantite de", "").replace("mes", "").replace("sur le dernier devis", "").strip()
+                res_devis = supabase.table("devis").select("id,numero").order("created_at", desc=True).limit(1).execute()
+                if not res_devis.data: return "Aucun devis"
+                devis_id = res_devis.data[0]['id']
+                res_lignes = supabase.table("lignes_devis").select("*").eq("devis_id", devis_id).ilike("nom_article", f"%{mots}%").execute()
+                if res_lignes.data:
+                    total = sum([l['quantite'] for l in res_lignes.data])
+                    return f"Dans devis N°{res_devis.data[0]['numero']}: {total} x {mots}"
+                return f"'{mots}' pas dans le dernier devis"
             
-            if "perte" in q or "mouvement" in q:
-                return self._search_supabase("mouvements_stock", q)
+            # 2. DERNIER DEVIS
+            if "dernier" in q and "devis" in q:
+                res = supabase.table("devis").select("*").order("created_at", desc=True).limit(1).execute()
+                if res.data:
+                    d = res.data[0]
+                    return f"Dernier devis: N°{d['numero']} | {d['client']} | {float(d['total']):,.0f} {d['devise']} | Par: {d['created_by']}"
+                return "Aucun devis"
             
-            if "utilisateur" in q or "qui" in q:
-                return self._search_supabase("utilisateurs", q)
-
-            # === 2. CHERCHER DANS LES DATAFRAMES ===
-            for nom_df, df in self.data.items():
-                if nom_df in q or "stock" in q:
-                    return self._search_dataframe(df, q, nom_df)
-            
-            # === 3. BILAN INTELLIGENT ===
-            if "bilan" in q or "ca" in q or "revenu" in q:
-                return self._bilan_global()
-
-            return f"Chef j'ai accès à: Articles, Voitures, Biens, Compta, Devis, Pertes, Utilisateurs. Pose n'importe quelle question."
-
+            # 3. BILAN
+            if "bilan" in q:
+                rev = df_compta[df_compta['type']=='Revenu']['montant'].sum() if not df_compta.empty else 0
+                dep = df_compta[df_compta['type']=='Dépense']['montant'].sum() if not df_compta.empty else 0
+                return f"BILAN: +{rev:,.0f} FC - {dep:,.0f} FC = {(rev-dep):,.0f} FC"
+                
+            return "Chef: 'quantité de ciment dernier devis', 'dernier devis', 'bilan'"
         except Exception as e:
-            return f"Erreur FLOKI: {e}"
-
-    def _search_supabase(self, table, question):
-        # Logique intelligente
-        query = supabase.table(table).select("*")
-        
-        if "dernier" in question: 
-            query = query.order("created_at", desc=True).limit(1)
-        if "batiment" in question: 
-            query = query.ilike("type", "%batiment%")
-        if "quantite" in question:
-            # cherche un article
-            mots = re.findall(r'de (.*?) sur', question)
-            if mots: query = query.ilike("nom_article", f"%{mots[0]}%")
-        
-        res = query.execute()
-        if not res.data: return f"Aucune donnée dans {table}"
-        
-        # Formate la réponse
-        txt = f"RESULTAT {table.upper()}:\n"
-        for r in res.data[:3]:
-            txt += json.dumps(r, ensure_ascii=False, default=str)[:200] + "\n"
-        return txt
-
-    def _search_dataframe(self, df, question, nom):
-        if df.empty: return f"{nom} vide"
-        
-        # Extrait le mot clé
-        mots = question.replace("combien de", "").replace("stock", "").strip()
-        if 'nom_article' in df.columns:
-            mask = df['nom_article'].str.contains(mots, case=False, na=False)
-            if mask.any():
-                r = df.iloc[0]
-                return f"{r['nom_article']}: {int(r['stock'])} unités | {float(r['prix_vente']):,.0f} FC"
-        return f"Rien trouvé pour '{mots}' dans {nom}"
-
-    def _bilan_global(self):
-        rev = self.data['compta'][self.data['compta']['type']=='Revenu']['montant'].sum() if not self.data['compta'].empty else 0
-        dep = self.data['compta'][self.data['compta']['type']=='Dépense']['montant'].sum() if not self.data['compta'].empty else 0
-        return f"BILAN GLOBAL:\nRevenus: {rev:,.0f} FC\nDépenses: {dep:,.0f} FC\nBénéfice: {(rev-dep):,.0f} FC"
+            return f"Erreur: {e}"
 
 
-# === BOUTON + MICRO + VOIX ===
+# === SECURITE + BOUTON + MICRO ===
 if 'floki' not in st.session_state:
     st.session_state.floki = FLOKI()
 
-if st.session_state.user_role == "PDG":
-    st.markdown('<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:70px;height:70px;font-size:35px;border:3px solid white;}</style>', unsafe_allow_html=True)
+# SECURITE: Seulement PDG ou permission floki
+user_role = st.session_state.get('user_role', '')
+user_perms = st.session_state.get('user_perms', {})
+peut_voir_floki = (user_role == "PDG") or (user_perms.get('floki', False) == True)
+
+if peut_voir_floki:
+    st.markdown("""<style>.floki-rond{position:fixed;bottom:20px;right:20px;z-index:99999;background:#00ff41;color:black;border-radius:50%;width:70px;height:70px;font-size:35px;border:3px solid white;box-shadow:0 0 20px #00ff41;}</style>""", unsafe_allow_html=True)
     
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-    if st.button("🤖", key="btn_floki"): st.session_state.show_floki = not st.session_state.show_floki
+    if st.button("🤖", key="btn_floki_secure"): 
+        st.session_state.show_floki = not st.session_state.show_floki
 
     if st.session_state.show_floki:
-        st.markdown('<div style="position:fixed;bottom:100px;right:20px;width:500px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;">', unsafe_allow_html=True)
-        st.markdown("### 🤖 FLOKI DG - J'AI ACCES A TOUT")
+        st.markdown('<div style="position:fixed;bottom:100px;right:20px;width:450px;background:#0E1117;border:2px solid #00ff41;padding:15px;z-index:99999;border-radius:15px;">', unsafe_allow_html=True)
+        st.markdown("### 🤖 FLOKI DG - SECURISÉ")
         
-        col1, col2 = st.columns([1,5])
+        col1, col2 = st.columns([1,4])
         with col1: 
-            if st.button("🎤"): 
-                st.components.v1.html("""<script>var r=new (window.SpeechRecognition||window.webkitSpeechRecognition)();r.lang='fr-FR';r.start();r.onresult=function(e){window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setComponentValue',key:'ordre_vocal',value:e.results[0][0].transcript},'*')};</script>""", height=0)
+            if st.button("🎤", key="btn_micro_secure"): 
+                st.components.v1.html("""<script>var r=new (window.SpeechRecognition||window.webkitSpeechRecognition)();r.lang='fr-FR';r.start();r.onresult=function(e){window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setComponentValue',key:'ordre_vocal_secure',value:e.results[0][0].transcript},'*')};</script>""", height=0)
         with col2:
-            if 'ordre_vocal' not in st.session_state: st.session_state.ordre_vocal = ""
-            ordre = st.text_input("Ordre:", key="ordre_vocal")
+            if 'ordre_vocal_secure' not in st.session_state: st.session_state.ordre_vocal_secure = ""
+            ordre = st.text_input("Ordre:", key="ordre_vocal_secure")
         
         if st.button("Exécuter", type="primary") and ordre:
             rep = st.session_state.floki.ask(ordre)
             st.success(rep)
-            st.components.v1.html(f"""<script>var m=new SpeechSynthesisUtterance("{rep[:200]}");m.lang='fr-FR';window.speechSynthesis.speak(m);</script>""", height=0)
+            rep_clean = rep.replace('"','\\"').replace("\n",". ")[:200]
+            st.components.v1.html(f"""<script>var m=new SpeechSynthesisUtterance("{rep_clean}");m.lang='fr-FR';window.speechSynthesis.speak(m);</script>""", height=0)
         st.markdown('</div>', unsafe_allow_html=True)
+else:
+    pass # Rien pour les autres rôles
