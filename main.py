@@ -2486,11 +2486,16 @@ if "👥 Utilisateurs" in tab_map:
                     else:
                         st.info("🔒 Seul le PDG peut modifier")
                          # === FLOKI SOLDAT COMPLET - VERSION PDG ===
-# ===== FLOKI v4.0 AVEC VOIX =====
-if peut_voir_floki:
+# ===== FLOKI v4.1 - CORRIGE + VOIX =====
+if 'floki' not in st.session_state:
+    st.session_state.floki = FLOKI(supabase)
+
+peut_voir_floki = st.session_state.user_role == "PDG" or st.session_state.user_perms.get('floki', False)
+
+if peut_voir_floki:  # <-- ICI C'ETAIT ; AU LIEU DE :
     st.markdown("""
     <style>
-  .floki-rond {
+   .floki-rond {
         position: fixed;
         bottom: 20px;
         right: 20px;
@@ -2506,12 +2511,7 @@ if peut_voir_floki:
         box-shadow: 0 0 20px #00ff41;
         animation: pulse 2s infinite;
     }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(0, 255, 65, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
-    }
-  .floki-panel {
+   .floki-panel {
         position: fixed;
         bottom: 100px;
         right: 20px;
@@ -2521,96 +2521,31 @@ if peut_voir_floki:
         border: 2px solid #00ff41;
         border-radius: 15px;
         padding: 15px;
-        box-shadow: 0 0 25px rgba(0,255,65,0.6);
     }
     </style>
     """, unsafe_allow_html=True)
 
     if 'show_floki' not in st.session_state: st.session_state.show_floki = False
-    if 'ecoute_active' not in st.session_state: st.session_state.ecoute_active = False
 
-    if st.button("🤖", key="btn_floki_rond", help="Appuyer pour parler à FLOKI"):
+    if st.button("🤖", key="btn_floki_rond"):
         st.session_state.show_floki = not st.session_state.show_floki
 
     if st.session_state.show_floki:
         st.markdown('<div class="floki-panel">', unsafe_allow_html=True)
         st.markdown("### 🤖 FLOKI - Conseiller du PDG")
-        st.caption("Mode: MANUEL. Cliquez micro pour parler.")
+        st.caption("Mode: MANUEL. J'écoute vos ordres.")
 
-        # 1. BOUTON MICRO POUR PARLER
-        col_mic, col_close = st.columns([1,4])
-        with col_mic:
-            if st.button("🎤 Parler", key="btn_micro", type="primary"):
-                st.session_state.ecoute_active = True
-                st.rerun()
-            if st.session_state.ecoute_active:
-                st.info("J'écoute chef...")
+        ordre = st.text_input("Votre Ordre:", key="ordre_floki_final", placeholder="Ex: combien de novida avons nous")
 
-        with col_close:
-            if st.button("Fermer", key="close_floki_v4"):
-                st.session_state.show_floki = False
-                st.session_state.ecoute_active = False
-                st.rerun()
+        if st.button("Exécuter", key="exec_floki_final", type="primary"):
+            if ordre:
+                rep = st.session_state.floki.ask(ordre)
+                st.session_state.floki_rep = rep
 
-        # 2. RECONNAISSANCE VOCALE via navigateur
-        if st.session_state.ecoute_active:
-            st.components.v1.html("""
-            <script>
-            var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'fr-FR';
-            recognition.start();
-            recognition.onresult = function(event) {
-                var speechResult = event.results[0][0].transcript;
-                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
-            };
-            recognition.onerror = function() { window.parent.postMessage({type: 'streamlit:setComponentValue', value: 'erreur'}, '*'); }
-            </script>
-            """, height=0)
-            ordre = st.text_input("Votre Ordre:", value="", key="ordre_vocal", label_visibility="collapsed")
-            if ordre and ordre!= "erreur":
-                st.session_state.ecoute_active = False
-                st.session_state.ordre_floki_v4 = ordre
-                st.rerun()
-
-        # 3. ZONE DE TEXTE + EXECUTER
-        if 'ordre_floki_v4' not in st.session_state: st.session_state.ordre_floki_v4 = ""
-        ordre = st.text_input("Ou tapez votre ordre:", key="ordre_floki_v4")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Exécuter", key="exec_floki_v4", type="primary"):
-                if ordre:
-                    with st.spinner("FLOKI réfléchit..."):
-                        rep = st.session_state.floki.ask(ordre)
-                        st.session_state.floki_rep = rep
-                        st.session_state.floki_rep_voix = rep # pour la voix
-
-        # 4. REPONSE + VOIX
         if 'floki_rep' in st.session_state:
             st.success(st.session_state.floki_rep)
-
-            # PARLER LA REPONSE
-            rep_clean = st.session_state.floki_rep_voix.replace('"', '\\"').replace("\n", ". ").replace("'", "\\'")
-            st.components.v1.html(f"""
-            <script>
-            if ('speechSynthesis' in window) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance("{rep_clean}");
-                msg.lang = 'fr-FR';
-                msg.rate = 0.9;
-                msg.pitch = 1;
-                window.speechSynthesis.speak(msg);
-            }}
-            </script>
-            """, height=0)
-
-            # Téléchargement PDF si généré
-            if "pdf_floki_doc" in st.session_state:
-                st.download_button(
-                    "📥 Télécharger Document",
-                    data=st.session_state["pdf_floki_doc"],
-                    file_name=st.session_state["nom_floki_doc"],
-                    mime="application/pdf"
-                )
-
+            # VOIX
+            rep_clean = st.session_state.floki_rep.replace('"', '\\"').replace("\n", ". ")
+            st.components.v1.html(f"""<script>var msg = new SpeechSynthesisUtterance("{rep_clean}"); msg.lang = 'fr-FR'; window.speechSynthesis.speak(msg);</script>""", height=0)
+        
         st.markdown('</div>', unsafe_allow_html=True)
